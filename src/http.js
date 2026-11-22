@@ -71,6 +71,7 @@ class HttpClient {
     );
 
     this.wwwClaim = null;
+    this._bootstrapPromise = null;
     this.client.interceptors.response.use(
       (res) => this._onResponse(res),
       (err) => Promise.reject(this._onError(err))
@@ -145,23 +146,34 @@ class HttpClient {
   // harvested session params are supplied).
   async bootstrapTokens() {
     if (this.fbDtsg && this.lsd) return { fbDtsg: this.fbDtsg, lsd: this.lsd };
-    const res = await this.client.get(`${ORIGIN}/`, {
-      maxRedirects: 5,
-      headers: { "Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" }
-    });
-    const html = typeof res.data === "string" ? res.data : "";
-    const lsdMatch = html.match(/"LSD",\[\],\{"token":"([^"]+)"/) || html.match(/lsd":"([^"]+)"/);
-    if (lsdMatch) this.lsd = lsdMatch[1];
+    if (this._bootstrapPromise) return this._bootstrapPromise;
 
-    const dtsgMatch =
-      html.match(/DTSGInitialData",\[\],\{"token":"([^"]+)"/) ||
-      html.match(/"fb_dtsg":"([^"]+)"/);
-    if (dtsgMatch) this.fbDtsg = dtsgMatch[1];
-    if (!this.fbDtsg) this.fbDtsg = this.getCookie("fb_dtsg");
+    let bootstrap;
+    bootstrap = (async () => {
+      const res = await this.client.get(`${ORIGIN}/`, {
+        maxRedirects: 5,
+        headers: { "Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" }
+      });
+      const html = typeof res.data === "string" ? res.data : "";
+      const lsdMatch = html.match(/"LSD",\[\],\{"token":"([^"]+)"/) || html.match(/lsd":"([^"]+)"/);
+      if (lsdMatch) this.lsd = lsdMatch[1];
 
-    this.jazoest = this.getCookie("jazoest") || this.jazoest;
-    if (this.fbDtsg && !this.jazoest) this.jazoest = jazoest(this.fbDtsg);
-    return { fbDtsg: this.fbDtsg, lsd: this.lsd };
+      const dtsgMatch =
+        html.match(/DTSGInitialData",\[\],\{"token":"([^"]+)"/) ||
+        html.match(/"fb_dtsg":"([^"]+)"/);
+      if (dtsgMatch) this.fbDtsg = dtsgMatch[1];
+      if (!this.fbDtsg) this.fbDtsg = this.getCookie("fb_dtsg");
+
+      this.jazoest = this.getCookie("jazoest") || this.jazoest;
+      if (this.fbDtsg && !this.jazoest) this.jazoest = jazoest(this.fbDtsg);
+      return { fbDtsg: this.fbDtsg, lsd: this.lsd };
+    })();
+    this._bootstrapPromise = bootstrap;
+    try {
+      return await bootstrap;
+    } finally {
+      if (this._bootstrapPromise === bootstrap) this._bootstrapPromise = null;
+    }
   }
 
   // Full browser-like headers. Instagram checks these alongside the query params.
