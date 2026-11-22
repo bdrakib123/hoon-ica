@@ -473,6 +473,28 @@ async function testDirectThreadNameDoesNotUseViewer() {
   assert.equal(pkOnly.threadName, "friend_two");
 }
 
+async function testFriendshipStatusPreservesUnknownFields() {
+  const getFriendship = createGetUserFriendship({
+    api: {
+      _learnedUser: () => ({
+        id: "friend-1",
+        username: "friend",
+        friendship_status: {
+          blocking: false,
+          is_followed_by: true
+        }
+      })
+    }
+  });
+  const status = await getFriendship("friend-1");
+  assert.equal(status.blocking, false);
+  assert.equal(status.isFollowedBy, true);
+  assert.equal(status.isRestricted, null);
+  assert.equal(status.follows, null);
+  assert.equal(status.incomingRequest, null);
+  assert.equal(status.outgoingRequest, null);
+}
+
 async function testUnknownFriendshipReturnsNull() {
   const client = { api: { _learnedUser: () => null } };
   const getFriendship = createGetUserFriendship(client);
@@ -514,9 +536,10 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testUserInfoCacheRemainsBounded();
   await testShareContactSendsProfileLink();
   await testDirectThreadNameDoesNotUseViewer();
+  await testFriendshipStatusPreservesUnknownFields();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 16 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 17 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
