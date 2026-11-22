@@ -371,7 +371,9 @@ async function testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets() {
 
 async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
   const axios = require("axios");
+  const InstaClient = require("../src/app/InstaClient");
   const originalGet = axios.get;
+  const context = { _resolveIgPictureUrl: async () => null };
   const media = new MediaMethods({}, {});
   let request;
   let received;
