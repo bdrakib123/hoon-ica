@@ -439,6 +439,7 @@ async function testDirectThreadNameDoesNotUseViewer() {
     _learnThreads() {}
   })("thread-2");
   assert.deepEqual(pkOnly.participantIDs, ["self-2", "other-2"]);
+  assert.equal(pkOnly.threadName, "friend_two");
 }
 
 async function testUnknownFriendshipReturnsNull() {
