@@ -5,6 +5,8 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.getProfileBio(idOrUsername, callback) -> { id, username, name, biography }.
 //
 // The biography is the profile "about" text. Sourced from the same logout-safe
@@ -12,7 +14,7 @@
 // an empty bio rather than an error.
 module.exports = function (client) {
   return async function getProfileBio(idOrUsername, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     const key = String(idOrUsername == null ? "" : idOrUsername).replace(/^@/, "");
     try {
       const profile = await client.getProfile(key).catch(() => null);
@@ -23,10 +25,11 @@ module.exports = function (client) {
         name: profile?.fullName || null,
         biography: profile?.biography || ""
       };
-      if (cb) cb(null, out);
+      if (cb) await cb(null, out);
       return out;
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb?.called) throw error;
+      if (cb) await cb(error, null);
       return { id: null, userID: null, username: null, name: null, biography: "" };
     }
   };
