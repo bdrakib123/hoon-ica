@@ -130,4 +130,4 @@ function retryAfterMs(err) {
   return 0;
 }
 
-module.exports = { classify, inspectBody, toIgError, retryAfterMs };
+module.exports = { classify, inspectBody, toIgError, retryAfterMs, hasGraphQLPartialData };
