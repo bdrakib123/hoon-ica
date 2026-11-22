@@ -7,6 +7,8 @@
 
 // fca.getUserInfo(id | id[], callback) -> { <id>: { name, firstName, username,
 // profileUrl, thumbSrc, gender } }.
+const { setBounded } = require("../../utils/boundedMap");
+
 module.exports = function (client) {
   return async function getUserInfo(ids, callback) {
     const cb = typeof callback === "function" ? callback : null;
@@ -31,8 +33,8 @@ module.exports = function (client) {
           thumbSrc: u?.profile_pic_url || cachedPic || null,
           gender: u?.gender ?? null
         };
-        if (u?.profile_pic_url) client._picCache.set(key, u.profile_pic_url);
-        if (u?.username) client._picCache.set(`name:${key}`, u.username);
+        if (u?.profile_pic_url) setBounded(client._picCache, key, u.profile_pic_url, 5000);
+        if (u?.username) setBounded(client._picCache, `name:${key}`, u.username, 5000);
       }
       if (cb) cb(null, out);
       return out;
