@@ -71,7 +71,11 @@ class MessageMethods {
     } catch (error) {
       globalAntiSuspension.noteSendError(error);
       const kind = error.igKind || classify(error).kind;
-      if (NO_FALLBACK_KINDS.has(kind) || globalAntiSuspension.isCoolingDown()) throw error;
+      // A transport timeout/reset is ambiguous: Instagram may already have
+      // accepted the GraphQL send. Never replay it through the legacy endpoint
+      // unless GraphQL explicitly returned an operation error.
+      const explicitGraphQLError = error.name === "InstagramGraphQLError" && Array.isArray(error.errors);
+      if (!explicitGraphQLError || NO_FALLBACK_KINDS.has(kind) || globalAntiSuspension.isCoolingDown()) throw error;
       const clientContextId = this.http.uuid();
       const params = {
         action: "send_item",
