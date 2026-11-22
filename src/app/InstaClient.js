@@ -136,7 +136,7 @@ class InstaClient {
         for (const id of [u?.id, u?.pk, u?.interop_messaging_user_fbid, key]) {
           if (id) setBounded(this._picCache, String(id), url, 5000);
         }
-        if (u?.username) this._picCache.set(u.username, url);
+        if (u?.username) setBounded(this._picCache, u.username, url, 5000);
       }
       return url;
     } catch (_) {
@@ -311,7 +311,7 @@ class InstaClient {
     const cb = typeof callback === "function" ? callback : null;
     try {
       const info = await this._sendAttachment(String(threadID), src, opts && (opts.text || opts.caption));
-      if (info && info.messageID) this._msgThread.set(info.messageID, String(threadID));
+      if (info && info.messageID) setBounded(this._msgThread, info.messageID, String(threadID), 5000);
       const out = { messageID: info && info.messageID, threadID: String(threadID), timestamp: Date.now() };
       if (cb) cb(null, out);
       return out;
