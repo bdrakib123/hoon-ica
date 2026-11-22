@@ -117,6 +117,30 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testLegacyTextFallbackUsesOfflineThreadingId() {
+  const originalWait = globalAntiSuspension.waitForTurn;
+  globalAntiSuspension.waitForTurn = async () => {};
+  try {
+    const graphError = new Error("Persisted query is no longer available");
+    graphError.name = "InstagramGraphQLError";
+    graphError.errors = [{ message: graphError.message }];
+    let fallback;
+    const methods = new MessageMethods({
+      uuid: () => "client-context-1",
+      offlineThreadingId: () => "17000000000000001",
+      postGraphQL: async () => { throw graphError; },
+      postForm: async (_url, params) => { fallback = params; return { status: "ok" }; }
+    }, {});
+    await methods.send("hello", "thread-1");
+    assert.equal(fallback.client_context, "client-context-1");
+    assert.equal(fallback.offline_threading_id, "17000000000000001");
+    assert.notEqual(fallback.client_context, fallback.offline_threading_id);
+  } finally {
+    globalAntiSuspension.waitForTurn = originalWait;
+  }
+}
+
+
 async function testAmbiguousGraphqlSendDoesNotFallback() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -1092,6 +1116,7 @@ async function run() {
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
+  await testLegacyTextFallbackUsesOfflineThreadingId();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -1125,7 +1150,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 41 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 42 regression tests passed\n");
 }
 
 run().catch((error) => {
