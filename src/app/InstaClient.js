@@ -159,7 +159,11 @@ class InstaClient {
   // user index used to resolve @mentions to a pk offline.
   _learnThreads(payload) {
     const raw = payload?.threads || payload;
-    const threads = Array.isArray(raw) ? raw : raw?.users ? [raw] : [];
+    const threads = Array.isArray(raw)
+      ? raw.filter((thread) => thread && typeof thread === "object")
+      : raw && typeof raw === "object" && raw.users
+        ? [raw]
+        : [];
     for (const t of threads) {
       const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
       if (t.viewer && typeof t.viewer === "object") users.unshift(t.viewer);
@@ -238,8 +242,20 @@ class InstaClient {
     if (!names.length) return mentions;
     // The inbox is the richest source; learn it once, then answer from the index.
     if (!this._inboxLearned && typeof this.api.getInbox === "function") {
-      this._inboxLearned = true;
-      try { this._learnThreads(await this.api.getInbox()); } catch (_) {}
+      // Share one hydration request between concurrent message events. A failed
+      // first read must remain retryable instead of permanently marking the
+      // inbox as learned with an empty index.
+      if (!this._inboxLearnPromise) {
+        this._inboxLearnPromise = Promise.resolve()
+          .then(() => this.api.getInbox())
+          .then((inbox) => {
+            this._learnThreads(inbox);
+            this._inboxLearned = true;
+          })
+          .catch(() => {})
+          .finally(() => { this._inboxLearnPromise = null; });
+      }
+      await this._inboxLearnPromise;
     }
     for (const username of names) {
       let u = this.getUserByUsername(username);
