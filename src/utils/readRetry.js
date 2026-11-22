@@ -42,17 +42,15 @@ function resolveConfig(readRetry) {
     MAX_READ_RETRY_ATTEMPTS,
     Math.max(1, requestedAttempts || DEFAULT_READ_RETRY.attempts)
   );
-  const firstWaitMs = Number(cfg.firstWaitMs);
-  const maxWaitMs = Number(cfg.maxWaitMs);
-  return {
-    attempts,
-    firstWaitMs: Number.isFinite(firstWaitMs) && firstWaitMs >= 0
-      ? Math.min(firstWaitMs, MAX_READ_RETRY_WAIT_MS)
-      : DEFAULT_READ_RETRY.firstWaitMs,
-    maxWaitMs: Number.isFinite(maxWaitMs) && maxWaitMs >= 0
-      ? Math.min(maxWaitMs, MAX_READ_RETRY_WAIT_MS)
-      : DEFAULT_READ_RETRY.maxWaitMs
-  };
+  const requestedFirstWaitMs = Number(cfg.firstWaitMs);
+  const requestedMaxWaitMs = Number(cfg.maxWaitMs);
+  const maxWaitMs = Number.isFinite(requestedMaxWaitMs) && requestedMaxWaitMs >= 0
+    ? Math.min(requestedMaxWaitMs, MAX_READ_RETRY_WAIT_MS)
+    : DEFAULT_READ_RETRY.maxWaitMs;
+  const firstWaitMs = Number.isFinite(requestedFirstWaitMs) && requestedFirstWaitMs >= 0
+    ? Math.min(requestedFirstWaitMs, MAX_READ_RETRY_WAIT_MS, maxWaitMs)
+    : Math.min(DEFAULT_READ_RETRY.firstWaitMs, maxWaitMs);
+  return { attempts, firstWaitMs, maxWaitMs };
 }
 
 function wrapRead(client, name, cfg) {
