@@ -2399,6 +2399,44 @@ async function testPostFormOmitsNullishFields() {
 }
 
 
+async function testRealtimeSequenceIdsPreserve64BitPrecision() {
+  const EventEmitter = require("node:events");
+  const { normalizeSequenceId } = require("../src/utils/sequenceId");
+  assert.equal(normalizeSequenceId("9007199254740993"), "9007199254740993");
+  assert.equal(normalizeSequenceId("42"), 42);
+  assert.equal(normalizeSequenceId(42), 42);
+  assert.equal(normalizeSequenceId(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
+  assert.equal(normalizeSequenceId(Number.MAX_SAFE_INTEGER + 1), null);
+  assert.equal(normalizeSequenceId("-1"), null);
+  assert.equal(normalizeSequenceId("not-a-sequence"), null);
+
+  const largeSequence = "9007199254740993";
+  const inbox = new InboxMethods({
+    uuid: () => "device-test",
+    postGraphQL: async () => ({
+      data: {
+        get_slide_mailbox_for_iris_subscription: {
+          iris_inactive_subscription_uq_seq_id: largeSequence
+        }
+      }
+    })
+  }, () => "123");
+  const state = await inbox.fetchRealtimeState();
+  assert.equal(state.seqId, largeSequence);
+
+  const { RealtimeListener } = require("../src/realtime/listener");
+  const client = new EventEmitter();
+  let subscribedSequence;
+  client.irisSubscribe = async (seqId) => {
+    subscribedSequence = seqId;
+    queueMicrotask(() => client.emit("iris_sub_response", { success: true }));
+  };
+  const listener = new RealtimeListener({}, {});
+  listener._client = client;
+  await listener._subscribeWithAck(state);
+  assert.equal(subscribedSequence, largeSequence);
+}
+
 async function testErrorClassificationNormalizesStringStatusCodes() {
   const { classify } = require("../src/utils/errors");
   assert.equal(classify({ status: "429", message: "request failed" }).kind, "rate_limited");
@@ -2570,6 +2608,7 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testExplicitFailureEnvelopeWithoutMessageIsRejected();
+  await testRealtimeSequenceIdsPreserve64BitPrecision();
   await testErrorClassificationNormalizesStringStatusCodes();
   await testRetryAfterSupportsHttpDate();
   await testPostFormOmitsNullishFields();
@@ -2589,7 +2628,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 82 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 83 regression tests passed\n");
 }
 
 run().catch((error) => {
