@@ -434,6 +434,9 @@ function writeConnectPacket(connection, keepAlive = KEEP_ALIVE_SECONDS) {
 
 function writePublishPacket(topic, payload, qos = 1, packetId = 1) {
   if (qos !== 0 && qos !== 1) throw new Error("Only QoS 0 and QoS 1 are supported");
+  if (qos === 1 && (!Number.isInteger(packetId) || packetId < 1 || packetId > 65535)) {
+    throw new RangeError("MQTT packet identifier must be an integer from 1 to 65535");
+  }
   let body = writeUtf8(String(topic));
   if (qos) body = Buffer.concat([body, uint16BE(packetId)]);
   body = Buffer.concat([body, payload]);
@@ -441,6 +444,10 @@ function writePublishPacket(topic, payload, qos = 1, packetId = 1) {
 }
 
 function writeSubscribePacket(topic, packetId = 1, qos = 1) {
+  if (!Number.isInteger(packetId) || packetId < 1 || packetId > 65535) {
+    throw new RangeError("MQTT packet identifier must be an integer from 1 to 65535");
+  }
+  if (qos !== 0 && qos !== 1) throw new Error("Only QoS 0 and QoS 1 are supported");
   const body = Buffer.concat([uint16BE(packetId), writeUtf8(String(topic)), Buffer.from([qos])]);
   return Buffer.concat([Buffer.from([0x82]), encodeRemainingLength(body.length), body]);
 }
@@ -459,6 +466,9 @@ function decodePacket(packet) {
   }
   const packetTypeId = packet[0] >> 4;
   const flags = packet[0] & 0x0f;
+  if (packetTypeId === 0 || packetTypeId === 15) {
+    throw new Error("Malformed MQTT packet: reserved control packet type");
+  }
   const { value: remainingLength, offset } = decodeRemainingLength(packet, 1);
   if (offset + remainingLength !== packet.length) {
     throw new Error("Malformed MQTT packet: remaining length does not match frame size");
@@ -487,11 +497,12 @@ function decodePacket(packet) {
   if (packetTypeId === 3) {
     const { value: topic, offset: pos } = readUtf8(body, 0);
     const qos = (flags >> 1) & 0x03;
-    if (qos === 3) throw new Error("Malformed MQTT PUBLISH: reserved QoS value");
+    if (qos > 1) throw new Error("Malformed MQTT PUBLISH: unsupported QoS value");
     let packetId = null;
     let at = pos;
     if (qos) {
       packetId = body.readUInt16BE(at);
+      if (packetId === 0) throw new Error("Malformed MQTT PUBLISH: packet identifier cannot be zero");
       at += 2;
     }
     return { packetType: "publish", topic, qos, packetId, payload: body.slice(at) };
