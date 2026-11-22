@@ -214,7 +214,7 @@ async function main() {
     listener.stop();
   });
 
-  await checkCase("getThreadHistory ignores its timestamp argument", async () => {
+  await checkCase("getThreadHistory forwards its timestamp argument", async () => {
     let received;
     const getThreadHistory = createGetThreadHistory({
       api: {
@@ -225,7 +225,7 @@ async function main() {
       }
     });
     await getThreadHistory("thread-1", 5, 1700000000000);
-    assert.deepEqual(received, ["thread-1", 20]);
+    assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
   });
 
   await checkCase("first DM is delivered after an empty initial inbox poll", async () => {
