@@ -17,16 +17,23 @@ function extractCookie(credentials) {
   if (typeof credentials === "string") return credentials;
   if (Array.isArray(credentials)) return JSON.stringify(credentials);
   if (credentials && typeof credentials === "object") {
+    const hasCookieWrapper =
+      credentials.appState != null ||
+      credentials.Cookie != null ||
+      credentials.cookie != null;
+
+    // Preserve every cookie in a raw map instead of reducing it to sessionid.
+    if (!hasCookieWrapper && credentials.sessionid) return normalizeCookie(credentials);
+
     const candidate =
-      credentials.appState ||
-      credentials.Cookie ||
-      credentials.cookie ||
-      credentials.sessionid ||
+      credentials.appState ??
+      credentials.Cookie ??
+      credentials.cookie ??
+      credentials.sessionid ??
       credentials.sessionId;
     if (Array.isArray(candidate)) return JSON.stringify(candidate);
     if (typeof candidate === "string") return candidate;
-    // A raw cookie map { sessionid: "...", csrftoken: "..." }.
-    if (credentials.sessionid) return normalizeCookie(credentials);
+    if (candidate && typeof candidate === "object") return normalizeCookie(candidate);
   }
   return credentials;
 }
