@@ -94,6 +94,11 @@ class EventNormalizer {
         Array.isArray(partial.attachments) && partial.attachments.length
           ? partial.attachments
           : found.attachments || [],
+      itemType: partial.itemType || partial.content_type || found.itemType || found.content_type || "",
+      clientContext: partial.clientContext || partial.client_context || found.clientContext || null,
+      offlineThreadingId:
+        partial.offlineThreadingId || partial.offline_threading_id ||
+        found.offlineThreadingId || found.offline_threading_id || null,
       timestamp: partial.timestamp || found.timestamp || null
     };
   }
@@ -218,7 +223,11 @@ class EventNormalizer {
             url: a.url,
             filename: null,
             caption: a.caption || null
-          }))
+          })),
+          itemType: String(reply.itemType || reply.content_type || "").toLowerCase(),
+          clientContext: reply.clientContext || reply.client_context || null,
+          offlineThreadingId: reply.offlineThreadingId || reply.offline_threading_id || null,
+          timestamp: Number(reply.timestamp || reply.timestamp_ms) || null
         };
         event.messageReply.senderName = reply.senderName || null;
         if (!event.messageReply.senderName) {
