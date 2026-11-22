@@ -1,0 +1,438 @@
+/*!
+ * insta-chat - Unofficial Instagram Chat API
+ * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
+ * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
+ * Original author credit must be retained in all copies and derivatives.
+ */
+
+const axios = require("axios");
+const crypto = require("crypto");
+const { wrapper } = require("axios-cookiejar-support");
+const { CookieJar } = require("tough-cookie");
+const { classify, inspectBody, toIgError, retryAfterMs } = require("./utils/errors");
+const { globalAntiSuspension } = require("./utils/antiSuspension");
+
+// The cookie comes from a www.instagram.com browser session, so the client must
+// present the matching web User-Agent. Sending an Android app UA with a web
+// session cookie makes Instagram reject every API call with
+// 400 feedback_required / is_spam.
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36";
+const IG_APP_ID = "936619743392459";
+const ASBD_ID = "359341";
+const ORIGIN = "https://www.instagram.com";
+// Quick-promotion flow id the web client attaches to every Direct GraphQL call.
+const QPL_ACTIVE_FLOW_IDS = "354954279";
+
+// Meta's jazoest = "2" + sum of the char codes of fb_dtsg.
+function jazoest(fbDtsg) {
+  let sum = 0;
+  for (const ch of String(fbDtsg)) sum += ch.charCodeAt(0);
+  return `2${sum}`;
+}
+
+// Instagram sorts a thread's messages by offline_threading_id, and two ids built
+// in the SAME millisecond break their tie by the random low bits — so a caption
+// and the media it belongs to can sort in either order when they are built
+// together. Keeping the id strictly increasing across the process makes a
+// message built earlier always sort earlier, so a captioned send (which builds
+// the caption first) renders the text above the attachment. The counter is
+// module-scoped, so it is shared by every concurrent send in the process.
+let lastOfflineThreadingId = 0n;
+
+function nextOfflineThreadingId() {
+  const ms = BigInt(Date.now());
+  const rand = BigInt(Math.floor(Math.random() * 0x400000));
+  const id = (ms << 22n) | rand;
+  lastOfflineThreadingId = id > lastOfflineThreadingId ? id : lastOfflineThreadingId + 1n;
+  return lastOfflineThreadingId;
+}
+
+class HttpClient {
+  constructor(initialCookies) {
+    this.seed = initialCookies;
+    if (!this.seed.csrftoken) this.seed.csrftoken = crypto.randomBytes(16).toString("hex");
+
+    this.jar = new CookieJar();
+    for (const [key, value] of Object.entries(this.seed)) {
+      try {
+        this.jar.setCookieSync(`${key}=${value}; Domain=.instagram.com; Path=/`, ORIGIN);
+      } catch (_) {}
+    }
+
+    this.client = wrapper(
+      axios.create({
+        jar: this.jar,
+        withCredentials: true,
+        headers: { "User-Agent": USER_AGENT, "X-IG-App-ID": IG_APP_ID },
+        timeout: 30000,
+        maxRedirects: 0
+      })
+    );
+
+    this.wwwClaim = null;
+    this.client.interceptors.response.use(
+      (res) => this._onResponse(res),
+      (err) => Promise.reject(this._onError(err))
+    );
+  }
+
+  _rememberClaim(res) {
+    const claim = res && res.headers && res.headers["x-ig-set-www-claim"];
+    if (claim && typeof claim === "string") this.wwwClaim = claim;
+  }
+
+  _onResponse(res) {
+    this._rememberClaim(res);
+    const info = inspectBody(res.data);
+    if (info && ["auth", "challenge", "suspended", "blocked", "rate_limited"].includes(info.kind)) {
+      const err = toIgError(new Error(info.message || `Instagram refused the request (${info.kind})`), {
+        ...info,
+        status: res.status
+      });
+      err.response = res;
+      if (["challenge", "suspended", "blocked"].includes(info.kind)) globalAntiSuspension.noteSendError(err);
+      return Promise.reject(err);
+    }
+    return res;
+  }
+
+  _onError(err) {
+    this._rememberClaim(err && err.response);
+    const info = classify(err);
+    if (["challenge", "blocked", "suspended"].includes(info.kind)) globalAntiSuspension.noteSendError(err);
+    return toIgError(err, info);
+  }
+
+  getCookie(key) {
+    const cookies = this.jar.getCookiesSync(ORIGIN);
+    const found = cookies.find((c) => c.key === key);
+    return found ? found.value : this.seed[key];
+  }
+
+  uuid() {
+    return crypto.randomUUID();
+  }
+
+  // Instagram's offline threading id is (unix_ms << 22) | random 22 bits, packed
+  // into a 64-bit integer. Sends whose id does not decode to a plausible recent
+  // timestamp are rejected with "Invalid Parameter". The id is strictly
+  // increasing per process (see nextOfflineThreadingId) so a caption built before
+  // its media always sorts above it, even within the same millisecond.
+  offlineThreadingId() {
+    return nextOfflineThreadingId().toString();
+  }
+
+  // Instagram's web API rejects any request that does not carry the same
+  // browser-session params (__dyn, __csr, __hs, __hsi, __s, __hsdp, ...) that
+  // www.instagram.com itself sends. They are generated by the web JS bundle, but
+  // are session-scoped rather than per-request, so they can be harvested once
+  // from a real browser session (see scripts/harvestSession.js) and reused here.
+  setSessionParams(params) {
+    this.session = params || null;
+    if (params) {
+      if (params.lsd) this.lsd = params.lsd;
+      if (params.fb_dtsg) this.fbDtsg = params.fb_dtsg;
+      if (params.jazoest) this.jazoest = params.jazoest;
+    }
+  }
+
+  hasSessionParams() {
+    return !!(this.session && this.session.__dyn && this.session.__hsi);
+  }
+
+  // Seeds fb_dtsg/jazoest/lsd from the home page HTML (used as a fallback when no
+  // harvested session params are supplied).
+  async bootstrapTokens() {
+    if (this.fbDtsg && this.lsd) return { fbDtsg: this.fbDtsg, lsd: this.lsd };
+    const res = await this.client.get(`${ORIGIN}/`, {
+      maxRedirects: 5,
+      headers: { "Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" }
+    });
+    const html = typeof res.data === "string" ? res.data : "";
+    const lsdMatch = html.match(/"LSD",\[\],\{"token":"([^"]+)"/) || html.match(/lsd":"([^"]+)"/);
+    if (lsdMatch) this.lsd = lsdMatch[1];
+
+    const dtsgMatch =
+      html.match(/DTSGInitialData",\[\],\{"token":"([^"]+)"/) ||
+      html.match(/"fb_dtsg":"([^"]+)"/);
+    if (dtsgMatch) this.fbDtsg = dtsgMatch[1];
+    if (!this.fbDtsg) this.fbDtsg = this.getCookie("fb_dtsg");
+
+    this.jazoest = this.getCookie("jazoest") || this.jazoest;
+    if (this.fbDtsg && !this.jazoest) this.jazoest = jazoest(this.fbDtsg);
+    return { fbDtsg: this.fbDtsg, lsd: this.lsd };
+  }
+
+  // Full browser-like headers. Instagram checks these alongside the query params.
+  _webHeaders(extra = {}) {
+    const s = this.session || {};
+    return {
+      Cookie: this._cookieHeader(),
+      "User-Agent": USER_AGENT,
+      "X-IG-App-ID": IG_APP_ID,
+      "X-Asbd-Id": ASBD_ID,
+      "X-CSRFToken": this.getCookie("csrftoken") || "",
+      "X-Fb-Lsd": s.lsd || this.lsd || "",
+      "X-IG-WWW-Claim": this.wwwClaim || "0",
+      "X-IG-Max-Touch-Points": "0",
+      Accept: "*/*",
+      "Accept-Language": "en-US,en;q=0.9",
+      Origin: ORIGIN,
+      "Sec-Fetch-Site": "same-origin",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Ch-Ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Windows"',
+      "X-Requested-With": "XMLHttpRequest",
+      ...extra
+    };
+  }
+
+  _cookieHeader() {
+    const jar = {};
+    for (const [k, v] of Object.entries(this.seed || {})) jar[k] = v;
+    for (const c of this.jar.getCookiesSync(ORIGIN)) jar[c.key] = c.value;
+    return Object.entries(jar)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+  }
+
+  // The session params, with __req bumped per request like the web client does.
+  _sessionParams(extra) {
+    const s = this.session || {};
+    const base = {
+      av: s.av,
+      __d: "www",
+      __user: "0",
+      __a: "1",
+      __req: this._nextReq(),
+      __hs: s.__hs,
+      dpr: s.dpr,
+      __ccg: s.__ccg,
+      __rev: s.__rev,
+      __s: s.__s,
+      __hsi: s.__hsi,
+      __dyn: s.__dyn,
+      __csr: s.__csr,
+      __hsdp: s.__hsdp,
+      __hblp: s.__hblp,
+      __sjsp: s.__sjsp,
+      __comet_req: s.__comet_req,
+      fb_dtsg: s.fb_dtsg || this.fbDtsg,
+      jazoest: s.jazoest || this.jazoest,
+      lsd: s.lsd || this.lsd,
+      __spin_r: s.__spin_r,
+      __spin_b: s.__spin_b,
+      __spin_t: s.__spin_t,
+      __crn: "comet.igweb.PolarisDirectInboxRoute"
+    };
+    const out = {};
+    for (const [k, v] of Object.entries({ ...base, ...extra })) {
+      if (v !== undefined && v !== null && v !== "") out[k] = v;
+    }
+    return out;
+  }
+
+  _nextReq() {
+    this._req = (this._req || 0) + 1;
+    return this._req.toString(36);
+  }
+
+  async get(url, params) {
+    const clean = {};
+    for (const [k, v] of Object.entries(params || {})) {
+      if (v !== undefined && v !== null) clean[k] = v;
+    }
+    const res = await this.client.get(url, { params: clean, headers: this._webHeaders() });
+    return res.data;
+  }
+
+  async checkSession({ attempts = 3 } = {}) {
+    let last = null;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        // A home-page bootstrap only obtains fb_dtsg/lsd. Direct GraphQL also
+        // requires browser-generated params such as __dyn and __hsi. Do not
+        // send a knowingly incomplete request and misreport its response as
+        // proof that the cookie is invalid.
+        if (!this.hasSessionParams()) await this.bootstrapTokens();
+        if (!this.hasSessionParams()) {
+          return {
+            state: "session_params_missing",
+            error: new Error("Full Instagram web session parameters are missing; harvest them in a compatible browser or provide sessionParams.")
+          };
+        }
+
+        const res = await this.postGraphQL(
+          "useFeatureLimitsOffMsysQuery",
+          "28374543635529813",
+          {},
+          `${ORIGIN}/direct/inbox/`
+        );
+
+        if (res && res.data !== undefined && res.data !== null) return { state: "ok" };
+
+        if (res && Array.isArray(res.errors) && res.errors.length) {
+          const messages = res.errors
+            .map((item) => item && typeof item.message === "string" ? item.message : "")
+            .filter(Boolean);
+          const info = classify({ message: messages.join(" ") });
+          if (["auth", "challenge", "suspended", "blocked", "rate_limited"].includes(info.kind)) {
+            const state = info.kind === "blocked" ? "challenge" : info.kind;
+            return { state, error: new Error("Instagram rejected the session check (" + state + ").") };
+          }
+
+          // Keep the raw GraphQL body out of the error: it can contain
+          // account/session metadata. The count is sufficient for diagnostics.
+          const error = new Error("Instagram returned GraphQL errors during the session check.");
+          error.name = "InstagramGraphQLError";
+          error.errorCount = res.errors.length;
+          return { state: "graphql_error", error };
+        }
+
+        return {
+          state: "unexpected_response",
+          error: new Error("Instagram returned a response without GraphQL data or a recognized error.")
+        };
+      } catch (err) {
+        last = err;
+        const kind = err.igKind || classify(err).kind;
+        if (kind === "rate_limited") {
+          return { state: "rate_limited", error: err, retryAfterMs: retryAfterMs(err) || 60000 };
+        }
+        if (kind === "transient" || kind === "unknown") {
+          if (i < attempts - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 3000 * (i + 1) + Math.random() * 2000));
+            continue;
+          }
+          return { state: "transient", error: err, retryAfterMs: 30000 };
+        }
+        const state = kind === "blocked" ? "challenge" : kind;
+        return { state, error: err };
+      }
+    }
+    return { state: "transient", error: last, retryAfterMs: 30000 };
+  }
+
+  async isLoggedIn() {
+    const result = await this.checkSession({ attempts: 1 });
+    return result.state === "ok";
+  }
+
+  async postForm(url, fields) {
+    const body = new URLSearchParams(fields).toString();
+    const res = await this.client.post(url, body, {
+      headers: this._webHeaders({ "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" })
+    });
+    return res.data;
+  }
+
+  // Sends a Relay GraphQL operation with the full web session context.
+  //
+  // Instagram answers a rejected operation with HTTP 200 and a top-level
+  // `errors` array, so a bare `return res.data` makes a failed mutation look
+  // like a success and the message is silently dropped. Callers that perform a
+  // write pass `{ throwOnError: true }` so the rejection surfaces as an error.
+  async postGraphQL(friendlyName, docId, variables, referer, opts = {}) {
+    if (!this.hasSessionParams()) await this.bootstrapTokens();
+    const params = new URLSearchParams(
+      this._sessionParams({
+        fb_api_caller_class: "RelayModern",
+        fb_api_req_friendly_name: friendlyName,
+        server_timestamps: "true",
+        qpl_active_flow_ids: QPL_ACTIVE_FLOW_IDS,
+        fb_api_analytics_tags: JSON.stringify([`qpl_active_flow_ids=${QPL_ACTIVE_FLOW_IDS}`]),
+        variables: JSON.stringify(variables),
+        doc_id: docId
+      })
+    );
+    const res = await this.client.post(`${ORIGIN}/api/graphql`, params.toString(), {
+      headers: this._webHeaders({
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Fb-Friendly-Name": friendlyName,
+        Referer: referer || `${ORIGIN}/direct/inbox/`
+      })
+    });
+    if (opts.throwOnError && res.data && Array.isArray(res.data.errors) && res.data.errors.length) {
+      const err = new Error(res.data.errors[0]?.message || `${friendlyName} failed`);
+      err.name = "InstagramGraphQLError";
+      err.friendlyName = friendlyName;
+      err.errors = res.data.errors;
+      throw err;
+    }
+    return res.data;
+  }
+
+  // Direct-message media upload. The DM composer does NOT use
+  // /ajax/mercury/upload.php (that endpoint's response is unusable for
+  // IGDirectMediaSendMutation); it PUTs the raw bytes to
+  // https://rupload.instagram.com/<consumer>/<uuid> with the full web session
+  // params on the query string, and reads back { media_id }.
+  async postRupload(consumer, buffer, { filename, contentType, referer, typeHeader } = {}) {
+    if (!this.hasSessionParams()) await this.bootstrapTokens();
+    const params = new URLSearchParams(this._sessionParams({}));
+    const url = `https://rupload.instagram.com/${consumer}/${crypto.randomUUID()}?${params.toString()}`;
+    const dsUserId = this.getCookie("ds_user_id") || "";
+    const extra = {
+      "Content-Type": contentType || "application/octet-stream",
+      "X-Entity-Type": contentType || "application/octet-stream",
+      "X-Entity-Length": String(buffer.length),
+      "X-Entity-Name": filename || "file",
+      "X-IG-D": "www",
+      "X-IG-Max-Touch-Points": "0",
+      Offset: "0",
+      "X-Fb-Qpl-Active-Flows": "521485957",
+      "Sec-Fetch-Site": "cross-site",
+      Referer: referer || `${ORIGIN}/`
+    };
+    if (dsUserId) extra["IG-U-DS-User-ID"] = String(dsUserId);
+    if (typeHeader) extra[typeHeader] = "FILE_ATTACHMENT";
+    const res = await this.client.post(url, buffer, {
+      headers: this._webHeaders(extra),
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
+    });
+    return res.data;
+  }
+
+  // Builds a multipart/form-data body by hand so we avoid pulling in a form-data
+  // dependency, and so field order matches the browser capture.
+  async postMultipart(url, parts, referer) {
+    if (!this.hasSessionParams()) await this.bootstrapTokens();
+    const boundary = `----WebKitFormBoundary${crypto.randomBytes(12).toString("hex")}`;
+    const chunks = [];
+    for (const part of parts) {
+      chunks.push(Buffer.from(`--${boundary}\r\n`));
+      let disposition = `Content-Disposition: form-data; name="${part.name}"`;
+      if (part.filename) disposition += `; filename="${part.filename}"`;
+      chunks.push(Buffer.from(disposition + "\r\n"));
+      if (part.contentType) chunks.push(Buffer.from(`Content-Type: ${part.contentType}\r\n`));
+      chunks.push(Buffer.from("\r\n"));
+      chunks.push(Buffer.isBuffer(part.value) ? part.value : Buffer.from(String(part.value)));
+      chunks.push(Buffer.from("\r\n"));
+    }
+    chunks.push(Buffer.from(`--${boundary}--\r\n`));
+    const body = Buffer.concat(chunks);
+
+    const filePart = parts.find((p) => p.filename) || parts[0];
+    const params = new URLSearchParams(this._sessionParams({ hl: "en" }));
+    const res = await this.client.post(`${url}?${params.toString()}`, body, {
+      headers: this._webHeaders({
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        "X-Entity-Type": filePart?.contentType || "application/octet-stream",
+        "X-Entity-Length": String(filePart?.value?.byteLength || 0),
+        "X-Entity-Name": filePart?.filename || "file",
+        "X-Instagram-Rupload-Params": "{}",
+        Offset: "0",
+        Referer: referer || `${ORIGIN}/direct/inbox/`
+      }),
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
+    });
+    return res.data;
+  }
+}
+
+module.exports = HttpClient;

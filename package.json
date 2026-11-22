@@ -1,0 +1,82 @@
+{
+  "name": "@cexi/hoonica",
+  "version": "1.0.0",
+  "description": "Unofficial Instagram Chat API for Node.js | Build Instagram DM bots on personal accounts — send messages, media, voice notes, reactions, edit & unsend, listen for incoming chats. No browser at runtime",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/",
+    "module/",
+    "README.md",
+    "DOCS.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node test/edit.test.js && node test/session-check.test.js && node test/no-browser.test.js && node test/reliability-utils.test.js && node test/scheduler.test.js",
+    "test:reliability": "node test/reliability-utils.test.js && node test/scheduler.test.js",
+    "test:types": "tsc --noEmit --strict --skipLibCheck false --target ES2020 --module commonjs --moduleResolution node index.d.ts test/types.test.ts",
+    "release:check": "sh scripts/release-check.sh"
+  },
+  "keywords": [
+    "instagram",
+    "insta",
+    "chat",
+    "api",
+    "dm",
+    "direct",
+    "messenger",
+    "bot",
+    "unofficial",
+    "insta-chat",
+    "hoonica"
+  ],
+  "author": {
+    "name": "Hoon",
+    "url": "https://github.com/bdrakib123"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "axios-cookiejar-support": "^5.0.5",
+    "tough-cookie": "^5.1.2",
+    "node-cron": "^4.6.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bdrakib123/hoon-ica.git"
+  },
+  "homepage": "https://github.com/bdrakib123/hoon-ica#readme",
+  "bugs": {
+    "url": "https://github.com/bdrakib123/hoon-ica/issues"
+  },
+  "peerDependencies": {
+    "puppeteer-core": ">=24 <25"
+  },
+  "peerDependenciesMeta": {
+    "puppeteer-core": {
+      "optional": true
+    }
+  }
+}
