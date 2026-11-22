@@ -1516,6 +1516,39 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testSessionCookieFilesUseOwnerOnlyPermissions() {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { install } = require("../src/utils/sessionGuard");
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "hoonica-session-"));
+  const filePath = path.join(directory, "appstate.json");
+  const client = {
+    getAppState: () => [
+      { key: "sessionid", value: "session-secret" },
+      { key: "csrftoken", value: "csrf-secret" },
+      { key: "ds_user_id", value: "12345" }
+    ]
+  };
+  const guard = install(client, filePath);
+  try {
+    assert.equal(fs.statSync(filePath).mode & 0o777, 0o600);
+    client.saveSession();
+    const backup = filePath + ".bak";
+    assert.equal(fs.statSync(backup).mode & 0o777, 0o600);
+
+    fs.chmodSync(filePath, 0o644);
+    fs.chmodSync(backup, 0o644);
+    client.saveSession();
+    assert.equal(fs.statSync(filePath).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(backup).mode & 0o777, 0o600);
+  } finally {
+    guard.stop();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+
 async function testConcurrentTokenBootstrapIsDeduplicated() {
   const HttpClient = require("../src/http");
   const http = new HttpClient({ sessionid: "unit-test-session" });
@@ -1710,6 +1743,7 @@ async function run() {
   await testRetryAfterSupportsHttpDate();
   await testPostFormOmitsNullishFields();
   await testConcurrentTokenBootstrapIsDeduplicated();
+  await testSessionCookieFilesUseOwnerOnlyPermissions();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
@@ -1721,7 +1755,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 58 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 59 regression tests passed\n");
 }
 
 run().catch((error) => {
