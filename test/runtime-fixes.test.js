@@ -693,6 +693,13 @@ async function testDecodePacketRejectsMalformedFrames() {
   assert.throws(() => decodePacket(Buffer.from([0x30, 0x02, 0x00, 0x05])), /truncated UTF-8 value/);
   assert.throws(() => decodePacket(Buffer.from([0x30, 0x03, 0x00, 0x01, 0x61, 0x62])), /frame size/);
   assert.throws(() => decodePacket(Buffer.from([0x30, 0x02, 0x00, 0x01, 0x61])), /frame size/);
+  assert.throws(() => decodePacket(Buffer.from([0x00, 0x00])), /reserved control packet type/);
+  assert.throws(() => decodePacket(Buffer.from([0xf0, 0x00])), /reserved control packet type/);
+  assert.throws(() => decodePacket(Buffer.from([0x34, 0x05, 0x00, 0x01, 0x78, 0x00, 0x01])), /unsupported QoS/);
+  assert.throws(() => decodePacket(Buffer.from([0x32, 0x05, 0x00, 0x01, 0x78, 0x00, 0x00])), /cannot be zero/);
+  const { writePublishPacket, writeSubscribePacket } = require("../src/realtime/mqttot");
+  assert.throws(() => writePublishPacket("topic", Buffer.from("x"), 1, 0), /identifier/);
+  assert.throws(() => writeSubscribePacket("topic", 0), /identifier/);
 }
 
 
