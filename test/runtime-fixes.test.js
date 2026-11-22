@@ -268,6 +268,66 @@ async function testThriftInt64BigIntMode() {
   assert.equal(reader.readValue(fieldType, null), original);
 }
 
+
+async function testThreadHistoryTimestampPagination() {
+  const ThreadMethods = require("../src/methods/thread");
+  const calls = [];
+  const firstThread = {
+    id: "long-thread-id",
+    thread_fbid: "thread-fbid-1",
+    users: [],
+    slide_messages: {
+      edges: [
+        { node: { id: "m3", timestamp_ms: 3000, text_body: "newest" } },
+        { node: { id: "m2", timestamp_ms: 2000, text_body: "boundary" } }
+      ],
+      page_info: { has_next_page: true, end_cursor: "cursor-1" }
+    }
+  };
+  const olderConnection = {
+    edges: [
+      { node: { id: "m2", timestamp_ms: 2000, text_body: "boundary duplicate" } },
+      { node: { id: "m1", timestamp_ms: 1500, text_body: "older one" } },
+      { node: { id: "m0", timestamp_ms: 1000, text_body: "older two" } }
+    ],
+    page_info: { has_next_page: true, end_cursor: "cursor-2" }
+  };
+  const http = {
+    postGraphQL: async (friendlyName, docId, variables) => {
+      calls.push({ friendlyName, docId, variables });
+      if (friendlyName === "IGDThreadDetailQuery") {
+        return { data: { get_slide_thread_nullable: { as_ig_direct_thread: firstThread } } };
+      }
+      if (friendlyName === "IGDMessageListOffMsysQuery") {
+        return { data: { fetch__SlideThread: { as_ig_direct_thread: { slide_messages: olderConnection } } } };
+      }
+      throw new Error("Unexpected GraphQL operation: " + friendlyName);
+    }
+  };
+  const thread = new ThreadMethods(http);
+  const items = await thread.getHistory("thread-key-1", 2, 2000);
+  assert.deepEqual(items.map(item => item.messageID), ["m1", "m0"]);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].variables.after, "cursor-1");
+  assert.equal(calls[1].variables.id, "thread-fbid-1");
+  assert.equal(calls[1].variables.first, 2);
+}
+
+async function testFcaHistoryTimestampIsForwarded() {
+  const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
+  let received;
+  const getThreadHistory = createGetThreadHistory({
+    api: {
+      getThreadHistory: async (...args) => {
+        received = args;
+        return [];
+      }
+    }
+  });
+  await getThreadHistory("thread-1", 5, 1700000000000);
+  assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -284,7 +344,9 @@ async function run() {
   await testViewerFbidUsesViewerId();
   await testGetUidRejectsContentRoutes();
   await testThriftInt64BigIntMode();
-  process.stdout.write("runtime-fixes.test.js: 15 regression tests passed\n");
+  await testThreadHistoryTimestampPagination();
+  await testFcaHistoryTimestampIsForwarded();
+  process.stdout.write("runtime-fixes.test.js: 17 regression tests passed\n");
 }
 
 run().catch((error) => {
