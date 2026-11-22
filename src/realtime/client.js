@@ -76,6 +76,7 @@ class RealtimeClient extends EventEmitter {
     this._loop = null;
     this._pingTimer = null;
     this._stopRequested = false;
+    this._connectionGeneration = 0;
   }
 
   _deviceId() {
@@ -143,6 +144,8 @@ class RealtimeClient extends EventEmitter {
 
   async connect() {
     if (this.connected) return this;
+    const generation = ++this._connectionGeneration;
+    const isCurrentAttempt = () => generation === this._connectionGeneration;
     // A previous connection that dropped leaves a closed transport and a live
     // ping timer behind; clear both so the reconnect is clean and pings do not
     // accumulate one per attempt.
@@ -152,57 +155,63 @@ class RealtimeClient extends EventEmitter {
     if (this.transport && typeof this.transport.reset === "function") this.transport.reset();
     try {
       await this.transport.connect();
-      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
+      if (!isCurrentAttempt() || this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       await this.transport.send(writeConnectPacket(this.buildConnection(), KEEP_ALIVE_SECONDS));
-      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
+      if (!isCurrentAttempt() || this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       const packet = decodePacket(await this.transport.recvPacket());
-      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
+      if (!isCurrentAttempt() || this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       if (packet.packetType !== "connack" || packet.returnCode !== 0) {
         throw new Error(`Realtime MQTT connect failed (return code ${packet.returnCode})`);
       }
       this.connected = true;
       this._stopRequested = false;
       this.emit("connected", { host: this.host });
-      this._startPing();
-      this._startLoop();
+      this._startPing(generation);
+      this._startLoop(generation);
       return this;
     } catch (error) {
-      // A failed TLS/MQTT handshake must not leave its socket alive. The
-      // listener may switch to polling and the same client may be retried later.
-      this.connected = false;
-      this._stopRequested = true;
-      if (this._pingTimer) clearInterval(this._pingTimer);
-      this._pingTimer = null;
-      try {
-        if (this.transport && typeof this.transport.disconnect === "function") {
-          this.transport.disconnect();
-        }
-      } catch (_) {}
+      // A failed TLS/MQTT handshake must not leave its socket alive. An older
+      // cancelled attempt must not tear down a newer connection on this client.
+      if (isCurrentAttempt()) {
+        this.connected = false;
+        this._stopRequested = true;
+        if (this._pingTimer) clearInterval(this._pingTimer);
+        this._pingTimer = null;
+        try {
+          if (this.transport && typeof this.transport.disconnect === "function") {
+            this.transport.disconnect();
+          }
+        } catch (_) {}
+      }
       throw error;
     }
   }
 
-  _startPing() {
+  _startPing(generation = this._connectionGeneration) {
     // Ping comfortably inside the keep-alive the CONNECT advertised, so the
     // broker never times the connection out between pings.
     const keepAliveMs = this.options.keepAliveMs || PING_INTERVAL_MS;
     this._pingTimer = setInterval(() => {
-      if (this.connected) this.transport.send(writePingreqPacket()).catch(() => {});
+      if (this.connected && generation === this._connectionGeneration) {
+        this.transport.send(writePingreqPacket()).catch(() => {});
+      }
     }, keepAliveMs);
     if (this._pingTimer.unref) this._pingTimer.unref();
   }
 
-  _startLoop() {
+  _startLoop(generation = this._connectionGeneration) {
     this._loop = (async () => {
       let receiveError = null;
       try {
-        while (this.connected) {
+        while (this.connected && generation === this._connectionGeneration) {
           let packet;
           try {
-            packet = decodePacket(await this.transport.recvPacket());
+            const rawPacket = await this.transport.recvPacket();
+            if (generation !== this._connectionGeneration) break;
+            packet = decodePacket(rawPacket);
           } catch (err) {
             receiveError = err;
-            if (!this._stopRequested) this.emit("error", err);
+            if (generation === this._connectionGeneration && !this._stopRequested) this.emit("error", err);
             break;
           }
           try {
@@ -211,7 +220,7 @@ class RealtimeClient extends EventEmitter {
             // If an application error listener itself throws, the receive loop
             // exits through finally; mark it so the socket is closed as well.
             try {
-              this.emit("error", err);
+              if (generation === this._connectionGeneration) this.emit("error", err);
             } catch (listenerError) {
               receiveError = listenerError;
               throw listenerError;
@@ -219,6 +228,9 @@ class RealtimeClient extends EventEmitter {
           }
         }
       } finally {
+        // A late packet/error from a previous connection must not mark a newer
+        // reconnect as disconnected or clear its ping timer.
+        if (generation !== this._connectionGeneration) return;
         this.connected = false;
         if (this._pingTimer) clearInterval(this._pingTimer);
         this._pingTimer = null;
