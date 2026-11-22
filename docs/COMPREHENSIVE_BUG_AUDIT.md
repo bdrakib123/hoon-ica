@@ -115,6 +115,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 92 | FCA learned thread members duplicate the viewer | **Fixed on branch:** `InstaClient._learnThreads()` now checks the viewer's normalized `id`/`pk` before merging it into `users`, so participant IDs remain unique when the server already includes the viewer. | viewer-already-in-users regression added; pending batch local run |
 | 93 | Thrift map `__proto__` key can mutate decoded object prototype | **Fixed on branch:** map entries now use `Object.defineProperty` to create own data properties, preventing untrusted wire keys from changing the decoded object's prototype. | crafted `__proto__` map-key regression asserts prototype remains unchanged; pending batch local run |
 | 94 | Realtime fingerprint collapses every timestamp-less same-text message | **Fixed on branch:** content-fingerprint dedupe keys are now generated only when a valid positive timestamp exists; messages without timestamps rely on their actual IDs instead of colliding in bucket zero. | missing-timestamp versus timestamped fingerprint regression added; pending batch local run |
+| 95 | MessageDeduper accepts zero/negative cache limits unsafely | **Fixed on branch:** TTL and maximum size are normalized; zero explicitly disables retention without an infinite prune loop, invalid limits use safe defaults, and maximum retention is capped. | zero-capacity and negative-limit regressions added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -122,7 +123,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 77 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-nine runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#94 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#95 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
