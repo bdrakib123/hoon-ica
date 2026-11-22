@@ -276,6 +276,30 @@ async function testReadRetryDoesNotRetryThrownErrors() {
 }
 
 
+async function testPollingDeliversAllMessagesSinceLastSeen() {
+  const old = { id: "old-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
+  const middle = { id: "middle-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "middle" };
+  const newest = { id: "newest-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "newest" };
+  const http = {
+    postGraphQL: async () => ({
+      data: { get_slide_thread_nullable: { as_ig_direct_thread: {
+        users: [],
+        slide_messages: { edges: [newest, middle, old].map(node => ({ node })) }
+      } } }
+    })
+  };
+  const inbox = new InboxMethods(http, () => "self-1");
+  inbox._seen.set("thread-1", "old-message");
+  const events = await inbox._extractEvents([{
+    id: "thread-1",
+    users: [],
+    slide_messages: { edges: [{ node: newest }] }
+  }]);
+  assert.deepEqual(events.map(event => event.messageID), ["middle-message", "newest-message"]);
+  assert.equal(inbox._seen.get("thread-1"), "newest-message");
+}
+
+
 async function testPollingStopSuppressesInflightResults() {
   const inbox = new InboxMethods({}, () => "self-1");
   let release;
@@ -1244,6 +1268,7 @@ async function run() {
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
+  await testPollingDeliversAllMessagesSinceLastSeen();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeListenerStopDuringClientLookup();
@@ -1275,7 +1300,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 45 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 46 regression tests passed\n");
 }
 
 run().catch((error) => {
