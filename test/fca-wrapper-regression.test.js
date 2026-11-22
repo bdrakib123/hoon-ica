@@ -426,6 +426,18 @@ async function testDirectThreadNameDoesNotUseViewer() {
   const info = await createGetThreadInfo(client)("thread-1");
   assert.equal(info.threadName, "friend_account");
   assert.deepEqual(info.participantIDs, ["self-1", "other-1"]);
+
+  const pkOnly = await createGetThreadInfo({
+    api: {
+      getThreadInfo: async () => ({
+        is_group: false,
+        viewer: { pk: "self-2", username: "my_account" },
+        users: [{ pk: "other-2", username: "friend_two" }]
+      })
+    },
+    _learnThreads() {}
+  })("thread-2");
+  assert.deepEqual(pkOnly.participantIDs, ["self-2", "other-2"]);
 }
 
 async function testUnknownFriendshipReturnsNull() {
