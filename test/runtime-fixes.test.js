@@ -435,6 +435,30 @@ async function testMediaCommitRetryReusesOfflineThreadingId() {
   assert.equal(ids, 1);
 }
 
+
+async function testMqttTransportRejectsOversizedAndMalformedFrames() {
+  const { EventEmitter } = require("node:events");
+  const { SocketMQTToTTransport } = require("../src/realtime/mqttot");
+  const transport = new SocketMQTToTTransport("mqtt.example", 443, {
+    maxPacketSize: 4,
+    maxBufferedBytes: 9
+  });
+
+  transport._buffer = Buffer.from([0x30, 0x05]);
+  assert.throws(() => transport._tryRead(), /exceeds configured limit/);
+
+  transport._buffer = Buffer.from([0x30, 0x80, 0x80, 0x80, 0x80, 0x00]);
+  assert.throws(() => transport._tryRead(), /exceeds four bytes/);
+
+  const socket = new EventEmitter();
+  socket.destroy = (error) => { socket.destroyError = error; };
+  transport._attach(socket);
+  const pending = transport.recvPacket();
+  socket.emit("data", Buffer.alloc(10));
+  await assert.rejects(pending, /receive buffer exceeded its configured limit/);
+  assert.match(socket.destroyError.message, /receive buffer exceeded/);
+}
+
 async function testInboxSkipsMalformedRelayThreads() {
   const InboxMethods = require("../src/methods/inbox");
   const http = {
@@ -526,7 +550,8 @@ async function run() {
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
-  process.stdout.write("runtime-fixes.test.js: 23 regression tests passed\n");
+  await testMqttTransportRejectsOversizedAndMalformedFrames();
+  process.stdout.write("runtime-fixes.test.js: 24 regression tests passed\n");
 }
 
 run().catch((error) => {
