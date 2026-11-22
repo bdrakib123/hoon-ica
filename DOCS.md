@@ -157,8 +157,13 @@ All take `(threadID, source, options)` where `options = { filename, text }`.
 
 ### Threads
 
-`getThreadInfo`, `getThreadHistory(threadID, limit)`,
+`getThreadInfo`, `getThreadHistory(threadID, limit, beforeTimestamp?)`,
 `markThreadSeen(threadID, itemID)`, `muteThread`, `unmuteThread`, `hideThread`.
+
+`getThreadHistory` returns messages newest-first. Pass the timestamp of the
+oldest message from the previous batch as `beforeTimestamp` to load up to
+`limit` older messages. Timestamps are Unix milliseconds (Unix seconds are
+also accepted); the boundary message itself is excluded.
 
 ### Users
 
