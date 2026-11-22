@@ -87,7 +87,9 @@ class InstaAPI {
     this.inbox.getInbox = async (...args) => {
       const result = await original(...args);
       for (const t of result?.threads || []) {
-        for (const u of t.users || []) this._rememberUser(u);
+        if (!t || typeof t !== "object") continue;
+        const users = Array.isArray(t.users) ? t.users : [];
+        for (const u of users) this._rememberUser(u);
         if (t.viewer) this._rememberUser(t.viewer);
       }
       return result;
