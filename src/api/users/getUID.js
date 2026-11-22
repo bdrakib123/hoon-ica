@@ -15,13 +15,21 @@ const RESERVED_INSTAGRAM_PATHS = new Set([
 
 module.exports = function (client) {
   return function getUID(input) {
-    const s = String(input || "");
-    const m = s.match(/instagram\.com\/([^/?#]+)/i) || s.match(/facebook\.com\/([^/?#]+)/i);
-    if (m) {
-      let candidate = m[1];
-      try { candidate = decodeURIComponent(candidate); } catch (_) {}
-      if (!RESERVED_INSTAGRAM_PATHS.has(candidate.toLowerCase())) return candidate;
+    const raw = String(input || "").trim();
+    if (!raw) return client.userID;
+    let url;
+    try {
+      url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
+    } catch (_) {
+      return client.userID;
     }
-    return client.userID;
+    const host = url.hostname.toLowerCase();
+    const isInstagram = host === "instagram.com" || host.endsWith(".instagram.com");
+    const isFacebook = host === "facebook.com" || host.endsWith(".facebook.com");
+    if (!isInstagram && !isFacebook) return client.userID;
+    let candidate = url.pathname.split("/").filter(Boolean)[0] || "";
+    try { candidate = decodeURIComponent(candidate); } catch (_) {}
+    if (isInstagram && RESERVED_INSTAGRAM_PATHS.has(candidate.toLowerCase())) return client.userID;
+    return candidate || client.userID;
   };
 };
