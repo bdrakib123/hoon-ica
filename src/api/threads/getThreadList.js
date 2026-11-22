@@ -100,8 +100,6 @@ module.exports = function (client) {
         cursor = nextCursor;
       }
 
-      if (cb) cb(null, list);
-      return list;
     } catch (error) {
       if (cb) {
         cb(error, null);
@@ -109,5 +107,10 @@ module.exports = function (client) {
       }
       throw error;
     }
+
+    // Keep user callback exceptions outside the request/validation catch so
+    // they cannot be mistaken for API failures or trigger a second callback.
+    if (cb) cb(null, list);
+    return list;
   };
 };
