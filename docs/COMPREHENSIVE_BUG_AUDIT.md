@@ -127,6 +127,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 104 | Media URL downloads can reach private/local network services (SSRF) | **Fixed on branch:** both native media URL downloads and FCA attachment URL downloads now use a DNS lookup guard that rejects loopback, private, link-local, reserved and non-global IPv6 targets, and rejects mixed public/private DNS answers to reduce DNS-rebinding risk. Redirect requests use the same validated lookup and existing HTTPS-downgrade guard; Axios environment proxies are disabled for these requests so the proxy cannot bypass destination-IP validation. | IPv4/IPv6 private-address, public-address and mixed-DNS regression coverage added; pending batch local run |
 | 105 | Native media uploads have no byte limit and file paths are read before validation | **Fixed on branch:** native photo/video/voice uploads now require Buffer payloads and enforce a 100 MiB default / 512 MiB hard cap (configurable with `maxUploadBytes`). File-path methods stat the file and reject oversized inputs before reading them into memory; the option is declared in TypeScript. | Buffer validation, configurable byte-limit and pre-read file-size regression coverage added; pending batch local run |
 | 106 | Malformed normalized events/messages create invalid identifiers or body types | **Fixed on branch:** `EventNormalizer` drops message/system-event payloads without nonblank `threadID`/`messageID`; messages also require a nonblank `senderID`, and non-string body values normalize to an empty string before mention parsing. | regression covers missing IDs/sender and malformed structured body; pending batch local run |
+| 107 | String-valued HTTP status codes bypass error classification | **Fixed on branch:** `statusOf()` now normalizes numeric strings from `err.status` / `err.response.status` before classification, preserving unknown for invalid values. | regression covers string 429, 401, 503 and invalid status; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -134,7 +135,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 80 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-three runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#106 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 81 runtime regression tests and 15 FCA wrapper regression tests; counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#106 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 82 runtime regression tests and 15 FCA wrapper regression tests; counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -153,7 +154,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#106 batch.
+1. Run the full Node 20 validation suite once after the current #30–#107 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
