@@ -2803,6 +2803,10 @@ async function testMissingProfileCountsRemainUnknown() {
     id: "  ", pk: "inbox-pk", username: "inbox-user"
   });
   assert.equal(inboxUser.id, "inbox-pk");
+  const viewerProfile = require("../src/profileParse").normalizePolarisViewer({
+    id: " ", pk: "viewer-pk", username: "viewer"
+  });
+  assert.equal(viewerProfile.id, "viewer-pk");
 }
 
 
