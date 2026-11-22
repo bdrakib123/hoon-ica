@@ -62,6 +62,26 @@ async function testThreadListUnreadFilterAndCallbackOverload() {
   await assert.rejects(() => getThreadList(10, null, ["ARCHIVED"]), /INBOX pagination only/);
 }
 
+async function testThreadListSkipsMalformedEntries() {
+  const getThreadList = createGetThreadList({
+    api: {
+      getInbox: async () => ({
+        threads: [
+          null,
+          {},
+          { id: null, thread_id: null },
+          { id: "valid-thread", slide_messages: { edges: [{ node: { timestamp_ms: 1700000000000, text_body: "valid" } }] } }
+        ],
+        nextCursor: null
+      })
+    }
+  });
+  const list = await getThreadList(10);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].threadID, "valid-thread");
+  assert.equal(list[0].snippet, "valid");
+}
+
 async function testDirectThreadNameDoesNotUseViewer() {
   const client = {
     api: {
@@ -107,10 +127,11 @@ async function testUserInfoFirstNameIsFirstToken() {
 (async () => {
   await testThreadListPaginatesAndHonorsTimestamp();
   await testThreadListUnreadFilterAndCallbackOverload();
+  await testThreadListSkipsMalformedEntries();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 5 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 6 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
