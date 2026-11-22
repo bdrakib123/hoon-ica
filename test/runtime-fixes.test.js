@@ -1056,7 +1056,7 @@ async function testFcaLearnedThreadMembersDeduplicateViewer() {
   });
   assert.deepEqual(client._threadMembers.get("thread-1"), ["self-1", "friend-1"]);
 
-  client._learnThreads({
+  InstaClient.prototype._learnThreads.call(client, {
     id: "thread-blank-ids",
     users: [
       { id: " ", pk: "friend-pk", username: "friend" },
