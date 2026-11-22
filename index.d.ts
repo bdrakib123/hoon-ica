@@ -238,6 +238,10 @@ export declare class InstaClient {
   userID: string | null;
   username: string | null;
   http: any;
+  /** Most recent edit failure, when an edit could not be completed. */
+  lastEditError?: Error | null;
+  /** Explicit diagnostic when contact sharing is unsupported by the web adapter. */
+  lastShareContactError?: Error | null;
 
   // messaging
   sendMessage(
