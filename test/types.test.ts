@@ -46,6 +46,7 @@ void fcaClient.lastEditError;
 
 const mediaOptions: SendOptions = {
   maxDownloadBytes: 20 * 1024 * 1024,
+  maxUploadBytes: 40 * 1024 * 1024,
   downloadTimeoutMs: 45000
 };
 void fcaClient.sendPhotoFromUrl("thread-1", "https://cdn.example/photo.jpg", mediaOptions);
