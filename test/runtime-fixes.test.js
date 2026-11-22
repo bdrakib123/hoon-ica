@@ -1067,6 +1067,21 @@ async function testInboxParticipantSnapshotsIncludeViewer() {
   }]);
   assert.deepEqual(inbox.getThreadMemberIDs("thread-1"), ["friend-1", "self-1"]);
 
+  inbox._rememberInboxThreads([{
+    id: "thread-blank-identifiers",
+    users: [
+      { id: " ", pk: "friend-pk" },
+      { id: "", pk: "friend-pk" },
+      { id: null, pk: "other-pk" },
+      { id: "valid-id", pk: "ignored-pk" }
+    ],
+    viewer: { id: "  ", pk: "viewer-pk" }
+  }]);
+  assert.deepEqual(
+    inbox.getThreadMemberIDs("thread-blank-identifiers"),
+    ["friend-pk", "other-pk", "valid-id", "viewer-pk"]
+  );
+
   const snapshot = inbox._snapshot({
     id: "thread-1",
     is_group: true,
