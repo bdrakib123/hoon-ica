@@ -41,7 +41,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 ## Runtime fix progress (2026-11-22)
 
-**16 of the 17 original diagnostic cases are addressed on this branch:** 15 source fixes (#1–#14 except #15, plus #16) and one compatibility mitigation (#17). #12 now forwards the FCA timestamp and uses the documented Relay message-list cursor flow to fetch older pages; new multi-page mock regression cases have been authored, but they still need execution in Node and live-session validation before release. #15 (inbox cursor) remains an unconfirmed candidate because no public cursor-pagination behavior is documented.
+**16 of the 17 original diagnostic cases are addressed on this branch:** 15 source fixes (#1–#14 and #16) and one compatibility mitigation (#17). #12 now forwards the FCA timestamp and uses the documented Relay message-list cursor flow to fetch older pages; new multi-page mock regression cases have been authored, but they still need execution in Node and live-session validation before release. #15 (inbox cursor) remains an unconfirmed candidate because no public cursor-pagination behavior is documented.
 
 New test file: `test/runtime-fixes.test.js` (17 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
