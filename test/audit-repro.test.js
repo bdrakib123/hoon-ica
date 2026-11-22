@@ -40,10 +40,11 @@ async function main() {
     });
   });
 
-  await reproduce("getUID treats a reel route as a username", async () => {
+  await reproduce("getUID ignores reel and post routes instead of treating them as usernames", async () => {
     const getUID = createGetUID({ userID: "self-uid" });
-    assert.equal(getUID("https://www.instagram.com/reel/ABC123/"), "reel");
-    assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "p");
+    assert.equal(getUID("https://www.instagram.com/reel/ABC123/"), "self-uid");
+    assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "self-uid");
+    assert.equal(getUID("https://www.instagram.com/rakib.hasan/"), "rakib.hasan");
   });
 
   await reproduce("getThreadList reads Relay slide_messages preview", async () => {
