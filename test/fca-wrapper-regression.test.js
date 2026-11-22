@@ -71,6 +71,7 @@ async function testThreadListSkipsMalformedEntries() {
           null,
           {},
           { id: null, thread_id: null },
+          { id: "", thread_id: "fallback-thread", slide_messages: { edges: [{ node: { timestamp_ms: 1700000000000, text_body: "fallback" } }] } },
           { id: "valid-thread", slide_messages: { edges: [{ node: { timestamp_ms: 1700000000000, text_body: "valid" } }] } }
         ],
         nextCursor: null
@@ -78,9 +79,9 @@ async function testThreadListSkipsMalformedEntries() {
     }
   });
   const list = await getThreadList(10);
-  assert.equal(list.length, 1);
-  assert.equal(list[0].threadID, "valid-thread");
-  assert.equal(list[0].snippet, "valid");
+  assert.equal(list.length, 2);
+  assert.deepEqual(list.map(item => item.threadID), ["fallback-thread", "valid-thread"]);
+  assert.equal(list[1].snippet, "valid");
 }
 
 async function testThreadHistoryPreservesAmountAndCallbackOverloads() {
