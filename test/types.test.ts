@@ -3,6 +3,7 @@ import login, {
   CircuitBreaker,
   IdempotencyCache,
   Scheduler,
+  InstaClient,
   utilities
 } from "../index";
 
@@ -13,3 +14,18 @@ const scheduler: Scheduler = new login.Scheduler({ enabled: false });
 const namespacedScheduler: Scheduler = new utilities.Scheduler({ enabled: false });
 
 void [limiter, breaker, cache, scheduler, namespacedScheduler];
+
+
+declare const fcaClient: InstaClient;
+void fcaClient.getThreadHistory("thread-1", (error, items) => {
+  void error;
+  void items;
+});
+void fcaClient.getThreadHistory("thread-1", 10, (error, items) => {
+  void error;
+  void items;
+});
+void fcaClient.getThreadHistory("thread-1", 10, Date.now(), (error, items) => {
+  void error;
+  void items;
+});
