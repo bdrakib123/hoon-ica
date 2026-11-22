@@ -8,7 +8,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 - The user ran the diagnostic suite locally in UserLAnd on **Node.js v20.20.2** and **npm 10.8.2**.
 - `npm install` completed successfully and reported **0 vulnerabilities**.
-- `npm run audit:repro` completed with exit code 0 and reported **17 reproduced / 17 diagnostic cases**.
+- Before runtime fixes began, `npm run audit:repro` completed with exit code 0 and reported **17 reproduced / 17 diagnostic cases**.
 - `git status --short` was empty after the run.
 - These are controlled local runtime reproductions of the current source behavior, **not live Instagram validation**.
 - No live Instagram login, DM, MQTT subscription, media upload, or account action was performed.
@@ -36,11 +36,11 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
 | 15 | Inbox pagination | Native `getInbox()` takes no cursor argument and sends fixed query variables; a supplied cursor is ignored. | getInbox ignores pagination cursor |
-| 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |\n| 17 | Thrift integer precision | **Compatibility-safe fix:** `ThriftReader` now supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default. | regression test added |
+| 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |\n| 17 | Thrift integer precision | **Mitigated:** `ThriftReader` supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default and can still round large values. | regression test added |
 
 ## Runtime fix progress (2026-11-22)
 
-**15 of the 17 original diagnostic cases now have source fixes and regression assertions** on this branch: #1–#11, #13, #14, #16, and #17. The other two (#12 history timestamp and #15 inbox cursor) remain open pending contract review.
+**15 of the 17 original diagnostic cases are addressed on this branch:** 14 source fixes (#1–#11, #13, #14, #16) and one compatibility mitigation (#17). Two issues (#12 history timestamp and #15 inbox cursor) remain open pending contract review.
 
 New test file: `test/runtime-fixes.test.js` (15 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
@@ -75,7 +75,7 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P1 — original high-priority cases (status updated)
 - **Fixed on branch:** #1 cookie normalization, #10–11 realtime fallback/acknowledgement, #13 first inbox message, #14 sendLink pacing, and #16 media auth fallback. Regression tests are authored; execution is pending.
-- **Fixed on branch:** #17 adds an opt-in exact BigInt mode; default Number output is retained to avoid a breaking change.
+- **Mitigated on branch:** #17 adds an opt-in exact BigInt mode; default Number output is retained to avoid a breaking change, so callers needing exactness must enable the option.
 
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
@@ -83,5 +83,5 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### Required before release
 - Run all four validation commands listed above on Node 20 and inspect their complete outputs.
-- For INT64, inspect all consumers before changing Number to BigInt or string; either can be a public API compatibility break.
+- For INT64, inspect all consumers before changing the default from Number to BigInt or string; either can be a public API compatibility break.
 - Do not run live account actions as part of ordinary regression tests.
