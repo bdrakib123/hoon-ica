@@ -41,7 +41,15 @@ class MediaMethods {
     return { consumer: "messenger_file", typeHeader: "file_type" };
   }
 
-  async _upload(threadID, { buffer, filename, contentType, voice }) {
+  async _upload(threadID, { buffer, filename, contentType, maxUploadBytes }) {
+    if (!Buffer.isBuffer(buffer)) throw new TypeError("Media upload requires a Buffer");
+    const requestedLimit = Number(maxUploadBytes);
+    const uploadLimit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 512 * 1024 * 1024)
+      : 100 * 1024 * 1024;
+    if (buffer.length > uploadLimit) {
+      throw new RangeError(`Media upload exceeds the ${uploadLimit}-byte limit`);
+    }
     const { consumer, typeHeader } = this._consumer(contentType);
 
     // Instagram intermittently answers the upload with HTTP 412
@@ -123,7 +131,7 @@ class MediaMethods {
     // text is necessarily two messages. The upload is by far the slow part, so it
     // always runs first: a caption committed mid-upload would render above an
     // image that is still seconds away.
-    const metadata = await this._upload(threadID, uploadOptions);
+    const metadata = await this._upload(threadID, { ...uploadOptions, maxUploadBytes: options.maxUploadBytes });
     const fbid = metadata.fbid || metadata.video_id || metadata.audio_id;
     if (!fbid) throw new Error(`Upload returned no media id: ${JSON.stringify(metadata)}`);
 
@@ -237,7 +245,8 @@ class MediaMethods {
     return this._send(threadID, {
       buffer,
       filename: options.filename || `photo_${Date.now()}.jpg`,
-      contentType: "image/jpeg"
+      contentType: "image/jpeg",
+      maxUploadBytes: options.maxUploadBytes
     }, options);
   }
 
@@ -300,7 +309,8 @@ class MediaMethods {
     return this._send(threadID, {
       buffer,
       filename: options.filename || `video_${Date.now()}.mp4`,
-      contentType: "video/mp4"
+      contentType: "video/mp4",
+      maxUploadBytes: options.maxUploadBytes
     }, options);
   }
 
@@ -318,6 +328,7 @@ class MediaMethods {
       buffer,
       filename: options.filename || `audioclip-${Date.now()}.ogg`,
       contentType: "audio/ogg",
+      maxUploadBytes: options.maxUploadBytes,
       voice: true
     }, options);
   }
