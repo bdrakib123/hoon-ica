@@ -51,14 +51,21 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 28 | Realtime disconnect fallback | **Fixed on branch:** if the MQTT connection drops after the iris subscription was acknowledged, `listen()` now starts the polling safety net instead of only reporting an error and leaving message delivery stopped. Fallback remains single-start guarded. | established-subscription disconnect regression passed in the user's local Node 20 run |
 | 29 | Failed MQTT handshake cleanup | **Fixed on branch:** if TLS connect, CONNECT write, CONNACK decode, or a rejected CONNACK fails, `RealtimeClient.connect()` now clears ping state, resets connection flags, and disconnects the transport before rethrowing. This prevents a failed startup from leaving a socket alive while the caller falls back or retries. | rejected-CONNACK cleanup regression passed in the user's local Node 20 run |
 | 30 | Realtime receive-loop cleanup | **Fixed on branch:** if MQTT packet decoding / receiving fails after a successful handshake, the client now clears its ping timer and disconnects the transport before emitting the final disconnect event. This prevents malformed broker data from leaving an idle TLS socket open while polling fallback takes over. | truncated MQTT header regression added; pending user local run |
+| 31 | User profile cache growth | **Fixed on branch:** `UserMethods._profileCache` now uses a 2,000-entry FIFO bound, so arbitrary profile lookups cannot grow the long-lived session map indefinitely. | profile-cache eviction regression added; pending batch local run |
+| 32 | Poller shutdown race | **Fixed on branch:** an inbox poll that was already in flight when `stopListening()` runs now discards its result, skips callbacks, and does not schedule another poll. | stop-during-request regression added; pending batch local run |
+| 33 | Ambiguous text/caption fallback | **Fixed on branch:** text sends and media captions now use the legacy endpoint only after an explicit GraphQL operation error; transient network failures are surfaced rather than risking duplicate sends after an accepted-but-unacknowledged mutation. | ECONNRESET no-fallback regression added; pending batch local run |
+| 34 | FCA user avatar cache bypass | **Fixed on branch:** `getUserInfo()` now uses the shared bounded-map helper for avatar and username cache writes instead of unbounded direct `Map.set()` calls. | 2,600-user cache-bound regression added; pending batch local run |
+| 35 | FCA thread-history overload/limit | **Fixed on branch:** `getThreadHistory(threadID, amount, callback)` and callback-only overloads are normalized, and requested positive integer amounts are no longer silently raised to 20. | wrapper regressions added; pending batch local run |
+| 36 | MQTT packet identifier wraparound | **Fixed on branch:** outbound QoS-1 packet IDs now wrap from 65,535 to 1 instead of overflowing to invalid packet ID 0. | packet-id boundary regression added; pending batch local run |
+| 37 | Missing profile metrics | **Fixed on branch:** explicit null count edges remain `null` instead of being coerced to numeric zero, so an unknown follower/following/media count is not reported as zero. | null-versus-zero profile parsing regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 26 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed the full suite after commit 89fead4: all 26 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. #27 was added after that run and remains pending.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 34 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds six runtime regression checks and two wrapper regression checks; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including #25 decompression-output, #26 Thrift decoder bounds, #27 required STOP marker, #28 established-realtime-disconnect fallback, and #29 failed-handshake cleanup. #30 receive-loop cleanup requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#37 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -77,9 +84,9 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #30 realtime receive-loop cleanup change.
-2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
-3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
+1. Run the full Node 20 validation suite once after the current #30–#37 batch.
+2. Continue source review for callback, event-normalization, and pagination edge cases.
+3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
 
