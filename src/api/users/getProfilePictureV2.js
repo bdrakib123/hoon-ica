@@ -5,6 +5,8 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.getProfilePictureV2(idOrUsername, [options], callback)
 //   -> { id, userID, username, url, hd, thumb, sizes: { <px>: url } }
 //
@@ -19,13 +21,13 @@ module.exports = function (client) {
   return async function getProfilePictureV2(idOrUsername, options, callback) {
     if (typeof options === "function") { callback = options; options = {}; }
     options = options || {};
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     const key = String(idOrUsername == null ? "" : idOrUsername).replace(/^@/, "");
     try {
       const profile = await client.getProfile(key).catch(() => null);
       if (!profile || (!profile.profilePicUrl && !profile.profilePicUrlHd)) {
         const empty = { id: profile?.id || null, userID: profile?.id || null, username: profile?.username || null, url: null, hd: null, thumb: null, sizes: {} };
-        if (cb) cb(null, empty);
+        if (cb) await cb(null, empty);
         return empty;
       }
       const { profilePictureAtSize } = require("../../profileParse");
@@ -44,10 +46,11 @@ module.exports = function (client) {
         thumb: profilePictureAtSize(base, 150),
         sizes
       };
-      if (cb) cb(null, out);
+      if (cb) await cb(null, out);
       return out;
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb?.called) throw error;
+      if (cb) await cb(error, null);
       return null;
     }
   };
