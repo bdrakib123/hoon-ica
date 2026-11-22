@@ -315,7 +315,11 @@ async function main() {
     assert.equal(next.hasNextPage, false);
     assert.equal(calls[1].name, "IGDThreadListOffMsysPaginationQuery");
     assert.deepEqual(calls[1].vars, {
-      id: "mailbox-1", cursor: "cursor-1", count: 15, folder: "INBOX"
+      id: "mailbox-1", cursor: "cursor-1", count: 15, folder: "INBOX",
+      newer_than_timestamp_ms: null,
+      __relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider: true,
+      __relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider: 5,
+      __relay_internal__pv__IGDThreadListActionsEnabledGKrelayprovider: true
     });
   });
 
