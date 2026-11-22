@@ -27,8 +27,10 @@ const CODE_BY_KIND = {
 
 function statusOf(err) {
   if (!err || typeof err !== "object") return null;
-  if (err.response && err.response.status) return err.response.status;
-  return err.status || null;
+  const raw = err.response && err.response.status != null ? err.response.status : err.status;
+  if (raw == null || raw === "") return null;
+  const status = Number(raw);
+  return Number.isFinite(status) ? status : null;
 }
 
 function locationOf(err) {
