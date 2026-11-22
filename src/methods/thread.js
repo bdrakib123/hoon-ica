@@ -60,7 +60,9 @@ class ThreadMethods {
         [node.id, node.item_id, node.message_id].some((value) => value != null && String(value).trim() !== "")
       )
       .map((n) => {
-      const messageID = String(n.id ?? n.item_id ?? n.message_id);
+      const messageID = String([n.id, n.item_id, n.message_id].find(
+        (value) => value != null && String(value).trim() !== ""
+      ));
       const senderFbid = n.sender_fbid != null ? String(n.sender_fbid) : null;
       return {
         messageID,
