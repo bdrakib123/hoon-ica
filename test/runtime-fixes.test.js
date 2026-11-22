@@ -1934,6 +1934,10 @@ async function testGetUidRejectsContentRoutes() {
   assert.equal(getUID("https://www.instagram.com/reel/ABC123/"), "self-uid");
   assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "self-uid");
   assert.equal(getUID("https://www.instagram.com/rakib.hasan/"), "rakib.hasan");
+  assert.equal(getUID("instagram.com/rakib.hasan"), "rakib.hasan");
+  assert.equal(getUID("https://notinstagram.com/rakib.hasan/"), "self-uid");
+  assert.equal(getUID("https://evil.example/instagram.com/rakib.hasan"), "self-uid");
+  assert.equal(getUID("https://instagram.com.evil.example/rakib.hasan"), "self-uid");
 }
 
 
