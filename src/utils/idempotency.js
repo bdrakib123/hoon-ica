@@ -8,7 +8,7 @@ class IdempotencyCache {
   constructor(options = {}) {
     const requestedTtl = Number(options.ttlMs);
     this.ttlMs = Number.isFinite(requestedTtl) && requestedTtl > 0
-      ? Math.min(Math.floor(requestedTtl), 7 * 24 * 60 * 60 * 1000)
+      ? Math.max(1, Math.min(Math.floor(requestedTtl), 7 * 24 * 60 * 60 * 1000))
       : 300000;
     const requestedMax = Number(options.maxSize);
     this.maxSize = Number.isSafeInteger(requestedMax) && requestedMax > 0
