@@ -14,6 +14,12 @@ const { globalAntiSuspension } = require("../utils/antiSuspension");
 // Reads the DM inbox through the same Relay query the web client uses
 // (PolarisDirectInboxQuery). The old /api/v1/direct_v2/inbox/ endpoint is dead
 // (404) — Instagram moved the web DM inbox to GraphQL.
+const INBOX_PAGINATION_VARIABLES = {
+  __relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider: true,
+  __relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider: 5,
+  __relay_internal__pv__IGDThreadListActionsEnabledGKrelayprovider: true
+};
+
 const INBOX_VARIABLES = {
   __relay_internal__pv__IGDIsProfessionalAccountGKrelayprovider: false,
   __relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider: true,
@@ -68,7 +74,7 @@ class InboxMethods {
       const res = await this.http.postGraphQL(
         "IGDThreadListOffMsysPaginationQuery",
         DOC_ID.INBOX_PAGINATION,
-        { id: this._mailboxId, cursor, count: 15, folder: "INBOX" },
+        { id: this._mailboxId, cursor, count: 15, folder: "INBOX", newer_than_timestamp_ms: null, ...INBOX_PAGINATION_VARIABLES },
         "https://www.instagram.com/direct/inbox/"
       );
       data = this._unwrap(res);
