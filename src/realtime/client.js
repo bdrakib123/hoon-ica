@@ -207,7 +207,7 @@ class RealtimeClient extends EventEmitter {
           let packet;
           try {
             const rawPacket = await this.transport.recvPacket();
-            if (generation !== this._connectionGeneration) break;
+            if (generation !== this._connectionGeneration || !this.connected || this._stopRequested) break;
             packet = decodePacket(rawPacket);
           } catch (err) {
             receiveError = err;
