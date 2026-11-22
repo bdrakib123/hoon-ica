@@ -127,6 +127,17 @@ async function run() {
   assert.equal(normalizedBreaker.failureThreshold, 5);
   assert.equal(normalizedBreaker.cooldownMs, 30000);
 
+  const activeBoundedBreaker = new CircuitBreaker({ maxCircuits: 1 });
+  let releaseActiveCircuit;
+  const activeCircuit = activeBoundedBreaker.run("active", () => new Promise(resolve => {
+    releaseActiveCircuit = resolve;
+  }));
+  await Promise.resolve();
+  assert.throws(() => activeBoundedBreaker.state("new"), /configured circuit limit/);
+  releaseActiveCircuit("ok");
+  await activeCircuit;
+  assert.equal(activeBoundedBreaker.state("new"), "closed");
+
   const boundedBreaker = new CircuitBreaker({ maxCircuits: 2 });
   boundedBreaker.state("one");
   boundedBreaker.state("two");
