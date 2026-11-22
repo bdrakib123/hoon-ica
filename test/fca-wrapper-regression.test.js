@@ -357,6 +357,14 @@ async function testAsyncCallbacksPropagateAcrossProfileAndIdAdapters() {
     cb => createGetUserID({ getProfile: async () => ({ id: "u-1" }) })("friend", cb),
     "id callback failed"
   );
+
+  let selfFailureArgs;
+  const selfFailure = await createGetSelfInfo({
+    getCurrentUserID: () => { throw new Error("self identity lookup failed"); }
+  })((...args) => { selfFailureArgs = args; });
+  assert.equal(selfFailure, null);
+  assert.match(selfFailureArgs[0].message, /self identity lookup failed/);
+  assert.equal(selfFailureArgs[1], null);
 }
 
 
