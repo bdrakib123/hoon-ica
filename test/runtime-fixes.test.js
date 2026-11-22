@@ -428,6 +428,32 @@ async function testPollingSurvivesInconclusiveAuthCheck() {
 }
 
 
+async function testListenReplacesPreviousPollingListener() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  inbox.realtimeOptions = { enabled: false };
+  let starts = 0;
+  let stops = 0;
+  inbox._startPolling = () => {
+    starts += 1;
+    let stopped = false;
+    return () => {
+      if (!stopped) {
+        stopped = true;
+        stops += 1;
+      }
+    };
+  };
+  const firstStop = inbox.listen(() => {});
+  const secondStop = inbox.listen(() => {});
+  assert.equal(starts, 2);
+  assert.equal(stops, 1);
+  firstStop();
+  assert.equal(stops, 1);
+  secondStop();
+  assert.equal(stops, 2);
+}
+
+
 async function testInboxCallbackErrorsDoNotEscapeListener() {
   const { EventEmitter } = require("node:events");
   const inbox = new InboxMethods({}, () => "self-1");
@@ -1741,6 +1767,7 @@ async function run() {
   await testPollingStopSuppressesInflightResults();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
+  await testListenReplacesPreviousPollingListener();
   await testPollingSurvivesInconclusiveAuthCheck();
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
@@ -1784,7 +1811,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 60 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 61 regression tests passed\n");
 }
 
 run().catch((error) => {
