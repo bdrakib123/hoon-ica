@@ -387,7 +387,7 @@ export declare class InstaAPI {
 
   // threads
   getThreadInfo(threadID: string): Promise<any>;
-  getThreadHistory(threadID: string, limit?: number): Promise<any[]>;
+  getThreadHistory(threadID: string, limit?: number, beforeTimestamp?: number | string): Promise<any[]>;
   markThreadSeen(threadID: string, itemID: string): Promise<any>;
   muteThread(threadID: string): Promise<any>;
   unmuteThread(threadID: string): Promise<any>;
