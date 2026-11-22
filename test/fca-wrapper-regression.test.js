@@ -230,6 +230,44 @@ async function testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow() {
 }
 
 
+async function testAsyncFcaCallbackRejectionsArePropagated() {
+  const getHistory = createGetThreadHistory({
+    api: { getThreadHistory: async () => [{ messageID: "m-1" }] }
+  });
+  await assert.rejects(
+    () => getHistory("thread-1", 5, async () => {
+      await Promise.resolve();
+      throw new Error("async history callback failed");
+    }),
+    /async history callback failed/
+  );
+
+  const getList = createGetThreadList({
+    api: { getInbox: async () => ({ threads: [], nextCursor: null }) }
+  });
+  await assert.rejects(
+    () => getList(5, null, [], async () => {
+      await Promise.resolve();
+      throw new Error("async list callback failed");
+    }),
+    /async list callback failed/
+  );
+
+  const getUserInfo = createGetUserInfo({
+    getUserByUsername: () => ({ id: "u-1", username: "user", full_name: "User" }),
+    _picCache: new Map(),
+    api: {}
+  });
+  await assert.rejects(
+    () => getUserInfo("u-1", async () => {
+      await Promise.resolve();
+      throw new Error("async user callback failed");
+    }),
+    /async user callback failed/
+  );
+}
+
+
 async function testMultiAttachmentFailureReportsPartialProgress() {
   const attachments = [
     { url: "https://cdn.example/one.jpg" },
@@ -379,12 +417,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
   await testSendMessageHandlesDeepAndCircularAttachmentArrays();
   await testMultiAttachmentFailureReportsPartialProgress();
+  await testAsyncFcaCallbackRejectionsArePropagated();
   await testUserInfoCacheRemainsBounded();
   await testShareContactSendsProfileLink();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 13 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 14 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
