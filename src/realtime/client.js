@@ -249,6 +249,10 @@ class RealtimeClient extends EventEmitter {
         this.emit("disconnected", {});
       }
     })();
+    // Keep the promise observable for tests/advanced callers, but mark it
+    // handled so a throwing application event listener cannot become an
+    // unhandled rejection that terminates the bot process.
+    this._loop.catch(() => {});
   }
 
   _handlePacket(packet) {
