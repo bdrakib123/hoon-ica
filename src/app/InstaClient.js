@@ -19,6 +19,7 @@ const { AUDIO_EXT, VIDEO_EXT, extOf } = require("../utils/format");
 const { convert } = require("../utils/messageStyle");
 const loadApiMethods = require("./loadApiMethods");
 const { setBounded } = require("../utils/boundedMap");
+const createCallback = require("../utils/createCallback");
 
 class InstaClient {
   constructor(instaApi, options = {}) {
@@ -382,15 +383,16 @@ class InstaClient {
   // Media helpers the ported commands call directly. All resolve the source
   // (URL / path / buffer / stream) and route to the matching IG send.
   async _mediaSend(threadID, src, opts, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     try {
       const info = await this._sendAttachment(String(threadID), src, opts && (opts.text || opts.caption), opts || {});
       if (info && info.messageID) setBounded(this._msgThread, info.messageID, String(threadID), 5000);
       const out = { messageID: info && info.messageID, threadID: String(threadID), timestamp: Date.now() };
-      if (cb) cb(null, out);
+      if (cb) await cb(null, out);
       return out;
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb?.called) throw error;
+      if (cb) await cb(error, null);
       throw error;
     }
   }
