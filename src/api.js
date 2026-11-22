@@ -15,6 +15,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { globalAntiSuspension } = require("./utils/antiSuspension");
+const { setBounded } = require("./utils/boundedMap");
 const MessageMethods = require("./methods/message");
 const ReactionMethods = require("./methods/reactions");
 const TypingMethods = require("./methods/typing");
@@ -97,7 +98,7 @@ class InstaAPI {
     if (!u || typeof u !== "object") return;
     const keys = [u.id, u.pk, u.interop_messaging_user_fbid, u.username];
     for (const key of keys) {
-      if (key) this._userIndex.set(String(key).toLowerCase(), u);
+      if (key) setBounded(this._userIndex, String(key).toLowerCase(), u, 5000);
     }
   }
 
