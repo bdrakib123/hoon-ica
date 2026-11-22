@@ -62,14 +62,18 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 39 | Malformed nested thread edges | **Fixed on branch:** inbox message extraction, thread history mapping, reply lookup, actor lookup, FBID mapping, and FCA participant mapping now skip null or malformed nested Relay nodes instead of throwing. | malformed nested message/user regression added; pending batch local run |
 | 40 | Malformed Relay edge collection shape | **Fixed on branch:** inbox pagination and thread-detail consumers now verify `edges` is an array before iterating; malformed collection values are treated as empty rather than crashing the listener. | malformed collection regression added; pending batch local run |
 | 41 | FCA thread-history TypeScript overloads | **Fixed on branch:** declaration types now include callback-only, amount-plus-callback, and amount/timestamp/callback forms; realtime ping interval documentation now matches the 25-second runtime default. | TypeScript overload examples added to type test; pending batch local run |
+| 42 | Legacy login cookie-map loss | **Fixed on branch:** the FCA-style `module/login` entrypoint now preserves all cookies in a raw `{ sessionid, csrftoken, ... }` map and accepts nested cookie objects instead of reducing the input to the session ID alone. | raw-map and nested-cookie regression added; pending batch local run |
+| 43 | Realtime connect cancellation | **Fixed on branch:** `RealtimeClient.connect()` checks its stop state after each awaited handshake stage, so a listener stopped during TLS/connect cannot later finish the handshake and revive a supposedly stopped client. | delayed-connect cancellation regression added; pending batch local run |
+| 44 | Listener stop during shared-client lookup | **Fixed on branch:** `RealtimeListener.start()` now exits when stop is called while the shared-client provider is still resolving, and checks stop state after cursor resolution/subscription. | pending-client lookup stop regression added; pending batch local run |
+| 45 | Normalized reply metadata and event types | **Fixed on branch:** realtime quoted-message metadata (item type, client context, offline threading ID, timestamp) now survives bridge and FCA normalization; declarations now include `message_reply` and system-event fields. | normalized reply metadata regression and type examples added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 37 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds nine runtime regression checks, two wrapper regression checks, and TypeScript overload examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 41 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds thirteen runtime regression checks, two wrapper regression checks, and TypeScript overload/event-shape examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#41 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#45 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -88,7 +92,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#41 batch.
+1. Run the full Node 20 validation suite once after the current #30–#45 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
