@@ -391,15 +391,18 @@ class InstaAPI {
     }
     const client = this.realtimeClient(options);
     this._realtime = client;
-    this._realtimeConnecting = (async () => {
+    let connecting;
+    connecting = (async () => {
       try {
         await client.connect();
         return client;
       } finally {
-        this._realtimeConnecting = null;
+        // An older cancelled attempt must not clear a newer reconnect promise.
+        if (this._realtimeConnecting === connecting) this._realtimeConnecting = null;
       }
     })();
-    return this._realtimeConnecting;
+    this._realtimeConnecting = connecting;
+    return connecting;
   }
 
   realtimeOn(event, handler) {
@@ -424,10 +427,12 @@ class InstaAPI {
   }
 
   realtimeDisconnect() {
-    if (this._realtime) {
-      this._realtime.disconnect();
-      this._realtime = null;
-    }
+    const client = this._realtime;
+    // Detach the pending promise immediately so a caller can start a fresh
+    // connection without waiting for a cancelled TLS handshake to settle.
+    this._realtime = null;
+    this._realtimeConnecting = null;
+    if (client) client.disconnect();
   }
 }
 
