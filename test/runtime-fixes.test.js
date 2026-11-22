@@ -428,6 +428,28 @@ async function testPollingSurvivesInconclusiveAuthCheck() {
 }
 
 
+async function testStoppedListenerSuppressesLateStartupError() {
+  const { EventEmitter } = require("node:events");
+  const inbox = new InboxMethods({ getCookie: () => "session" }, () => "self-1", {
+    realtime: { enabled: true, fallback: false },
+    getSharedClient: () => client
+  });
+  inbox.identity = { deviceId: "device-1", uuid: "uuid-1" };
+  let rejectConnect;
+  const client = new EventEmitter();
+  client.connected = false;
+  client.connect = () => new Promise((_resolve, reject) => { rejectConnect = reject; });
+  client.disconnect = () => {};
+  let callbackCalls = 0;
+  const stop = inbox.listen(() => { callbackCalls += 1; });
+  await new Promise(resolve => setImmediate(resolve));
+  stop();
+  rejectConnect(new Error("late startup failure"));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(callbackCalls, 0);
+}
+
+
 async function testListenReplacesPreviousPollingListener() {
   const inbox = new InboxMethods({}, () => "self-1");
   inbox.realtimeOptions = { enabled: false };
@@ -1768,6 +1790,7 @@ async function run() {
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
   await testListenReplacesPreviousPollingListener();
+  await testStoppedListenerSuppressesLateStartupError();
   await testPollingSurvivesInconclusiveAuthCheck();
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
@@ -1811,7 +1834,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 61 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 62 regression tests passed\n");
 }
 
 run().catch((error) => {
