@@ -160,6 +160,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 ## Additional utility hardening
 
+| 143 | FCA getThreadInfo whitespace-ID fixture expected the wrong participant order | **Fixed on branch:** the regression now expects the viewer first, matching the documented behavior and the existing participant insertion logic; the other participant remains selected for direct-thread naming. No runtime behavior change was needed. | wrapper regression expectation corrected; pending user local run |
 | 142 | Reply normalization can prefer a whitespace message ID over a valid fallback | **Fixed on branch:** replied-message IDs now select the first nonblank `id` or `message_id`, preserving valid quote context when the primary field is whitespace. | runtime regression verifies a whitespace primary ID falls back to the valid message ID; pending user local run |
 | 141 | Optional reliability utility maps can grow without bounds | **Fixed on branch:** adaptive endpoint history and circuit registries now have configurable hard entry limits; idempotency result retention, TTL and concurrent in-flight operations are normalized and capped. Open/half-open circuits are not evicted to make room for a new key. | reliability regression covers endpoint/circuit eviction, infinite cache options and in-flight saturation; pending user local run |
 
@@ -169,7 +170,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 91 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current audit batch has expanded the runtime suite to 91 checks and the FCA wrapper suite to 18 checks, with the latest source-review assertions pending the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#142 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#143 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
