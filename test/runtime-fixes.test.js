@@ -7,6 +7,7 @@ const MessageMethods = require("../src/methods/message");
 const MediaMethods = require("../src/methods/media");
 const InboxMethods = require("../src/methods/inbox");
 const { install } = require("../src/utils/readRetry");
+const { setBounded } = require("../src/utils/boundedMap");
 
 async function testCookieInputs() {
   assert.deepEqual(normalizeCookie({ sessionid: "s1", csrftoken: "c1" }), {
@@ -371,6 +372,20 @@ async function testFcaHistoryTimestampIsForwarded() {
   assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
 }
 
+async function testBoundedSessionCache() {
+  const cache = new Map();
+  setBounded(cache, "a", 1, 2);
+  setBounded(cache, "b", 2, 2);
+  setBounded(cache, "a", 3, 2); // refresh insertion order
+  setBounded(cache, "c", 4, 2);
+  assert.equal(cache.size, 2);
+  assert.equal(cache.has("a"), true);
+  assert.equal(cache.has("b"), false);
+  assert.equal(cache.get("a"), 3);
+  assert.equal(cache.get("c"), 4);
+  assert.throws(() => setBounded({}, "x", 1, 2), /expects a Map/);
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -390,7 +405,8 @@ async function run() {
   await testThreadHistoryTimestampPagination();
   await testFcaHistoryTimestampIsForwarded();
   await testInboxCursorPagination();
-  process.stdout.write("runtime-fixes.test.js: 18 regression tests passed\n");
+  await testBoundedSessionCache();
+  process.stdout.write("runtime-fixes.test.js: 19 regression tests passed\n");
 }
 
 run().catch((error) => {
