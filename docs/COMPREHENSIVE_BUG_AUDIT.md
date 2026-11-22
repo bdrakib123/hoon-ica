@@ -103,6 +103,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 81 | Media URL download has no timeout or response-size cap | **Fixed on branch:** photo/video/voice URL downloads now accept only HTTP(S), use a 30-second default timeout (configurable up to 120 seconds), and cap response size at 100 MiB by default (configurable up to 512 MiB). | protocol rejection, size cap, timeout and redirect-limit regression added; pending batch local run |
 | 82 | FCA participantIDs omit the logged-in viewer | **Fixed on branch:** inbox member caches and system-event snapshots now merge the separate `viewer` record into participants, deduplicating the id and preserving its name. | viewer-excluded-from-users participant regression added; pending batch local run |
 | 83 | Async FCA callback rejections become unhandled promises | **Fixed on branch:** FCA adapters now await callback results, propagate rejected async callbacks, and use the once-only guard to prevent a second callback invocation. | async rejection regressions for history/list/user-info/profile/id callbacks added; pending batch local run |
+| 84 | Persisted GraphQL session parameters are world-readable | **Fixed on branch:** `_loadSessionParams()` now restricts an existing `session-params.json` to owner-only `0600` before reading reusable `fb_dtsg`/LSD/browser-session tokens. | existing-file permission regression added to session-file security test; pending batch local run |
 | 73 | Poller misses backlog beyond the first 20 thread messages | **Fixed on branch:** when the last-seen message is not in the initial thread-detail page, the poller now follows up to four opaque Relay cursors (up to 100 messages total), emits all messages newer than the last-seen ID in order, and advances its seen cursor to the newest detail-page message. | 25-new-messages/two-page regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
@@ -111,7 +112,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 70 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-two runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#83 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#84 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -130,7 +131,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#83 batch.
+1. Run the full Node 20 validation suite once after the current #30–#84 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
