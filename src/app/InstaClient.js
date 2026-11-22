@@ -285,12 +285,25 @@ class InstaClient {
       body: form.body || form.message || "",
       attachment: form.attachment,
       attachments: form.attachments,
-      url: form.url
+      url: form.url,
+      maxDownloadBytes: form.maxDownloadBytes,
+      downloadTimeoutMs: form.downloadTimeoutMs
     };
   }
 
-  async _attachmentToBuffer(src) {
-    if (Buffer.isBuffer(src)) return { buffer: src, filename: `file_${Date.now()}` };
+  async _attachmentToBuffer(src, options = {}) {
+    const requestedLimit = Number(options.maxDownloadBytes);
+    const maxDownloadBytes = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 512 * 1024 * 1024)
+      : 100 * 1024 * 1024;
+    const requestedTimeout = Number(options.downloadTimeoutMs);
+    const timeout = Number.isSafeInteger(requestedTimeout) && requestedTimeout > 0
+      ? Math.min(requestedTimeout, 120000)
+      : 60000;
+    if (Buffer.isBuffer(src)) {
+      if (src.length > maxDownloadBytes) throw new RangeError(`Attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      return { buffer: src, filename: `file_${Date.now()}` };
+    }
     if (typeof src === "string") {
       if (/^https?:\/\//i.test(src)) {
         // Frozen Facebook commands fetch avatars straight from the Graph API
@@ -299,29 +312,63 @@ class InstaClient {
         // Instagram CDN picture before downloading — commands stay untouched.
         const bridge = await this._resolveIgPictureUrl(src);
         const url = bridge || src;
-        const res = await axios.get(url, { responseType: "arraybuffer", timeout: 60000 });
+        let parsed;
+        try { parsed = new URL(String(url)); } catch (_) {
+          throw new TypeError("Attachment URL must be a valid HTTP or HTTPS URL");
+        }
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          throw new TypeError("Attachment URL protocol must be HTTP or HTTPS");
+        }
+        const res = await axios.get(parsed.href, {
+          responseType: "arraybuffer",
+          timeout,
+          maxContentLength: maxDownloadBytes,
+          maxBodyLength: maxDownloadBytes,
+          maxRedirects: 3,
+          beforeRedirect: (requestOptions) => {
+            if (parsed.protocol === "https:" && requestOptions.protocol !== "https:") {
+              throw new Error("Attachment URL redirect cannot downgrade HTTPS to HTTP");
+            }
+          }
+        });
+        const buffer = Buffer.from(res.data);
+        if (buffer.length > maxDownloadBytes) {
+          throw new RangeError(`Downloaded attachment exceeds the ${maxDownloadBytes}-byte limit`);
+        }
         // A graph .../picture URL that failed to bridge returns JSON, not an
         // image; fail loudly there. Other media URLs keep the lenient path.
         if (/graph\.facebook\.com\/.*picture/i.test(src)) {
           const ct = String(res.headers?.["content-type"] || "");
           if (!ct.startsWith("image/")) throw new Error(`Attachment is not an image (${ct || "unknown"})`);
         }
-        return { buffer: Buffer.from(res.data), filename: path.basename(url.split("?")[0]) || `file_${Date.now()}.jpg` };
+        return { buffer, filename: path.basename(parsed.pathname) || `file_${Date.now()}.jpg` };
       }
-      return { buffer: fs.readFileSync(src), filename: path.basename(src) };
+      const buffer = fs.readFileSync(src);
+      if (buffer.length > maxDownloadBytes) throw new RangeError(`Attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      return { buffer, filename: path.basename(src) };
     }
     if (src && typeof src.pipe === "function") {
-      // a readable stream (fs.createReadStream) — drain it
+      // A readable stream may not expose its final size. Enforce the same cap
+      // while draining it so an unbounded stream cannot exhaust process memory.
       const chunks = [];
-      for await (const chunk of src) chunks.push(chunk);
+      let total = 0;
+      for await (const chunk of src) {
+        const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += part.length;
+        if (total > maxDownloadBytes) {
+          if (typeof src.destroy === "function") src.destroy();
+          throw new RangeError(`Stream attachment exceeds the ${maxDownloadBytes}-byte limit`);
+        }
+        chunks.push(part);
+      }
       const filename = src.path ? path.basename(src.path) : `file_${Date.now()}`;
-      return { buffer: Buffer.concat(chunks), filename };
+      return { buffer: Buffer.concat(chunks, total), filename };
     }
     return null;
   }
 
-  async _sendAttachment(threadID, src, caption) {
-    const resolved = await this._attachmentToBuffer(src);
+  async _sendAttachment(threadID, src, caption, options = {}) {
+    const resolved = await this._attachmentToBuffer(src, options);
     if (!resolved) throw new Error("Unsupported attachment");
     const { buffer, filename } = resolved;
     const ext = extOf(filename);
@@ -337,7 +384,7 @@ class InstaClient {
   async _mediaSend(threadID, src, opts, callback) {
     const cb = typeof callback === "function" ? callback : null;
     try {
-      const info = await this._sendAttachment(String(threadID), src, opts && (opts.text || opts.caption));
+      const info = await this._sendAttachment(String(threadID), src, opts && (opts.text || opts.caption), opts || {});
       if (info && info.messageID) setBounded(this._msgThread, info.messageID, String(threadID), 5000);
       const out = { messageID: info && info.messageID, threadID: String(threadID), timestamp: Date.now() };
       if (cb) cb(null, out);
