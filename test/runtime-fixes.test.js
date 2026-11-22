@@ -223,6 +223,40 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testPartialGraphqlDataPreventsLegacyFallback() {
+  const originalWait = globalAntiSuspension.waitForTurn;
+  globalAntiSuspension.waitForTurn = async () => {};
+  try {
+    const graphError = new Error("mutation returned partial data");
+    graphError.name = "InstagramGraphQLError";
+    graphError.errors = [{ message: graphError.message }];
+    graphError.graphQLData = { send_message: { message_id: "mid.accepted" } };
+
+    let textFallbacks = 0;
+    const messages = new MessageMethods({
+      uuid: () => "client-context",
+      offlineThreadingId: () => "17000000000000001",
+      postGraphQL: async () => { throw graphError; },
+      postForm: async () => { textFallbacks += 1; return {}; }
+    }, {});
+    await assert.rejects(messages.send("hello", "thread-1"), /partial data/);
+    assert.equal(textFallbacks, 0);
+
+    let captionFallbacks = 0;
+    const media = new MediaMethods({
+      uuid: () => "client-context",
+      offlineThreadingId: () => "17000000000000002",
+      postGraphQL: async () => { throw graphError; },
+      postForm: async () => { captionFallbacks += 1; return {}; }
+    }, {});
+    await assert.rejects(media._sendCaption("thread-1", "caption"), /partial data/);
+    assert.equal(captionFallbacks, 0);
+  } finally {
+    globalAntiSuspension.waitForTurn = originalWait;
+  }
+}
+
+
 async function testLegacyTextFallbackUsesOfflineThreadingId() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -1619,6 +1653,7 @@ async function run() {
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
   await testLegacyTextFallbackUsesOfflineThreadingId();
+  await testPartialGraphqlDataPreventsLegacyFallback();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -1663,7 +1698,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 56 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 57 regression tests passed\n");
 }
 
 run().catch((error) => {
