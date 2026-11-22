@@ -525,6 +525,7 @@ function uint16BE(value) {
 
 function writeUtf8(value) {
   const raw = Buffer.from(value, "utf8");
+  if (raw.length > 0xffff) throw new RangeError("MQTT UTF-8 field exceeds 65535 bytes");
   return Buffer.concat([uint16BE(raw.length), raw]);
 }
 
