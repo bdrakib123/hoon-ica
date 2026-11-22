@@ -244,8 +244,8 @@ class InstaAPI {
     return this.thread.getInfo(threadID);
   }
 
-  getThreadHistory(threadID, limit) {
-    return this.thread.getHistory(threadID, limit);
+  getThreadHistory(threadID, limit, beforeTimestamp) {
+    return this.thread.getHistory(threadID, limit, beforeTimestamp);
   }
 
   markThreadSeen(threadID, itemID) {
