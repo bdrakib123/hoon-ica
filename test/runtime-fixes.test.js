@@ -299,6 +299,23 @@ async function testRealtimeConnectFailureClosesTransport() {
 }
 
 
+async function testRealtimePacketIdentifierWraps() {
+  const { RealtimeClient } = require("../src/realtime/client");
+  const { decodePacket } = require("../src/realtime/mqttot");
+  const packets = [];
+  const client = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport: { send: async packet => { packets.push(packet); } } });
+  client._packetId = 65534;
+  await client.publishBytes("134", Buffer.from("first"));
+  await client.publishBytes("134", Buffer.from("second"));
+  assert.equal(decodePacket(packets[0]).packetId, 65535);
+  assert.equal(decodePacket(packets[1]).packetId, 1);
+}
+
+
 async function testRealtimeReceiveFailureClosesTransport() {
   const { RealtimeClient } = require("../src/realtime/client");
   let receives = 0;
@@ -781,6 +798,7 @@ async function run() {
   await testRealtimeFallbackStartsOnlyOnce();
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
+  await testRealtimePacketIdentifierWraps();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
@@ -799,7 +817,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 32 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 33 regression tests passed\n");
 }
 
 run().catch((error) => {
