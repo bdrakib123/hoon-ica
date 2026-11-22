@@ -626,6 +626,23 @@ async function testInboxSkipsMalformedRelayThreads() {
   assert.equal(inbox._threadIdMap.has("undefined"), false);
 }
 
+async function testProfileCacheIsBounded() {
+  const UserMethods = require("../src/methods/user");
+  const users = new UserMethods({}, null, null);
+  users._webProfileInfo = async (username) => ({ username, full_name: username });
+  users._profileFromGraphQL = async () => null;
+  users._profileFromPage = async () => null;
+
+  for (let i = 0; i < UserMethods.PROFILE_CACHE_MAX + 25; i++) {
+    await users.getProfile("profile-user-" + i);
+  }
+  assert.equal(users._profileCache.size, UserMethods.PROFILE_CACHE_MAX);
+  assert.equal(users._profileCache.has("user:profile-user-0"), false);
+  assert.equal(users._profileCache.has("user:profile-user-24"), false);
+  assert.equal(users._profileCache.has("user:profile-user-25"), true);
+}
+
+
 async function testBoundedSessionCache() {
   const cache = new Map();
   setBounded(cache, "a", 1, 2);
@@ -675,13 +692,14 @@ async function run() {
   await testInboxCursorPagination();
   await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
+  await testProfileCacheIsBounded();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 29 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 30 regression tests passed\n");
 }
 
 run().catch((error) => {
