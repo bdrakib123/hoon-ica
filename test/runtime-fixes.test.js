@@ -1493,7 +1493,7 @@ async function testRealtimeFallbackStartsOnlyOnce() {
 
 
 async function testRealtimeConnectFailureClosesTransport() {
-  const { RealtimeClient } = require("../src/realtime/client");
+  const { RealtimeClient, PING_INTERVAL_MS } = require("../src/realtime/client");
   let disconnects = 0;
   const transport = {
     reset() {},
@@ -1605,7 +1605,7 @@ async function testRealtimePingIntervalIsClamped() {
     }, { transport: {}, keepAliveMs: -1 });
     invalid.connected = true;
     invalid._startPing();
-    assert.equal(delays[1], 30000);
+    assert.equal(delays[1], PING_INTERVAL_MS);
   } finally {
     global.setInterval = originalSetInterval;
   }
