@@ -54,7 +54,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 26 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed the full suite after commit d022bb8: all 24 runtime regression checks, 6 wrapper tests, type checks, audit checks, and release dry-run passed; working tree was clean. #25 was added after that run and remains pending.
 
-**Execution status:** #20–#24 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including both #23 media-commit tests and the #24 MQTT frame/buffer test. #25 decompression-output test requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#24 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including both #23 media-commit tests and the #24 MQTT frame/buffer test. #25 decompression-output and #26 Thrift decoder bounds require a fresh local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
