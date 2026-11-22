@@ -86,10 +86,10 @@ export interface RealtimeOptions {
   /** Keepalive ping interval (ms). Defaults to 25000. */
   keepAliveMs?: number;
   /** Pre-known iris subscription cursor; otherwise read from the inbox query. */
-  seqId?: number;
+  seqId?: number | string;
   snapshotAtMs?: number;
-  /** Resolve the cursor yourself: () => ({ seqId, snapshotAtMs }). */
-  getRealtimeState?: () => Promise<{ seqId: number; snapshotAtMs: number } | null> | { seqId: number; snapshotAtMs: number } | null;
+  /** Resolve the cursor yourself; use a decimal string for values above Number.MAX_SAFE_INTEGER. */
+  getRealtimeState?: () => Promise<{ seqId: number | string; snapshotAtMs: number } | null> | { seqId: number | string; snapshotAtMs: number } | null;
   /** Android app version sent in the CONNECT. */
   appVersion?: string;
   /** Android User-Agent sent in the CONNECT. */
