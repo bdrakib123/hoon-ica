@@ -530,6 +530,60 @@ async function testPollingDeliversAllMessagesSinceLastSeen() {
 }
 
 
+async function testPollingPaginatesUntilLastSeenMessageFound() {
+  const old = { id: "last-seen", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
+  const newMessages = Array.from({ length: 25 }, (_value, index) => ({
+    id: `new-${24 - index}`,
+    sender_fbid: "friend-1",
+    content_type: "TEXT",
+    text_body: `message ${24 - index}`
+  }));
+  const firstPage = newMessages.slice(0, 20);
+  const secondPage = [...newMessages.slice(20), old];
+  let olderPageCalls = 0;
+  const http = {
+    postGraphQL: async (queryName) => {
+      if (queryName === "IGDThreadDetailQuery") {
+        return {
+          data: { get_slide_thread_nullable: { as_ig_direct_thread: {
+            id: "thread-1",
+            users: [],
+            slide_messages: {
+              edges: firstPage.map(node => ({ node })),
+              page_info: { has_next_page: true, end_cursor: "older-cursor-1" }
+            }
+          } } }
+        };
+      }
+      if (queryName === "IGDMessageListOffMsysQuery") {
+        olderPageCalls += 1;
+        return {
+          data: { fetch__SlideThread: { as_ig_direct_thread: {
+            slide_messages: {
+              edges: secondPage.map(node => ({ node })),
+              page_info: { has_next_page: false, end_cursor: null }
+            }
+          } } }
+        };
+      }
+      throw new Error(`unexpected query ${queryName}`);
+    }
+  };
+  const inbox = new InboxMethods(http, () => "self-1");
+  inbox._seen.set("thread-1", "last-seen");
+  const events = await inbox._extractEvents([{
+    id: "thread-1",
+    users: [],
+    slide_messages: { edges: [{ node: firstPage[0] }] }
+  }]);
+  assert.equal(olderPageCalls, 1);
+  assert.equal(events.length, 25);
+  assert.equal(events[0].messageID, "new-0");
+  assert.equal(events[24].messageID, "new-24");
+  assert.equal(inbox._seen.get("thread-1"), "new-24");
+}
+
+
 async function testPollingStopSuppressesInflightResults() {
   const inbox = new InboxMethods({}, () => "self-1");
   let release;
@@ -1834,6 +1888,7 @@ async function run() {
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
+  await testPollingPaginatesUntilLastSeenMessageFound();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
   await testListenReplacesPreviousPollingListener();
@@ -1882,7 +1937,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 63 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 64 regression tests passed\n");
 }
 
 run().catch((error) => {
