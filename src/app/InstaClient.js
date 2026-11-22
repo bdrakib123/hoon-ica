@@ -267,7 +267,8 @@ class InstaClient {
           if (u) this._rememberUser(u);
         } catch (_) {}
       }
-      if (u) mentions[String(u.id || u.pk)] = u.username || username;
+      const userID = u && (u.id || u.pk);
+      if (userID != null) mentions[String(userID)] = u.username || username;
     }
     return mentions;
   }
