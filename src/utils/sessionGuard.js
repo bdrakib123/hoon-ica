@@ -32,7 +32,12 @@ function readCookieFile(filePath) {
 
 function loadSaved(filePath, seed) {
   const target = filePath || dataPath("appstate.json");
-  const entries = readCookieFile(target) || readCookieFile(`${target}.bak`);
+  const primary = readCookieFile(target);
+  // A syntactically valid but incomplete primary file is still corrupt for
+  // recovery purposes; try the last known-good backup before giving up.
+  const entries = primary && primary.length >= MIN_COOKIES
+    ? primary
+    : readCookieFile(`${target}.bak`);
   if (!entries || entries.length < MIN_COOKIES) return null;
   const map = {};
   for (const c of entries) {
