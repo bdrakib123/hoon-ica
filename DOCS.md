@@ -109,6 +109,10 @@ Instagram commits (text + media); if one succeeds and the other fails, the
 error includes `partialSend: { captionSent, mediaSent }`. Check this metadata
 before retrying to avoid duplicate messages.
 
+For FCA attachment sends, `form.maxDownloadBytes` (100 MiB default, 512 MiB
+hard cap) and `form.downloadTimeoutMs` (60 s default, 120 s hard cap) bound URL,
+Buffer, local-file, and stream inputs. HTTPS redirects cannot downgrade to HTTP.
+
 `createFcaClient(client)` returns a namespaced view (`messages.send()`,
 `threads.getInfo()`, `users.getInfo()`, …) if you prefer namespaces over the
 flat surface. `new InstaContext(client, threadID)` binds a thread for
