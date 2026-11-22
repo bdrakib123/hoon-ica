@@ -3,6 +3,8 @@
 const EventEmitter = require("events");
 const cron = require("node-cron");
 
+const MAX_TIMEOUT_MS = 2147483647;
+
 /**
  * Optional application-level scheduler. It is not started or attached to
  * InstaClient automatically.
@@ -43,6 +45,7 @@ class Scheduler extends EventEmitter {
     if (this.tasks.has(name)) throw new Error(`Task already exists: ${name}`);
     const delay = Number(delayMs);
     if (!Number.isFinite(delay) || delay < 0) throw new TypeError("delayMs must be a non-negative number");
+    if (delay > MAX_TIMEOUT_MS) throw new RangeError(`delayMs must not exceed ${MAX_TIMEOUT_MS}`);
 
     const entry = {
       type: "once",
@@ -171,3 +174,4 @@ class Scheduler extends EventEmitter {
 }
 
 module.exports = Scheduler;
+module.exports.MAX_TIMEOUT_MS = MAX_TIMEOUT_MS;
