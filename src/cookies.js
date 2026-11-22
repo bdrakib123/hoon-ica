@@ -19,23 +19,50 @@ function parseCookieString(raw) {
   return jar;
 }
 
-function normalizeCookie(input) {
-  const trimmed = input.trim();
-
-  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-    const parsed = JSON.parse(trimmed);
-    const arr = Array.isArray(parsed) ? parsed : [parsed];
-    const jar = {};
-    for (const c of arr) {
-      const key = c.key || c.name;
-      if (key && c.value) jar[key] = c.value;
+function normalizeCookieObject(input) {
+  const jar = {};
+  if (Array.isArray(input)) {
+    for (const cookie of input) {
+      if (!cookie || typeof cookie !== "object") continue;
+      const key = cookie.key || cookie.name;
+      if (key && cookie.value !== undefined && cookie.value !== null) {
+        jar[String(key)] = String(cookie.value);
+      }
     }
     return jar;
   }
 
-  if (trimmed.includes("=")) return parseCookieString(trimmed);
+  if (!input || typeof input !== "object") {
+    throw new TypeError("Cookie must be a string, object, or cookie array");
+  }
 
-  return { sessionid: trimmed.replace("sessionid=", "") };
+  // Also accept a single browser cookie record: { name, value }.
+  if ((input.name || input.key) && input.value !== undefined) {
+    jar[String(input.key || input.name)] = String(input.value);
+    return jar;
+  }
+
+  // Documented map form: { sessionid: "...", csrftoken: "..." }.
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== null) jar[key] = String(value);
+  }
+  return jar;
+}
+
+function normalizeCookie(input) {
+  if (Array.isArray(input) || (input && typeof input === "object")) {
+    return normalizeCookieObject(input);
+  }
+  if (typeof input !== "string") {
+    throw new TypeError("Cookie must be a string, object, or cookie array");
+  }
+
+  const trimmed = input.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    return normalizeCookieObject(JSON.parse(trimmed));
+  }
+  if (trimmed.includes("=")) return parseCookieString(trimmed);
+  return { sessionid: trimmed.replace(/^sessionid=/, "") };
 }
 
 function toHeader(jar) {
