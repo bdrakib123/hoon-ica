@@ -58,11 +58,11 @@ export interface SendPacingOptions {
 }
 
 export interface ReadRetryOptions {
-  /** Maximum number of attempts (including the first). Defaults to 3. */
+  /** Maximum number of attempts (including the first). Defaults to 3; hard cap 10. */
   attempts?: number;
-  /** Wait before the first retry, in ms. Defaults to 3000. */
+  /** Wait before the first retry, in ms. Defaults to 3000; hard cap five minutes. */
   firstWaitMs?: number;
-  /** Upper bound on the wait between attempts, in ms. Defaults to 30000. */
+  /** Upper bound on the wait between attempts, in ms. Defaults to 30000; hard cap five minutes. */
   maxWaitMs?: number;
 }
 
