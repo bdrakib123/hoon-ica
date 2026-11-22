@@ -18,16 +18,16 @@ module.exports = function (client) {
       const res = await client.api.editMessage(tid, String(messageID), String(text ?? ""));
       if (res === false && client.api.lastEditError) {
         client.lastEditError = client.api.lastEditError;
-        if (cb) cb(client.lastEditError, null);
+        if (cb) await cb(client.lastEditError, null);
         return false;
       }
-      if (cb) cb(null, res);
+      if (cb) await cb(null, res);
       return res;
     } catch (error) {
       // Preserve FCA's non-throwing contract, but expose the reason for debugging.
       client.lastEditError = error;
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return false;
     }
   };
