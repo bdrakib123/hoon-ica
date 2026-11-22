@@ -1067,6 +1067,11 @@ async function testFcaLearnedThreadMembersDeduplicateViewer() {
   });
   assert.deepEqual(client._threadMembers.get("thread-blank-ids"), ["friend-pk", "other-pk", "self-pk"]);
 
+  const resolver = Object.create(InstaClient.prototype);
+  resolver.getUserByUsername = () => ({ id: " ", pk: "resolved-pk" });
+  resolver.api = {};
+  assert.equal(await resolver._resolveUserKey("@friend"), "resolved-pk");
+
   const mentionClient = Object.create(InstaClient.prototype);
   mentionClient._inboxLearned = true;
   mentionClient.getUserByUsername = () => ({ id: " ", pk: "friend-pk", username: "friend" });
