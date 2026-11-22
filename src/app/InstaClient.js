@@ -20,6 +20,11 @@ const { convert } = require("../utils/messageStyle");
 const loadApiMethods = require("./loadApiMethods");
 const { setBounded } = require("../utils/boundedMap");
 const createCallback = require("../utils/createCallback");
+
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
 const { createPublicLookup } = require("../utils/publicUrlLookup");
 
 class InstaClient {
@@ -169,8 +174,8 @@ class InstaClient {
     for (const t of threads) {
       const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
       const viewer = t.viewer && typeof t.viewer === "object" ? t.viewer : null;
-      const viewerID = viewer && (viewer.id || viewer.pk);
-      if (viewer && viewerID != null && !users.some((u) => String(u.id || u.pk) === String(viewerID))) {
+      const viewerID = viewer && firstUsableId(viewer.id, viewer.pk);
+      if (viewer && viewerID && !users.some((u) => firstUsableId(u.id, u.pk) === viewerID)) {
         users.unshift(viewer);
       }
       for (const u of users) this._rememberUser(u);
@@ -179,12 +184,8 @@ class InstaClient {
       );
       const threadID = rawThreadID == null ? null : String(rawThreadID);
       if (threadID) {
-        setBounded(
-          this._threadMembers,
-          threadID,
-          users.map((u) => String(u.id || u.pk || "")).filter(Boolean),
-          2000
-        );
+        const participantIDs = [...new Set(users.map((u) => firstUsableId(u.id, u.pk)).filter(Boolean))];
+        setBounded(this._threadMembers, threadID, participantIDs, 2000);
       }
     }
   }
@@ -225,12 +226,12 @@ class InstaClient {
   _rememberUser(u) {
     if (!u || typeof u !== "object") return;
     const url = u.profile_pic_url_hd || u.profile_pic_url || null;
-    const id = u.id || u.pk || null;
-    const username = u.username || null;
-    for (const key of [id, u.pk, u.interop_messaging_user_fbid, username]) {
-      if (key) setBounded(this._userIndex, String(key).toLowerCase(), u, 5000);
+    const id = firstUsableId(u.id, u.pk);
+    const username = typeof u.username === "string" && u.username.trim() ? u.username : null;
+    for (const key of [id, firstUsableId(u.pk), firstUsableId(u.interop_messaging_user_fbid), username]) {
+      if (key && String(key).trim()) setBounded(this._userIndex, String(key).toLowerCase(), u, 5000);
     }
-    for (const k of [id, u.pk, u.interop_messaging_user_fbid]) {
+    for (const k of [id, firstUsableId(u.pk), firstUsableId(u.interop_messaging_user_fbid)]) {
       if (k && username) setBounded(this._picCache, `name:${k}`, username, 5000);
       if (k && url) setBounded(this._picCache, String(k), url, 5000);
     }
