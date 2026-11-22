@@ -538,16 +538,16 @@ class InstaClient {
     if (/^\d+$/.test(key)) return key;
     const known = this.getUserByUsername(key);
     if (known) {
-      const id = known.id || known.pk || known.interop_messaging_user_fbid;
-      if (id != null) return String(id);
+      const id = firstUsableId(known.id, known.pk, known.interop_messaging_user_fbid);
+      if (id) return id;
     }
     if (typeof this.api.getUserInfoByUsername === "function") {
       try {
         const u = await this.api.getUserInfoByUsername(key);
         if (u) {
           this._rememberUser(u);
-          const id = u.id || u.pk || u.interop_messaging_user_fbid;
-          if (id != null) return String(id);
+          const id = firstUsableId(u.id, u.pk, u.interop_messaging_user_fbid);
+          if (id) return id;
         }
       } catch (_) {}
     }
