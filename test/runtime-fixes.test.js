@@ -1033,6 +1033,49 @@ async function testMalformedNestedThreadEdgesAreSkipped() {
 }
 
 
+async function testEventNormalizerSkipsMalformedAttachmentsAndMentionIds() {
+  const EventNormalizer = require("../src/events/normalizeEvent");
+  const normalizer = new EventNormalizer({
+    api: {
+      getUserInfo: async () => ({ full_name: "Sender" }),
+      getUserInfoByUsername: async () => ({ username: "ghost" })
+    },
+    getUserByUsername: () => null,
+    getThreadParticipantIDs: () => ({ malformed: true }),
+    rememberThread() {}
+  });
+  const event = await normalizer.normalize({
+    type: "message",
+    threadID: "thread-1",
+    senderID: "sender-1",
+    senderName: "Sender",
+    messageID: "message-1",
+    body: "hello @ghost",
+    attachments: [null, { type: "photo", url: "https://cdn.example/photo.jpg" }],
+    timestamp: 1700000000000
+  });
+  assert.deepEqual(event.mentions, {});
+  assert.equal(event.participantIDs, undefined);
+  assert.deepEqual(event.attachments, [{
+    type: "photo",
+    url: "https://cdn.example/photo.jpg",
+    filename: null,
+    caption: null
+  }]);
+
+  const InstaClient = require("../src/app/InstaClient");
+  const client = Object.create(InstaClient.prototype);
+  client._userIndex = new Map();
+  client._picCache = new Map();
+  client._threadMembers = new Map();
+  client.api = {
+    getInbox: async () => ({ threads: [] }),
+    getUserInfoByUsername: async () => ({ username: "ghost" })
+  };
+  assert.deepEqual(await client._resolveMentionsOffline("hello @ghost"), {});
+}
+
+
 async function testNormalizedReplyRetainsMetadata() {
   const EventNormalizer = require("../src/events/normalizeEvent");
   const { rawEventFromMessageSync } = require("../src/realtime/bridge");
@@ -1179,6 +1222,7 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testNormalizedReplyRetainsMetadata();
+  await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
   await testMalformedNestedThreadEdgesAreSkipped();
   await testMalformedRelayEdgeCollectionsAreIgnored();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
@@ -1187,7 +1231,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 43 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 44 regression tests passed\n");
 }
 
 run().catch((error) => {
