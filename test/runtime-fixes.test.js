@@ -451,7 +451,7 @@ async function testThriftReaderRejectsMalformedAndOversizedValues() {
     /binary field exceeds available data/
   );
   assert.deepEqual(
-    new ThriftReader(Buffer.from([0x19, 0x11, 0x01])).readStruct([]),
+    new ThriftReader(Buffer.from([0x19, 0x13, 0x7f, 0x00])).readStruct([]),
     {}
   );
 }
