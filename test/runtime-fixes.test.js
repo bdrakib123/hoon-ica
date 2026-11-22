@@ -284,7 +284,7 @@ async function run() {
   await testViewerFbidUsesViewerId();
   await testGetUidRejectsContentRoutes();
   await testThriftInt64BigIntMode();
-  process.stdout.write("runtime-fixes.test.js: 15 regression tests passed\\n");
+  process.stdout.write("runtime-fixes.test.js: 15 regression tests passed\n");
 }
 
 run().catch((error) => {
