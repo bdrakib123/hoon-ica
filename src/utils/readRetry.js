@@ -25,6 +25,8 @@
 
 const READ_METHODS = ["getThreadInfo", "getUserInfo", "getUserInfoV2"];
 const DEFAULT_READ_RETRY = Object.freeze({ attempts: 3, firstWaitMs: 3000, maxWaitMs: 30000 });
+const MAX_READ_RETRY_ATTEMPTS = 10;
+const MAX_READ_RETRY_WAIT_MS = 5 * 60 * 1000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -35,13 +37,21 @@ function resolveConfig(readRetry) {
   if (readRetry === false) return null;
   const given = readRetry && typeof readRetry === "object" ? readRetry : {};
   const cfg = { ...DEFAULT_READ_RETRY, ...given };
-  const attempts = Math.max(1, Math.floor(Number(cfg.attempts)) || DEFAULT_READ_RETRY.attempts);
+  const requestedAttempts = Math.floor(Number(cfg.attempts));
+  const attempts = Math.min(
+    MAX_READ_RETRY_ATTEMPTS,
+    Math.max(1, requestedAttempts || DEFAULT_READ_RETRY.attempts)
+  );
   const firstWaitMs = Number(cfg.firstWaitMs);
   const maxWaitMs = Number(cfg.maxWaitMs);
   return {
     attempts,
-    firstWaitMs: Number.isFinite(firstWaitMs) && firstWaitMs >= 0 ? firstWaitMs : DEFAULT_READ_RETRY.firstWaitMs,
-    maxWaitMs: Number.isFinite(maxWaitMs) && maxWaitMs >= 0 ? maxWaitMs : DEFAULT_READ_RETRY.maxWaitMs
+    firstWaitMs: Number.isFinite(firstWaitMs) && firstWaitMs >= 0
+      ? Math.min(firstWaitMs, MAX_READ_RETRY_WAIT_MS)
+      : DEFAULT_READ_RETRY.firstWaitMs,
+    maxWaitMs: Number.isFinite(maxWaitMs) && maxWaitMs >= 0
+      ? Math.min(maxWaitMs, MAX_READ_RETRY_WAIT_MS)
+      : DEFAULT_READ_RETRY.maxWaitMs
   };
 }
 
@@ -75,4 +85,4 @@ function install(client, readRetry) {
   return client;
 }
 
-module.exports = { install, resolveConfig, READ_METHODS, DEFAULT_READ_RETRY };
+module.exports = { install, resolveConfig, READ_METHODS, DEFAULT_READ_RETRY, MAX_READ_RETRY_ATTEMPTS, MAX_READ_RETRY_WAIT_MS };
