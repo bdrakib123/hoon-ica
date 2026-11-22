@@ -19,12 +19,14 @@ module.exports = function (client) {
       client._learnThreads(thread);
       const users = (Array.isArray(thread?.users) ? thread.users : []).filter((u) => u && typeof u === "object");
       const viewer = thread?.viewer;
+      const viewerID = viewer && (viewer.id || viewer.pk);
       // The thread-detail query lists only *other* participants; re-add the
-      // viewer so participantIDs/name lookups are complete.
-      const hasViewer = viewer && users.some((u) => String(u.id || u.pk) === String(viewer.id));
-      if (viewer && !hasViewer) {
+      // viewer so participantIDs/name lookups are complete. Some response
+      // shapes expose pk rather than id, so normalize both before comparing.
+      const hasViewer = viewerID != null && users.some((u) => String(u.id || u.pk) === String(viewerID));
+      if (viewer && viewerID != null && !hasViewer) {
         users.unshift({
-          id: viewer.id, pk: viewer.id, username: viewer.username,
+          id: viewerID, pk: viewerID, username: viewer.username,
           interop_messaging_user_fbid: viewer.interop_messaging_user_fbid,
           profile_pic_url: viewer.profile_pic_url
         });
