@@ -54,11 +54,11 @@ module.exports = function (client) {
             }
           : null;
       }
-      if (cb) cb(null, out);
+      if (cb) await cb(null, out);
       return out;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return {};
     }
   };
