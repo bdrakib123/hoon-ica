@@ -15,7 +15,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 - Runtime fixes are now being made only on `audit/comprehensive-bug-hunt`, after the user authorized this work.
 - The normal `npm test` command now includes `test/runtime-fixes.test.js`; the separate `audit:repro` script has been converted to check corrected behavior for fixed cases and retain diagnostics for remaining candidates.
 - The published `@cexi/hoonica@1.0.0` release and `release/1.0.0` remain untouched.
-- The user ran the updated suite on Node.js v20.20.2 / npm 10.8.2 through #19: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0; the wrapper suite reported 6 tests, runtime fixes 18 tests, type checks passed, security audit found 0 vulnerabilities, and npm dry-run passed. Working tree was clean. The subsequent #20 bounded-cache change and its new regression test are pending a fresh local run.
+- Latest user-run validation on Node.js v20.20.2 / npm 10.8.2, after pulling commit `d022bb8`: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0. The wrapper suite reported 6 tests, runtime fixes reported 24 regression tests passed, type checks passed, dependency audit found 0 vulnerabilities, npm package dry-run passed, and `git status --short` was empty. This confirms #23 and #24 locally; it does not validate live Instagram behavior. #25 was added after this run and still needs local validation.
 
 ## Diagnostic reproduction inventory
 
@@ -43,8 +43,8 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 20 | Long-lived session cache growth | **Mitigated on branch:** inbox seen/member/thread-ID maps and FCA user/avatar/message/thread-member lookup maps now use bounded FIFO insertion with explicit limits. Eviction can require a later lookup to be learned again; it does not promise a fixed process-memory ceiling. | bounded-cache helper and 2,001-thread inbox-eviction regression passed in the user-run suite |
 | 21 | Malformed native inbox Relay edges | **Fixed on branch:** `getInbox()` now filters null/malformed Relay nodes and entries without a usable `id` / `thread_id` before updating thread-member and ID caches. | initial-page and cursor-page regression test passed in the user-run suite |
 | 22 | Media upload retry classification | **Fixed on branch:** an `AuthorizationFailedError` with a permanent 401/403 response is no longer retried just because of its message text. Retries remain limited to the observed 412 response or explicitly transient temporary failures. | 401 no-retry regression passed in the user-run suite |
-| 23 | Ambiguous media commit retry | **Fixed on branch:** only errors classified as transient are retried, and all retries reuse the same `offline_threading_id` so an ambiguous first response does not create a new logical send. GraphQL `field_exception` errors are surfaced without retry. | two focused regression tests added; fresh local run pending |
-| 24 | MQTT frame and buffer bounds | **Fixed on branch:** MQTT remaining-length varints are limited to the protocol's four-byte encoding, declared packets are capped (default 16 MiB), and buffered inbound data is bounded (default 32 MiB). Invalid or oversized frames fail and close the transport instead of growing memory indefinitely. | split TCP length-header, malformed-varint, oversized-frame, and buffer-limit regression test added; fresh local run pending |
+| 23 | Ambiguous media commit retry | **Fixed on branch:** only errors classified as transient are retried, and all retries reuse the same `offline_threading_id` so an ambiguous first response does not create a new logical send. GraphQL `field_exception` errors are surfaced without retry. | both focused regression tests passed in the user's latest local run |
+| 24 | MQTT frame and buffer bounds | **Fixed on branch:** MQTT remaining-length varints are limited to the protocol's four-byte encoding, declared packets are capped (default 16 MiB), and buffered inbound data is bounded (default 32 MiB). Invalid or oversized frames fail and close the transport instead of growing memory indefinitely. | split TCP length-header, malformed-varint, oversized-frame, and buffer-limit regression test passed in the user's latest local run |
 | 25 | Compressed MQTT payload expansion | **Fixed on branch:** zlib publish payloads now have a 32 MiB decompressed-output cap, preventing a small compressed broker frame from expanding without bound. Oversized/malformed payloads retain the existing best-effort behavior and are returned unchanged. | normal decompression and 33 MiB expansion-cap regression test added; fresh local run pending |
 
 ## Runtime fix progress (2026-11-22)
@@ -72,7 +72,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry changes.
+1. Re-run the full Node 20 validation suite after the #25 decompression-output cap change.
 2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
