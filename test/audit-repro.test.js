@@ -22,16 +22,16 @@ const MediaMethods = require("../src/methods/media");
 const InboxMethods = require("../src/methods/inbox");
 const { ThriftWriter, ThriftReader, ThriftTypes } = require("../src/realtime/mqttot");
 
-const reproduced = [];
+const checked = [];
 
-async function reproduce(name, check) {
+async function checkCase(name, check) {
   await check();
-  reproduced.push(name);
+  checked.push(name);
   process.stdout.write("REPRODUCED: " + name + "\n");
 }
 
 async function main() {
-  await reproduce("documented cookie object/array inputs normalize correctly", async () => {
+  await checkCase("documented cookie object/array inputs normalize correctly", async () => {
     assert.deepEqual(normalizeCookie({ sessionid: "session-value", csrftoken: "csrf-value" }), {
       sessionid: "session-value", csrftoken: "csrf-value"
     });
@@ -339,7 +339,7 @@ async function main() {
   });
 
   process.stdout.write("\nAudit reproductions: " + reproduced.length + " reproduced\n");
-  process.stdout.write("Remaining diagnostic cases reproduce source-level defects; fixed cases assert corrected behavior. Not a live Instagram validation.\n");
+  process.stdout.write("Cases marked CHECKED may assert either corrected behavior or a remaining source-level defect signature. Not a live Instagram validation.\n");
 }
 
 main().catch((error) => {
