@@ -35,6 +35,42 @@ async function testNestedPacingConfiguration() {
   }
 }
 
+async function testMentionHydrationRetriesAfterInboxFailure() {
+  const InstaClient = require("../src/app/InstaClient");
+  let inboxCalls = 0;
+  let liveLookups = 0;
+  const client = Object.create(InstaClient.prototype);
+  client._userIndex = new Map();
+  client._picCache = new Map();
+  client._threadMembers = new Map();
+  client.api = {
+    getInbox: async () => {
+      inboxCalls += 1;
+      if (inboxCalls === 1) throw new Error("temporary inbox failure");
+      return { threads: [{ id: "thread-1", users: [{
+        id: "user-1",
+        username: "alice",
+        full_name: "Alice",
+        profile_pic_url: "https://cdn.example/alice.jpg"
+      }] }] };
+    },
+    getUserInfoByUsername: async () => {
+      liveLookups += 1;
+      return null;
+    }
+  };
+
+  await client._resolveMentionsOffline("hello @alice");
+  assert.equal(client._inboxLearned, undefined);
+  await client._resolveMentionsOffline("hello @alice");
+  assert.equal(inboxCalls, 2);
+  assert.equal(liveLookups, 1);
+  assert.equal(client._inboxLearned, true);
+  assert.deepEqual(await client._resolveMentionsOffline("hello @alice"), { "user-1": "alice" });
+  assert.equal(inboxCalls, 2);
+}
+
+
 async function testLegacyLoginPreservesCookieMaps() {
   const apiPath = require.resolve("../src/api");
   const loginPath = require.resolve("../module/login");
@@ -1113,6 +1149,7 @@ async function run() {
   await testNestedPacingConfiguration();
   await testTypingStopsOnRateLimitButFallsBackOnUnknown();
   await testLegacyLoginPreservesCookieMaps();
+  await testMentionHydrationRetriesAfterInboxFailure();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
@@ -1150,7 +1187,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 42 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 43 regression tests passed\n");
 }
 
 run().catch((error) => {
