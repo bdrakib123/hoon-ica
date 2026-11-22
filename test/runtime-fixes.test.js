@@ -1345,6 +1345,35 @@ async function testRealtimeListenerStopDuringClientLookup() {
 }
 
 
+async function testRealtimeSubscriptionTimeoutIsClamped() {
+  const { EventEmitter } = require("events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  const MAX_TIMER_DELAY_MS = 2147483647;
+  const listener = new RealtimeListener({}, { subscriptionTimeoutMs: Number.MAX_VALUE });
+  listener._client = new EventEmitter();
+  listener._client.irisSubscribe = async () => {};
+  let timerCallback;
+  let timerDelay = null;
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  try {
+    global.setTimeout = (callback, delay) => {
+      timerCallback = callback;
+      timerDelay = delay;
+      return { unref() {} };
+    };
+    global.clearTimeout = () => {};
+    const pending = listener._subscribeWithAck({ seqId: 1, snapshotAtMs: Date.now() });
+    await Promise.resolve();
+    assert.equal(timerDelay, MAX_TIMER_DELAY_MS);
+    timerCallback();
+    await assert.rejects(pending, /acknowledgement timed out/);
+  } finally {
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
 async function testRealtimeMissingAcknowledgementFails() {
   const { EventEmitter } = require("node:events");
   const { RealtimeListener } = require("../src/realtime/listener");
@@ -2805,6 +2834,7 @@ async function run() {
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
+  await testRealtimeSubscriptionTimeoutIsClamped();
   await testRealtimeDisconnectRejectsPendingSubscription();
   await testRealtimeListenerStopDuringClientLookup();
   await testRealtimeFallbackStartsOnlyOnce();
@@ -2853,7 +2883,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 89 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 90 regression tests passed\n");
 }
 
 run().catch((error) => {
