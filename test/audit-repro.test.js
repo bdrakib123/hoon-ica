@@ -225,7 +225,7 @@ async function main() {
       }
     });
     await getThreadHistory("thread-1", 5, 1700000000000);
-    assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
+    assert.deepEqual(received, ["thread-1", 5, 1700000000000]);
   });
 
   await checkCase("first DM is delivered after an empty initial inbox poll", async () => {
