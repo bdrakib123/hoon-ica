@@ -127,19 +127,26 @@ class RealtimeListener {
     this._client.on("error", this._onError);
     this._client.on("disconnected", this._onDisconnected);
 
-    if (!this._client.connected) await this._client.connect();
-    if (this._stopped) return this;
-    this.connected = true;
-
-    const cursor = await this._resolveCursor();
-    if (this._stopped) return this;
-    if (cursor && cursor.seqId != null && cursor.snapshotAtMs != null) {
-      await this._subscribeWithAck(cursor);
+    try {
+      if (!this._client.connected) await this._client.connect();
       if (this._stopped) return this;
-      this._subscribed = true;
+      this.connected = true;
+
+      const cursor = await this._resolveCursor();
+      if (this._stopped) return this;
+      if (cursor && cursor.seqId != null && cursor.snapshotAtMs != null) {
+        await this._subscribeWithAck(cursor);
+        if (this._stopped) return this;
+        this._subscribed = true;
+      }
+      if (typeof this.options.onReady === "function") this.options.onReady(this);
+      return this;
+    } catch (error) {
+      // A failed start must not leave handlers attached to a shared session
+      // client or an owned MQTT socket alive when the caller forgets stop().
+      this.stop();
+      throw error;
     }
-    if (typeof this.options.onReady === "function") this.options.onReady(this);
-    return this;
   }
 
   stop() {
