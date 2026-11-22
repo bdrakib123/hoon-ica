@@ -125,10 +125,26 @@ class SendPacer extends EventEmitter {
   }
 
   _prune() {
-    if (this.perThreadLastSendAt.size <= 500) return;
+    if (this.perThreadLastSendAt.size === 0) return;
     const cutoff = Date.now() - 60 * 60 * 1000;
     for (const [key, at] of this.perThreadLastSendAt) {
       if (at < cutoff) this.perThreadLastSendAt.delete(key);
+    }
+    // A busy account can message hundreds of distinct threads within one
+    // hour, so TTL pruning alone is not a hard memory bound. Evict the oldest
+    // entries if active thread count still exceeds the cache budget.
+    while (this.perThreadLastSendAt.size > 500) {
+      const oldest = this.perThreadLastSendAt.keys().next().value;
+      this.perThreadLastSendAt.delete(oldest);
+    }
+  }
+
+  _rememberThreadSend(key, timestamp) {
+    this.perThreadLastSendAt.delete(key);
+    this.perThreadLastSendAt.set(key, timestamp);
+    while (this.perThreadLastSendAt.size > 500) {
+      const oldest = this.perThreadLastSendAt.keys().next().value;
+      this.perThreadLastSendAt.delete(oldest);
     }
   }
 
@@ -251,7 +267,7 @@ class SendPacer extends EventEmitter {
     if (opts && opts.immediate) {
       const stamp = Date.now();
       this.lastSendAt = stamp;
-      this.perThreadLastSendAt.set(key, stamp);
+      this._rememberThreadSend(key, stamp);
       this.hourSendCount++;
       this.daySendCount++;
       return;
