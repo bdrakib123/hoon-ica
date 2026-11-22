@@ -111,6 +111,9 @@ class RealtimeListener {
       this._client = new RealtimeClient(this.context, this.options);
     }
     this._owned = owned;
+    // stop() can run while a shared-client provider is still resolving. Do not
+    // attach handlers or start a subscription after that listener was cancelled.
+    if (this._stopped) return this;
 
     // Keep per-instance handler references so stop() can detach exactly its own
     // listeners from a shared client without disturbing the other consumers.
@@ -125,11 +128,14 @@ class RealtimeListener {
     this._client.on("disconnected", this._onDisconnected);
 
     if (!this._client.connected) await this._client.connect();
+    if (this._stopped) return this;
     this.connected = true;
 
     const cursor = await this._resolveCursor();
+    if (this._stopped) return this;
     if (cursor && cursor.seqId != null && cursor.snapshotAtMs != null) {
       await this._subscribeWithAck(cursor);
+      if (this._stopped) return this;
       this._subscribed = true;
     }
     if (typeof this.options.onReady === "function") this.options.onReady(this);
