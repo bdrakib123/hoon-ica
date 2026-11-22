@@ -247,6 +247,7 @@ class InboxMethods {
         return freshItems;
       };
       let fresh = collectFresh(nodes);
+      let latestSeenID = nodes[0]?.id || null;
 
       // The inbox preview may contain only the newest message even when several
       // arrived between poll cycles. The thread-detail read already fetches a
@@ -259,7 +260,10 @@ class InboxMethods {
         const detailedNodes = replyById && replyById._messages;
         if (lastSeenID && Array.isArray(detailedNodes)) {
           const seenAt = detailedNodes.findIndex((node) => String(node.id) === String(lastSeenID));
-          if (seenAt >= 0) fresh = detailedNodes.slice(0, seenAt);
+          if (seenAt >= 0) {
+            fresh = detailedNodes.slice(0, seenAt);
+            latestSeenID = detailedNodes[0]?.id || lastSeenID;
+          }
         }
       }
 
