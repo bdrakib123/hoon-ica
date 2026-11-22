@@ -1966,6 +1966,15 @@ async function testRealtimeFingerprintRequiresTimestamp() {
   assert.equal(disabled.accept(new Set(["one"])), true);
   assert.equal(disabled.size, 0);
   assert.equal(new MessageDeduper({ max: -1 }).max, 5000);
+
+  const bounded = new MessageDeduper({ max: 2 });
+  bounded.add(new Set(["a", "b"]));
+  bounded.add(new Set(["a"])); // refresh a so b becomes oldest
+  bounded.add(new Set(["c"]));
+  assert.equal(bounded.size, 2);
+  assert.equal(bounded.has(new Set(["a"])), true);
+  assert.equal(bounded.has(new Set(["b"])), false);
+  assert.equal(bounded.has(new Set(["c"])), true);
 }
 
 
