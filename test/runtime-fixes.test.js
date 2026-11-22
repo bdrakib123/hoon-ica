@@ -87,6 +87,48 @@ async function testReadRetryDoesNotRetryThrownErrors() {
 }
 
 
+async function testPollingStopSuppressesInflightResults() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  let release;
+  inbox.getInbox = () => new Promise(resolve => { release = resolve; });
+  const scheduled = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let events = 0;
+  let stop;
+  try {
+    global.setTimeout = (fn) => {
+      const timer = { fn, unref() {} };
+      scheduled.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling((_err, event) => { if (event) events += 1; }, 2000);
+    await Promise.resolve();
+    stop();
+    release({ threads: [{
+      id: "thread-1",
+      users: [],
+      slide_messages: { edges: [{ node: {
+        id: "message-after-stop",
+        sender_fbid: "friend-1",
+        content_type: "TEXT",
+        text_body: "must not dispatch",
+        timestamp_ms: 1700000000000
+      } }] }
+    }] });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(events, 0);
+    assert.equal(scheduled.length, 0);
+    assert.equal(inbox._statePrimed, false);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
+
 async function testFirstMessageAfterEmptyInboxPoll() {
   const InboxMethods = require("../src/methods/inbox");
   const inbox = new InboxMethods({}, () => "self-1");
@@ -676,6 +718,7 @@ async function run() {
   await testCaptionAuthFailureDoesNotFallback();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
+  await testPollingStopSuppressesInflightResults();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeFallbackStartsOnlyOnce();
@@ -699,7 +742,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 30 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 31 regression tests passed\n");
 }
 
 run().catch((error) => {
