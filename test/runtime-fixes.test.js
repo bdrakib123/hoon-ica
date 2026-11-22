@@ -35,6 +35,41 @@ async function testNestedPacingConfiguration() {
   }
 }
 
+async function testSharedRealtimeReconnectSurvivesOldAttemptCleanup() {
+  const InstaAPI = require("../src/api");
+  let rejectFirst;
+  const first = {
+    connected: false,
+    connect: () => new Promise((_resolve, reject) => { rejectFirst = reject; }),
+    disconnect() {
+      if (rejectFirst) rejectFirst(new Error("first connection cancelled"));
+    }
+  };
+  const second = {
+    connected: false,
+    async connect() { this.connected = true; },
+    disconnect() { this.connected = false; }
+  };
+  const clients = [first, second];
+  const api = Object.create(InstaAPI.prototype);
+  api._realtime = null;
+  api._realtimeConnecting = null;
+  api.realtimeClient = () => clients.shift();
+
+  const firstAttempt = api.sharedRealtimeClient();
+  const firstRejected = assert.rejects(firstAttempt, /first connection cancelled/);
+  await Promise.resolve();
+  api.realtimeDisconnect();
+
+  const secondAttempt = await api.sharedRealtimeClient();
+  assert.equal(secondAttempt, second);
+  await firstRejected;
+  assert.equal(api._realtime, second);
+  assert.equal(api._realtimeConnecting, null);
+  assert.equal(await api.sharedRealtimeClient(), second);
+}
+
+
 async function testMentionHydrationRetriesAfterInboxFailure() {
   const InstaClient = require("../src/app/InstaClient");
   let inboxCalls = 0;
@@ -1193,6 +1228,7 @@ async function run() {
   await testTypingStopsOnRateLimitButFallsBackOnUnknown();
   await testLegacyLoginPreservesCookieMaps();
   await testMentionHydrationRetriesAfterInboxFailure();
+  await testSharedRealtimeReconnectSurvivesOldAttemptCleanup();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
@@ -1231,7 +1267,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 44 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 45 regression tests passed\n");
 }
 
 run().catch((error) => {
