@@ -46,8 +46,10 @@ module.exports = function (client) {
 
       const toItem = (thread) => {
         if (!thread || typeof thread !== "object") return null;
-        const rawThreadID = thread.id ?? thread.thread_id;
-        if (rawThreadID == null || String(rawThreadID).trim() === "") return null;
+        const rawThreadID = [thread.id, thread.thread_id].find(
+          (value) => value != null && String(value).trim() !== ""
+        );
+        if (rawThreadID == null) return null;
 
         const latest =
           thread.slide_messages?.edges?.[0]?.node ||
