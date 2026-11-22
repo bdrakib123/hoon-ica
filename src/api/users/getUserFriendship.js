@@ -23,7 +23,7 @@ module.exports = function (client) {
         ? client.api._learnedUser(key)
         : null;
       if (!learned) {
-        if (cb) cb(null, null);
+        if (cb) await cb(null, null);
         return null;
       }
       const fs = learned.friendship_status;
@@ -38,11 +38,11 @@ module.exports = function (client) {
         incomingRequest: fs ? fs.incoming_request === true : null,
         outgoingRequest: fs ? fs.outgoing_request === true : null
       };
-      if (cb) cb(null, out);
+      if (cb) await cb(null, out);
       return out;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return null;
     }
   };
