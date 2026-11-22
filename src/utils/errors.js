@@ -81,9 +81,16 @@ function inspectBody(data) {
     Boolean(data.checkpoint_url) ||
     Boolean(data.challenge);
   if (!failed) return null;
-  const message = String(data.message || data.error_type || data.error_title || "");
+  let message = String(data.message || data.error_type || data.error_title || "");
+  if (!message) {
+    if (data.require_login === true) message = "login_required";
+    else if (data.checkpoint_url || data.challenge) message = "challenge_required";
+    else message = "Instagram returned status=fail without an error message";
+  }
   const info = classify({ message, response: { status: 200, data, headers: {} } });
-  if (info.kind === "unknown" || info.kind === "transient") return null;
+  // An explicit failure envelope is still a failure when its message is
+  // missing or unfamiliar. Preserve the unknown/transient classification so
+  // callers can report it without mistaking the response for success.
   return { ...info, message };
 }
 
