@@ -45,6 +45,10 @@ module.exports = function (client) {
       const unreadOnly = normalizedTags.includes("UNREAD");
 
       const toItem = (thread) => {
+        if (!thread || typeof thread !== "object") return null;
+        const rawThreadID = thread.id ?? thread.thread_id;
+        if (rawThreadID == null || String(rawThreadID).trim() === "") return null;
+
         const latest =
           thread.slide_messages?.edges?.[0]?.node ||
           thread.slide_messages?.[0]?.node ||
@@ -52,7 +56,7 @@ module.exports = function (client) {
           thread.items?.[0] ||
           null;
         return {
-          threadID: String(thread.id || thread.thread_id),
+          threadID: String(rawThreadID),
           name: thread.thread_title || null,
           snippet: latest?.text_body || latest?.text || latest?.content?.xma_text_body || "",
           timestamp: Number(latest?.timestamp_ms ?? latest?.timestamp) || null,
@@ -78,7 +82,9 @@ module.exports = function (client) {
         const threads = Array.isArray(page?.threads) ? page.threads : [];
         for (const thread of threads) {
           const item = toItem(thread);
-          if (!item.threadID || seenThreads.has(item.threadID)) continue;
+          // Ignore malformed Relay edges instead of collapsing them into the
+          // literal "undefined" thread id and suppressing valid later entries.
+          if (!item || seenThreads.has(item.threadID)) continue;
           seenThreads.add(item.threadID);
           if (before != null && (item.timestamp == null || item.timestamp >= before)) continue;
           if (unreadOnly && !(Number(item.unreadCount) > 0)) continue;
