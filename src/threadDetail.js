@@ -29,8 +29,9 @@ async function fetchThreadDetail(http, threadID, limit = 20, afterCursor = null)
 // the viewer so the bot's own messages map too.
 function threadFbidMap(thread) {
   const map = {};
-  for (const u of thread?.users || []) {
-    if (u.interop_messaging_user_fbid) {
+  for (const u of (Array.isArray(thread?.users) ? thread.users : [])) {
+    if (!u || typeof u !== "object") continue;
+    if (u.interop_messaging_user_fbid && (u.id != null || u.pk != null)) {
       map[String(u.interop_messaging_user_fbid)] = String(u.id || u.pk);
     }
   }
