@@ -145,6 +145,10 @@ class EventNormalizer {
     // handlerEvent/onEvent dispatch on event.type === "event".
     if (!raw || raw.type === "event") {
       if (!raw) return null;
+      // Do not turn absent identifiers into the literal strings "undefined"
+      // or "null"; downstream dispatch and thread caches use these as keys.
+      if (raw.threadID == null || String(raw.threadID).trim() === "" ||
+          raw.messageID == null || String(raw.messageID).trim() === "") return null;
       return {
         type: "event",
         threadID: String(raw.threadID),
@@ -161,6 +165,9 @@ class EventNormalizer {
       };
     }
     if (raw.type !== "message") return null;
+    // A malformed push must not poison message->thread lookup with "undefined".
+    if (raw.threadID == null || String(raw.threadID).trim() === "" ||
+        raw.messageID == null || String(raw.messageID).trim() === "") return null;
 
     const threadID = String(raw.threadID);
     const senderID = String(raw.senderID || "");
