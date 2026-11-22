@@ -1729,6 +1729,7 @@ async function run() {
   await testRealtimeFallbackStartsOnlyOnce();
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
+  await testRealtimeReceiveFailureClosesTransport();
   await testRealtimePacketIdentifierWraps();
   await testDecodePacketRejectsMalformedFrames();
   await testRealtimeConnectCanBeCancelled();
