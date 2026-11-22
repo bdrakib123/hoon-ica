@@ -428,6 +428,25 @@ async function testPollingSurvivesInconclusiveAuthCheck() {
 }
 
 
+async function testInboxCallbackErrorsDoNotEscapeListener() {
+  const { EventEmitter } = require("node:events");
+  const inbox = new InboxMethods({}, () => "self-1");
+  inbox._emitter = new EventEmitter();
+  const errors = [];
+  inbox._emitter.on("callbackError", error => errors.push(error.message));
+
+  const syncCallback = inbox._safeCallback(() => { throw new Error("sync callback failure"); });
+  syncCallback(null, { messageID: "m-1" });
+  assert.deepEqual(errors, ["sync callback failure"]);
+
+  const asyncCallback = inbox._safeCallback(async () => {
+    throw new Error("async callback failure");
+  });
+  await asyncCallback(null, { messageID: "m-2" });
+  assert.deepEqual(errors, ["sync callback failure", "async callback failure"]);
+}
+
+
 async function testPollingDeliversAllMessagesSinceLastSeen() {
   const old = { id: "old-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
   const middle = { id: "middle-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "middle" };
@@ -1721,6 +1740,7 @@ async function run() {
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingDeliversAllMessagesSinceLastSeen();
+  await testInboxCallbackErrorsDoNotEscapeListener();
   await testPollingSurvivesInconclusiveAuthCheck();
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
@@ -1764,7 +1784,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 59 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 60 regression tests passed\n");
 }
 
 run().catch((error) => {
