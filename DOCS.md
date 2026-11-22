@@ -371,3 +371,15 @@ if (first.nextCursor) {
 ```
 
 `nextCursor` is an opaque Relay cursor; pass it back unchanged. `hasNextPage` indicates whether Instagram reports another page. The result remains backward-compatible with callers that only read `{ threads }`.
+
+
+### FCA thread-list pagination
+
+`getThreadList(limit, timestamp, tags, callback)` now walks inbox Relay cursors until
+it has collected the requested number of matching threads or Instagram reports
+that there are no more pages. The timestamp is treated as a millisecond boundary;
+only threads whose latest message is older than that boundary are returned.
+`[]` and `["INBOX"]` select the inbox, and `["INBOX", "unread"]` selects unread
+inbox threads. The current Instagram web pagination query is documented for the
+`INBOX` folder only, so `ARCHIVED`, `PENDING`, and `OTHER` are rejected rather
+than silently returning inbox results for a different folder.
