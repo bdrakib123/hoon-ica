@@ -267,6 +267,7 @@ async function testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets() {
   assert.equal(isPublicAddress("::1", 6), false);
   assert.equal(isPublicAddress("fc00::1", 6), false);
   assert.equal(isPublicAddress("2606:4700:4700::1111", 6), true);
+  assert.equal(isPublicAddress("2002:7f00:1::", 6), false);
 
   const publicLookup = createPublicLookup((_host, _options, callback) => {
     callback(null, [{ address: "93.184.216.34", family: 4 }]);
@@ -336,6 +337,8 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
     assert.equal(request.options.timeout, 4000);
     assert.equal(request.options.maxRedirects, 3);
     assert.equal(typeof request.options.lookup, "function");
+    assert.equal(request.options.proxy, false);
+    assert.equal(request.options.proxy, false);
     assert.equal(typeof request.options.beforeRedirect, "function");
     assert.throws(
       () => request.options.beforeRedirect({ protocol: "http:" }),
