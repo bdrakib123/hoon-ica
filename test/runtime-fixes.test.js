@@ -326,6 +326,31 @@ async function testRealtimeReceiveFailureClosesTransport() {
   assert.equal(client._pingTimer, null);
   assert.equal(client._stopRequested, true);
   assert.equal(disconnects, 1);
+
+  let throwingDisconnects = 0;
+  let receives = 0;
+  const throwingTransport = {
+    reset() {},
+    async connect() {},
+    async send() {},
+    async recvPacket() {
+      receives += 1;
+      return receives === 1
+        ? Buffer.from([0x20, 0x02, 0x00, 0x00])
+        : Buffer.from([0x20]);
+    },
+    disconnect() { throwingDisconnects += 1; }
+  };
+  const throwingClient = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport: throwingTransport, keepAliveMs: 60000 });
+  throwingClient.on("error", () => { throw new Error("consumer error handler failed"); });
+  await throwingClient.connect();
+  await assert.rejects(throwingClient._loop, /consumer error handler failed/);
+  assert.equal(throwingClient._pingTimer, null);
+  assert.equal(throwingDisconnects, 1);
 }
 
 
