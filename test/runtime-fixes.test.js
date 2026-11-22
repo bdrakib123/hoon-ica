@@ -1685,6 +1685,23 @@ async function testMediaCommitRetryReusesOfflineThreadingId() {
 }
 
 
+async function testThriftMapProtoKeyCannotMutatePrototype() {
+  const { ThriftReader } = require("../src/realtime/mqttot");
+  const key = Buffer.from("__proto__");
+  const value = Buffer.from("safe");
+  const payload = Buffer.concat([
+    Buffer.from([0x01, 0x88, key.length]),
+    key,
+    Buffer.from([value.length]),
+    value
+  ]);
+  const result = new ThriftReader(payload).readMap();
+  assert.equal(Object.getPrototypeOf(result), Object.prototype);
+  assert.equal(Object.prototype.hasOwnProperty.call(result, "__proto__"), true);
+  assert.equal(result.__proto__, "safe");
+}
+
+
 async function testThriftReaderRejectsMalformedAndOversizedValues() {
   const { ThriftReader } = require("../src/realtime/mqttot");
   assert.throws(
@@ -2287,7 +2304,8 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 75 regression tests passed\n");
+  await testThriftMapProtoKeyCannotMutatePrototype();
+  process.stdout.write("runtime-fixes.test.js: 76 regression tests passed\n");
 }
 
 run().catch((error) => {
