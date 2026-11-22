@@ -1,4 +1,5 @@
 /*!
+const createCallback = require("../../utils/createCallback");
  * insta-chat - Unofficial Instagram Chat API
  * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
  * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
@@ -12,13 +13,14 @@
 // makes /unsend work reliably.
 module.exports = function (client) {
   return async function unsendMessage(messageID, callback, threadID) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     try {
       const tid = client._resolveThread(messageID, threadID);
       const ok = await client.api.unsendMessage(tid, String(messageID));
       if (cb) cb(null, ok);
       return ok;
     } catch (error) {
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       return false;
     }
