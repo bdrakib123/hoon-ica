@@ -276,6 +276,59 @@ async function testReadRetryDoesNotRetryThrownErrors() {
 }
 
 
+async function testPollingSurvivesInconclusiveAuthCheck() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  let inboxCalls = 0;
+  let callbackErrors = 0;
+  inbox.getInbox = async () => {
+    inboxCalls += 1;
+    if (inboxCalls <= 2) {
+      const error = new Error("login_required");
+      error.igKind = "auth";
+      throw error;
+    }
+    return { threads: [] };
+  };
+  inbox.http.checkSession = async () => ({
+    state: "graphql_error",
+    error: new Error("persisted query unavailable")
+  });
+
+  const timers = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let stop;
+  try {
+    global.setTimeout = (fn) => {
+      const timer = { fn, unref() {} };
+      timers.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling((error) => { if (error) callbackErrors += 1; }, 2000);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(inboxCalls, 1);
+    assert.equal(timers.length, 1);
+
+    timers[0].fn();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(inboxCalls, 2);
+    assert.equal(timers.length, 2);
+    assert.equal(callbackErrors, 0);
+
+    timers[1].fn();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(inboxCalls, 3);
+    assert.equal(inbox._statePrimed, true);
+    assert.equal(callbackErrors, 0);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
+
 async function testPollingDeliversAllMessagesSinceLastSeen() {
   const old = { id: "old-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
   const middle = { id: "middle-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "middle" };
@@ -1319,6 +1372,7 @@ async function run() {
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingDeliversAllMessagesSinceLastSeen();
+  await testPollingSurvivesInconclusiveAuthCheck();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeListenerStopDuringClientLookup();
@@ -1351,7 +1405,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 47 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 48 regression tests passed\n");
 }
 
 run().catch((error) => {
