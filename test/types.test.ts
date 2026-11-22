@@ -4,6 +4,7 @@ import login, {
   IdempotencyCache,
   Scheduler,
   InstaClient,
+  IncomingEvent,
   utilities
 } from "../index";
 
@@ -29,3 +30,11 @@ void fcaClient.getThreadHistory("thread-1", 10, Date.now(), (error, items) => {
   void error;
   void items;
 });
+
+declare const incomingEvent: IncomingEvent;
+if (incomingEvent.type === "message_reply") {
+  void incomingEvent.messageReply?.itemType;
+}
+if (incomingEvent.type === "event") {
+  void incomingEvent.logMessageType;
+}
