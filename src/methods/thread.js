@@ -53,8 +53,13 @@ class ThreadMethods {
   }
 
   _mapHistoryEdges(edges, fbidToIgid) {
-    return (edges || []).map((e) => {
-      const n = e.node || e;
+    return (Array.isArray(edges) ? edges : [])
+      .map((edge) => edge?.node || edge)
+      .filter((node) =>
+        node && typeof node === "object" &&
+        [node.id, node.item_id, node.message_id].some((value) => value != null && String(value).trim() !== "")
+      )
+      .map((n) => {
       const senderFbid = n.sender_fbid != null ? String(n.sender_fbid) : null;
       return {
         messageID: n.id,
