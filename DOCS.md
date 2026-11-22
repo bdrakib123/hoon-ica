@@ -89,7 +89,7 @@ Facebook-Chat-API shape. Its methods live one-per-file under
 | threads | `getThreadInfo`, `getThreadList`, `getThreadHistory` |
 | users | `getUserInfo`, `getUserInfoV2`, `getUserProfile`, `getProfilePictureV2`, `getProfileBio`, `getUserFriendship`, `getUserID`, `getUID`, `getProfilePictureUrl` |
 | account | `getCurrentUserID`, `getSelfInfo`, `getAppState`, `getCookies`, `setOptions` |
-| realtime | `listen`, `stopListening`, `getInbox`, `realtimeConnect`, `realtimeOn`, `realtimeSubscribe`, `realtimePing`, `realtimeDisconnect` |
+| realtime | `listen`, `stopListening`, `getInbox(cursor?)`, `realtimeConnect`, `realtimeOn`, `realtimeSubscribe`, `realtimePing`, `realtimeDisconnect` |
 | media | `sendPhoto`, `sendPhotoFromUrl`, `sendVideoFromUrl`, `sendVoiceFromUrl` |
 
 Group-management calls Instagram DMs cannot do (`changeNickname`, `setTitle`,
@@ -355,3 +355,19 @@ rejecting. For FCA callers, the last failure is also available as
 `errors` payload when present). Instagram only permits editing an outgoing
 message for a limited time (currently 15 minutes); the message must also
 belong to the authenticated account.
+
+
+### Inbox pagination
+
+The first `getInbox()` call returns the newest page and pagination metadata:
+
+```js
+const first = await api.getInbox();
+console.log(first.threads);
+if (first.nextCursor) {
+  const second = await api.getInbox(first.nextCursor);
+  console.log(second.threads);
+}
+```
+
+`nextCursor` is an opaque Relay cursor; pass it back unchanged. `hasNextPage` indicates whether Instagram reports another page. The result remains backward-compatible with callers that only read `{ threads }`.
