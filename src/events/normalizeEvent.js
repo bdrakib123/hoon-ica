@@ -11,6 +11,17 @@
 
 const USERNAME_RE = /@([A-Za-z0-9._]{1,30})/g;
 
+function normalizeAttachments(list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter((attachment) => attachment && typeof attachment === "object")
+    .map((attachment) => ({
+      type: attachment.type,
+      url: attachment.url,
+      filename: null,
+      caption: attachment.caption || null
+    }));
+}
+
 class EventNormalizer {
   constructor(client) {
     this.client = client;
@@ -116,7 +127,8 @@ class EventNormalizer {
     for (const username of names) {
       try {
         const user = await this.client.api.getUserInfoByUsername(username);
-        if (user) mentions[String(user.pk || user.id)] = user.username;
+        const userID = user && (user.pk || user.id);
+        if (userID != null) mentions[String(userID)] = user.username || username;
       } catch (_) {}
     }
     return mentions;
@@ -138,7 +150,7 @@ class EventNormalizer {
         logMessageType: raw.logMessageType,
         logMessageData: raw.logMessageData || {},
         isGroup: raw.isGroup,
-        participantIDs: (raw.participantIDs || []).map(String),
+        participantIDs: (Array.isArray(raw.participantIDs) ? raw.participantIDs : []).map(String),
         timestamp: raw.timestamp || Date.now(),
         mentions: {}
       };
@@ -185,12 +197,7 @@ class EventNormalizer {
           ? this.client.getThreadParticipantIDs(threadID)
           : undefined,
       mentions: body.includes("@") ? await this._resolveMentions(body) : {},
-      attachments: (raw.attachments || []).map((a) => ({
-        type: a.type,
-        url: a.url,
-        filename: null,
-        caption: a.caption || null
-      })),
+      attachments: normalizeAttachments(raw.attachments),
       timestamp: raw.timestamp
     };
 
@@ -218,12 +225,7 @@ class EventNormalizer {
           messageID: String(reply.messageID || reply.item_id || ""),
           senderID: senderId,
           body: reply.body || reply.text || "",
-          attachments: (reply.attachments || []).map((a) => ({
-            type: a.type,
-            url: a.url,
-            filename: null,
-            caption: a.caption || null
-          })),
+          attachments: normalizeAttachments(reply.attachments),
           itemType: String(reply.itemType || reply.content_type || "").toLowerCase(),
           clientContext: reply.clientContext || reply.client_context || null,
           offlineThreadingId: reply.offlineThreadingId || reply.offline_threading_id || null,
