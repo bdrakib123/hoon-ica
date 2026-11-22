@@ -63,8 +63,8 @@ commands call). Pass `{ native: true }` to get the bare `InstaAPI` instead.
 
 A throttled read (`getThreadInfo`, `getUserInfo`, `getUserInfoV2`) resolves
 `null` instead of throwing. With `readRetry` on, the client retries that
-`null`/`undefined` result up to `attempts` times — the first wait is
-`firstWaitMs`, doubling each attempt up to `maxWaitMs` — so a caller that
+`null`/`undefined` result up to `attempts` times (hard cap 10) — the first wait is
+`firstWaitMs`, doubling each attempt up to `maxWaitMs` (both waits hard-capped at five minutes) — so a caller that
 destructures the result answers normally instead of crashing on a transient
 HTTP 429. A callback-style call is never retried, thrown errors surface
 immediately, and `readRetry: false` turns the behaviour off. Only
@@ -237,6 +237,8 @@ into the same raw inbox events the poller produces and normalized identically.
 | `realtimeDisconnect()` | Close the connection. |
 
 `RealtimeClient` and `RealtimeListener` are also exported from the package root.
+
+A custom cursor can be supplied with `realtime.seqId` or `getRealtimeState()`. Use a decimal **string** for sequence IDs above `Number.MAX_SAFE_INTEGER`; numeric values outside JavaScript's safe-integer range are rejected rather than rounded.
 
 ### Event shape
 
