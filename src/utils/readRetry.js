@@ -53,23 +53,13 @@ function wrapRead(client, name, cfg) {
     // would fire it more than once. Only the promise style is retried.
     if (args.some((a) => typeof a === "function")) return original.apply(this, args);
     let wait = cfg.firstWaitMs;
-    let lastError = null;
     for (let attempt = 1; attempt <= cfg.attempts; attempt += 1) {
-      let result;
-      try {
-        result = await original.apply(this, args);
-      } catch (error) {
-        // A real failure (bad id, dead session) should surface on the final
-        // attempt, not be retried into a timeout — only a null (throttle)
-        // result is worth waiting for.
-        if (attempt >= cfg.attempts) throw error;
-        lastError = error;
-      }
+      // Exceptions are real request failures (invalid IDs, auth errors, network
+      // errors) and must not be converted into a delayed retry. This wrapper
+      // only retries the documented null/undefined throttle result.
+      const result = await original.apply(this, args);
       if (result !== null && result !== undefined) return result;
-      if (attempt >= cfg.attempts) {
-        if (lastError) throw lastError;
-        return result;
-      }
+      if (attempt >= cfg.attempts) return result;
       await sleep(wait);
       wait = Math.min(wait * 2, cfg.maxWaitMs);
     }
