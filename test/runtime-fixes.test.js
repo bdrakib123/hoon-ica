@@ -1690,7 +1690,7 @@ async function testRealtimeConnectCanBeCancelled() {
 async function testDecodePacketRejectsMalformedFrames() {
   const { decodePacket } = require("../src/realtime/mqttot");
   assert.throws(() => decodePacket(Buffer.alloc(0)), /missing fixed header/);
-  assert.throws(() => decodePacket(Buffer.from([0x20])), /truncated remaining length/);
+  assert.throws(() => decodePacket(Buffer.from([0x20, 0x80])), /truncated remaining length/);
   assert.throws(() => decodePacket(Buffer.from([0x20, 0x01, 0x00])), /two-byte body/);
   assert.throws(() => decodePacket(Buffer.from([0xd0, 0x01, 0x00])), /empty body/);
   assert.throws(() => decodePacket(Buffer.from([0x30, 0x02, 0x00, 0x05])), /truncated UTF-8 value/);
