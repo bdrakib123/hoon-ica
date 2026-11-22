@@ -18,11 +18,11 @@ module.exports = function (client) {
     const cb = createCallback(callback);
     try {
       const profile = await client.getProfile(String(idOrUsername).replace(/^@/, ""));
-      if (cb) cb(null, profile);
+      if (cb) await cb(null, profile);
       return profile;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return null;
     }
   };
