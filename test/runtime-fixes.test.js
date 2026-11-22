@@ -120,6 +120,27 @@ async function testSharedRealtimeReconnectSurvivesOldAttemptCleanup() {
 }
 
 
+async function testNativeInboxLearningSkipsMalformedUserCollections() {
+  const InstaAPI = require("../src/api");
+  const api = Object.create(InstaAPI.prototype);
+  api._userIndex = new Map();
+  api.inbox = {
+    getInbox: async () => ({
+      threads: [
+        null,
+        { id: "thread-1", users: { malformed: true }, viewer: { id: "viewer-1", username: "viewer" } },
+        { id: "thread-2", users: [null, { id: "user-2", username: "alice" }] }
+      ]
+    })
+  };
+  api._learnInboxUsers();
+  const result = await api.inbox.getInbox();
+  assert.equal(result.threads.length, 3);
+  assert.equal(api.getUserByUsername("viewer").id, "viewer-1");
+  assert.equal(api.getUserByUsername("alice").id, "user-2");
+}
+
+
 async function testMentionHydrationRetriesAfterInboxFailure() {
   const InstaClient = require("../src/app/InstaClient");
   let inboxCalls = 0;
@@ -2355,6 +2376,7 @@ async function run() {
   await testPerThreadPacingCacheIsHardBounded();
   await testTypingStopsOnRateLimitButFallsBackOnUnknown();
   await testLegacyLoginPreservesCookieMaps();
+  await testNativeInboxLearningSkipsMalformedUserCollections();
   await testMentionHydrationRetriesAfterInboxFailure();
   await testSharedRealtimeReconnectSurvivesOldAttemptCleanup();
   await testRealtimeHandlersCanRegisterBeforeConnect();
@@ -2427,7 +2449,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 77 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 78 regression tests passed\n");
 }
 
 run().catch((error) => {
