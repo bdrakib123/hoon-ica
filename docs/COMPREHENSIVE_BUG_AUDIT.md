@@ -117,6 +117,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 94 | Realtime fingerprint collapses every timestamp-less same-text message | **Fixed on branch:** content-fingerprint dedupe keys are now generated only when a valid positive timestamp exists; messages without timestamps rely on their actual IDs instead of colliding in bucket zero. | missing-timestamp versus timestamped fingerprint regression added; pending batch local run |
 | 95 | MessageDeduper accepts zero/negative cache limits unsafely | **Fixed on branch:** TTL and maximum size are normalized; zero explicitly disables retention without an infinite prune loop, invalid limits use safe defaults, and maximum retention is capped. | zero-capacity and negative-limit regressions added; pending batch local run |
 | 96 | HTTPS media downloads may follow an insecure HTTP redirect | **Fixed on branch:** both native media URL downloads and FCA attachment URL downloads now reject HTTPS-to-HTTP redirects while retaining a small redirect limit. Null options are normalized safely in the native downloader. | redirect downgrade and null-options regression added; pending batch local run |
+| 97 | Late pre-open circuit request releases a live half-open probe | **Fixed on branch:** only the request that actually acquired the half-open probe may clear `probeInFlight`; older in-flight requests can no longer permit a second concurrent recovery probe. | stale-success-during-probe regression added to reliability utility suite; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -124,7 +125,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 77 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-nine runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#96 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#97 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
