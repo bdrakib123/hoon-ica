@@ -5,6 +5,8 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.getSelfInfo(callback) -> the logged-in account's own profile.
 //
 // Convenience wrapper over getUserInfoV2 for the bot's own id. Unlike another
@@ -12,15 +14,16 @@
 // id and the account's own page embeds its full PolarisViewer blob.
 module.exports = function (client) {
   return async function getSelfInfo(callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     const selfID = typeof client.getCurrentUserID === "function" ? client.getCurrentUserID() : client.userID;
     try {
       const info = await client.getUserInfoV2(selfID);
       const profile = info && info[String(selfID)] ? info[String(selfID)] : null;
-      if (cb) cb(null, profile);
+      if (cb) await cb(null, profile);
       return profile;
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb?.called) throw error;
+      if (cb) await cb(error, null);
       return null;
     }
   };
