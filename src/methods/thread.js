@@ -30,17 +30,30 @@ class ThreadMethods {
     return fetchThreadDetail(this.http, threadID, limit, afterCursor);
   }
 
-  // fca-shaped message history: each item carries a stable id, the sender's
-  // Instagram user id, the text body, a timestamp and any media attachment.
-  // IG's inbound reply linkage (replied_to_message) is preserved so the bot's
-  // event normalizer can resolve reply targets without a second round-trip.
-  async getHistory(threadID, limit = 20, afterCursor = null) {
-    const thread = await this.fetchDetail(threadID, limit, afterCursor);
-    if (!thread) return [];
-    const edges = thread.slide_messages?.edges || [];
-    const fbidToIgid = threadFbidMap(thread);
+  // Fetch an older page from Instagram's Relay message-list connection.
+  // The cursor is opaque and comes from slide_messages.page_info.end_cursor;
+  // it is not a timestamp or uq_seq_id.
+  async fetchOlderMessages(threadFBID, cursor, limit = 20) {
+    const res = await this.http.postGraphQL(
+      "IGDMessageListOffMsysQuery",
+      DOC_ID.MESSAGE_LIST,
+      {
+        after: cursor,
+        before: null,
+        first: limit,
+        last: null,
+        id: String(threadFBID),
+        newer_than_message_id: null,
+        older_than_message_id: null,
+        "__relay_internal__pv__IGDInitialMessagePageCountrelayprovider": limit
+      },
+      "https://www.instagram.com/direct/inbox/"
+    );
+    return res?.data?.fetch__SlideThread?.as_ig_direct_thread?.slide_messages || {};
+  }
 
-    return edges.map((e) => {
+  _mapHistoryEdges(edges, fbidToIgid) {
+    return (edges || []).map((e) => {
       const n = e.node || e;
       const senderFbid = n.sender_fbid != null ? String(n.sender_fbid) : null;
       return {
@@ -62,6 +75,53 @@ class ThreadMethods {
         timestamp: Number(n.timestamp_ms) || null
       };
     });
+  }
+
+  // fca-shaped message history. FCA's third argument is a millisecond
+  // timestamp boundary: return messages strictly older than that message.
+  // Relay pagination itself is cursor-based, so walk page_info.end_cursor
+  // until enough older messages have been collected.
+  async getHistory(threadID, limit = 20, beforeTimestamp = null) {
+    const thread = await this.fetchDetail(threadID, limit);
+    if (!thread) return [];
+
+    const fbidToIgid = threadFbidMap(thread);
+    const firstConnection = thread.slide_messages || {};
+    if (beforeTimestamp == null || beforeTimestamp === "") {
+      return this._mapHistoryEdges(firstConnection.edges, fbidToIgid);
+    }
+
+    let boundary = Number(beforeTimestamp);
+    if (!Number.isFinite(boundary) || boundary <= 0) {
+      return this._mapHistoryEdges(firstConnection.edges, fbidToIgid);
+    }
+    // FCA callers normally pass milliseconds; accept Unix seconds as well.
+    if (boundary < 1e12) boundary *= 1000;
+
+    const wanted = Math.max(1, Number(limit) || 20);
+    const threadFBID = thread.thread_fbid || thread.id || String(threadID);
+    const results = [];
+    const seenCursors = new Set();
+    let connection = firstConnection;
+
+    while (true) {
+      const page = this._mapHistoryEdges(connection.edges, fbidToIgid);
+      for (const item of page) {
+        if (item.timestamp != null && item.timestamp < boundary) {
+          results.push(item);
+          if (results.length >= wanted) return results;
+        }
+      }
+
+      const pageInfo = connection.page_info || {};
+      const cursor = pageInfo.end_cursor;
+      if (!pageInfo.has_next_page || !cursor || seenCursors.has(cursor)) break;
+      seenCursors.add(cursor);
+      connection = await this.fetchOlderMessages(threadFBID, cursor, wanted);
+      if (!connection || !Array.isArray(connection.edges) || connection.edges.length === 0) break;
+    }
+
+    return results;
   }
 
   async markSeen(threadID, itemID) {
