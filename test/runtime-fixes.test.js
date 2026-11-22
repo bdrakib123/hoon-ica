@@ -742,6 +742,24 @@ async function testThreadHistoryPaginatesWithoutTimestamp() {
 }
 
 
+async function testFcaLearnedThreadMembersDeduplicateViewer() {
+  const InstaClient = require("../src/app/InstaClient");
+  const client = {
+    _threadMembers: new Map(),
+    _rememberUser() {}
+  };
+  InstaClient.prototype._learnThreads.call(client, {
+    id: "thread-1",
+    users: [
+      { id: "self-1", username: "bot" },
+      { id: "friend-1", username: "friend" }
+    ],
+    viewer: { pk: "self-1", username: "bot" }
+  });
+  assert.deepEqual(client._threadMembers.get("thread-1"), ["self-1", "friend-1"]);
+}
+
+
 async function testInboxParticipantSnapshotsIncludeViewer() {
   const inbox = new InboxMethods({}, () => "self-1");
   inbox._rememberInboxThreads([{
@@ -2217,6 +2235,7 @@ async function run() {
   await testPollingPaginatesUntilLastSeenMessageFound();
   await testNewlyDiscoveredThreadDoesNotReplayHistory();
   await testInboxParticipantSnapshotsIncludeViewer();
+  await testFcaLearnedThreadMembersDeduplicateViewer();
   await testThreadHistoryPaginatesWithoutTimestamp();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
@@ -2268,7 +2287,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 74 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 75 regression tests passed\n");
 }
 
 run().catch((error) => {
