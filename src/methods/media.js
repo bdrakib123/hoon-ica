@@ -86,11 +86,10 @@ class MediaMethods {
   }
 
   async _commitMedia(threadID, attachmentFbid, options = {}) {
-    // Instagram intermittently answers IGDirectMediaSendMutation with a
-    // transient `field_exception` even though the upload already succeeded; a
-    // short backoff retry (same attachment fbid, fresh offline_threading_id)
-    // commits it. Without this a media send fails once and the caller sees a
-    // hard error while the bytes are already uploaded.
+    // A commit can succeed remotely even if its response is lost. Reuse one
+    // offline_threading_id for every retry so Instagram can recognize the same
+    // logical send instead of creating a second message.
+    const offlineThreadingId = this._offlineThreadingId();
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.http.postGraphQL(
@@ -99,7 +98,7 @@ class MediaMethods {
           {
             attachment_fbid: String(attachmentFbid),
             thread_id: String(threadID),
-            offline_threading_id: this._offlineThreadingId(),
+            offline_threading_id: offlineThreadingId,
             reply_to_message_id: options.replyToMessageId || null,
             forwarded_from_thread_id: null,
             is_forwarded_from_own_message: null
@@ -108,9 +107,11 @@ class MediaMethods {
           { throwOnError: true }
         );
       } catch (error) {
-        const msg = String((error && error.message) || "");
-        const retriable = /field_exception|field exception|temporary failure|internal server error/i.test(msg);
-        if (!retriable || attempt >= 2) throw error;
+        // GraphQL field_exception responses are not evidence of a transient
+        // transport failure. Retrying them with a new id could duplicate a send;
+        // only retry errors classified as transient, always with the same id.
+        const kind = error.igKind || classify(error).kind;
+        if (kind !== "transient" || attempt >= 2) throw error;
         await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
     }
