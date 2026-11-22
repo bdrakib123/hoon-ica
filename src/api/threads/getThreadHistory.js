@@ -1,11 +1,3 @@
-/*!
- * insta-chat - Unofficial Instagram Chat API
- * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
- * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
- * Original author credit must be retained in all copies and derivatives.
- */
-
-// fca.getThreadHistory(threadID, amount, timestamp, callback).
 module.exports = function (client) {
   return async function getThreadHistory(threadID, _amount, _timestamp, callback) {
     // FCA permits getThreadHistory(threadID, amount, callback) and
@@ -19,18 +11,24 @@ module.exports = function (client) {
       _timestamp = null;
     }
     const cb = typeof callback === "function" ? callback : null;
+    let items;
     try {
       const requested = _amount == null ? 20 : Number(_amount);
       if (!Number.isInteger(requested) || requested <= 0) {
         throw new TypeError("getThreadHistory: amount must be a positive integer");
       }
-      const limit = requested;
-      const items = await client.api.getThreadHistory(String(threadID), limit, _timestamp);
-      if (cb) cb(null, items);
-      return items;
+      items = await client.api.getThreadHistory(String(threadID), requested, _timestamp);
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb) {
+        cb(error, null);
+        return [];
+      }
       return [];
     }
+
+    // Invoke user code outside the operation try/catch. A callback exception
+    // belongs to the caller and must not cause a second callback(error, null).
+    if (cb) cb(null, items);
+    return items;
   };
 };
