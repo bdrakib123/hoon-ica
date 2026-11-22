@@ -20,6 +20,7 @@ const { EventEmitter } = require("node:events");
 const { RealtimeListener } = require("../src/realtime/listener");
 const MediaMethods = require("../src/methods/media");
 const InboxMethods = require("../src/methods/inbox");
+const { ThriftWriter, ThriftReader, ThriftTypes } = require("../src/realtime/mqttot");
 
 const reproduced = [];
 
