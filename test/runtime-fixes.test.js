@@ -1708,6 +1708,25 @@ async function testMediaCommitRetryReusesOfflineThreadingId() {
 }
 
 
+async function testRealtimeFingerprintRequiresTimestamp() {
+  const { buildKeys } = require("../src/realtime/reconcile");
+  const withoutTimestamp = buildKeys({
+    threadID: "thread-1",
+    senderID: "sender-1",
+    body: "same message"
+  });
+  assert.equal([...withoutTimestamp].some(key => key.startsWith("fp:")), false);
+
+  const withTimestamp = buildKeys({
+    threadID: "thread-1",
+    senderID: "sender-1",
+    body: "same message",
+    timestamp: 1700000000000
+  });
+  assert.equal([...withTimestamp].some(key => key.startsWith("fp:")), true);
+}
+
+
 async function testThriftMapProtoKeyCannotMutatePrototype() {
   const { ThriftReader } = require("../src/realtime/mqttot");
   const key = Buffer.from("__proto__");
@@ -2328,7 +2347,8 @@ async function run() {
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
-  process.stdout.write("runtime-fixes.test.js: 76 regression tests passed\n");
+  await testRealtimeFingerprintRequiresTimestamp();
+  process.stdout.write("runtime-fixes.test.js: 77 regression tests passed\n");
 }
 
 run().catch((error) => {
