@@ -15,8 +15,8 @@ const createCallback = require("../../utils/createCallback");
 module.exports = function (client) {
   return async function getSelfInfo(callback) {
     const cb = createCallback(callback);
-    const selfID = typeof client.getCurrentUserID === "function" ? client.getCurrentUserID() : client.userID;
     try {
+      const selfID = typeof client.getCurrentUserID === "function" ? client.getCurrentUserID() : client.userID;
       const info = await client.getUserInfoV2(selfID);
       const profile = info && info[String(selfID)] ? info[String(selfID)] : null;
       if (cb) await cb(null, profile);
