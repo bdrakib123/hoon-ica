@@ -185,8 +185,10 @@ All take `(threadID, source, options)`. Options include `{ filename, text }`; UR
 
 `getThreadHistory` returns messages newest-first. Pass the timestamp of the
 oldest message from the previous batch as `beforeTimestamp` to load up to
-`limit` older messages. Timestamps are Unix milliseconds (Unix seconds are
-also accepted); the boundary message itself is excluded.
+`limit` older messages. The requested limit must be a positive safe integer
+from 1 through 5,000; Instagram requests are paginated in batches of at most
+50 messages. Timestamps are Unix milliseconds (Unix seconds are also accepted);
+the boundary message itself is excluded.
 
 ### Users
 
