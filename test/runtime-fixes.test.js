@@ -1889,6 +1889,18 @@ async function testViewerFbidUsesViewerId() {
     viewer: { id: "viewer-ig-id", interop_messaging_user_fbid: "viewer-fbid" }
   });
   assert.equal(map["viewer-fbid"], "viewer-ig-id");
+
+  const fallback = threadFbidMap({
+    users: [
+      { id: " ", pk: "user-pk", interop_messaging_user_fbid: "user-fbid" },
+      { id: "", pk: " ", interop_messaging_user_fbid: "invalid-fbid" }
+    ],
+    viewer: { id: "  ", pk: "viewer-pk", interop_messaging_user_fbid: "viewer-fbid" }
+  });
+  assert.deepEqual(fallback, {
+    "user-fbid": "user-pk",
+    "viewer-fbid": "viewer-pk"
+  });
 }
 
 
