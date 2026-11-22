@@ -62,12 +62,12 @@ module.exports = function (client) {
           name: thread.thread_title || null,
           snippet: latest?.text_body || latest?.text || latest?.content?.xma_text_body || "",
           timestamp: Number(latest?.timestamp_ms ?? latest?.timestamp) || null,
-          unreadCount: thread.read_state ?? 0,
+          unreadCount: Number(thread.read_state) || 0,
           // The inbox payload carries is_group; fall back to participant count
           // when a snapshot omits it.
           isGroup: typeof thread.is_group === "boolean"
             ? thread.is_group
-            : (thread.users || []).length > 2
+            : Array.isArray(thread.users) && thread.users.length > 2
         };
       };
 
