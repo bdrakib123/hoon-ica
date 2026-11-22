@@ -120,26 +120,38 @@ class ThriftWriter {
 
 class ThriftReader {
   constructor(data, options = {}) {
+    if (!Buffer.isBuffer(data)) throw new TypeError("ThriftReader data must be a Buffer");
     this.data = data;
     this.int64AsBigInt = options.int64AsBigInt === true;
+    this.maxCollectionSize = positiveLimit(options.maxCollectionSize, 100000);
+    this.maxDepth = positiveLimit(options.maxDepth, 64);
     this.pos = 0;
+    this._depth = 0;
     this._fieldStack = [];
     this._field = 0;
   }
 
   readStruct(descriptors) {
-    const result = {};
-    while (this.pos < this.data.length) {
-      const fieldType = this.readField();
-      if (fieldType === ThriftTypes.STOP) {
-        if (this._fieldStack.length) this._field = this._fieldStack.pop();
-        break;
-      }
-      const descriptor = findDescriptor(descriptors, this._field, fieldType);
-      const value = this.readValue(fieldType, descriptor);
-      if (descriptor) result[descriptor.name] = value;
+    if (this._depth >= this.maxDepth) {
+      throw new RangeError("Thrift struct nesting exceeds configured limit");
     }
-    return result;
+    this._depth += 1;
+    try {
+      const result = {};
+      while (this.pos < this.data.length) {
+        const fieldType = this.readField();
+        if (fieldType === ThriftTypes.STOP) {
+          if (this._fieldStack.length) this._field = this._fieldStack.pop();
+          break;
+        }
+        const descriptor = findDescriptor(descriptors, this._field, fieldType);
+        const value = this.readValue(fieldType, descriptor);
+        if (descriptor) result[descriptor.name] = value;
+      }
+      return result;
+    } finally {
+      this._depth -= 1;
+    }
   }
 
   readField() {
@@ -179,14 +191,15 @@ class ThriftReader {
     const header = this.readByte();
     let size = header >> 4;
     const itemType = header & 0x0f;
-    if (size === 0x0f) size = Number(this.readVarint());
+    if (size === 0x0f) size = this._collectionSize(this.readVarint(), "list");
+    else this._collectionSize(BigInt(size), "list");
     const items = [];
     for (let i = 0; i < size; i++) items.push(this.readValue(itemType, null));
     return items;
   }
 
   readMap() {
-    const size = Number(this.readVarint());
+    const size = this._collectionSize(this.readVarint(), "map");
     if (!size) return {};
     const itemTypes = this.readByte();
     const keyType = (itemTypes & 0xf0) >> 4;
@@ -199,29 +212,50 @@ class ThriftReader {
     return result;
   }
 
+  _collectionSize(value, kind) {
+    if (value < 0n || value > BigInt(this.maxCollectionSize)) {
+      throw new RangeError(`Thrift ${kind} exceeds configured collection limit (${this.maxCollectionSize})`);
+    }
+    return Number(value);
+  }
+
   readByte() {
+    if (this.pos >= this.data.length) throw new RangeError("Unexpected end of Thrift data");
     const value = this.data[this.pos];
     this.pos += 1;
     return value;
   }
 
   readBytes(size) {
-    const value = this.data.slice(this.pos, this.pos + Number(size));
-    this.pos += Number(size);
+    const length = Number(size);
+    if (!Number.isSafeInteger(length) || length < 0 || length > this.data.length - this.pos) {
+      throw new RangeError("Thrift binary field exceeds available data");
+    }
+    const value = this.data.slice(this.pos, this.pos + length);
+    this.pos += length;
     return value;
   }
 
   readVarint() {
     let shift = 0n;
     let result = 0n;
-    while (this.pos < this.data.length) {
+    for (let count = 0; count < 10; count++) {
+      if (this.pos >= this.data.length) throw new RangeError("Truncated Thrift varint");
       const byte = this.readByte();
+      if (count === 9 && (byte & 0xfe) !== 0) {
+        throw new RangeError("Thrift varint exceeds 64 bits");
+      }
       result |= BigInt(byte & 0x7f) << shift;
-      if ((byte & 0x80) === 0) break;
+      if ((byte & 0x80) === 0) return result;
       shift += 7n;
     }
-    return result;
+    throw new RangeError("Thrift varint exceeds 10 bytes");
   }
+}
+
+function positiveLimit(value, fallback) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : fallback;
 }
 
 function findDescriptor(descriptors, field, fieldType) {
