@@ -30,6 +30,11 @@ const INBOX_VARIABLES = {
 
 const SKIP_TYPES = new Set(["like", "action_log", "video_call_event", "reaction_log"]);
 
+function isUsableThread(thread) {
+  if (!thread || typeof thread !== "object") return false;
+  return [thread.id, thread.thread_id].some((value) => value != null && String(value).trim() !== "");
+}
+
 class InboxMethods {
   constructor(http, getUserID, options = {}) {
     this.http = http;
@@ -82,7 +87,7 @@ class InboxMethods {
       const connection = data?.fetch__SlideMailbox?.threads_by_folder;
       pageInfo = connection?.page_info || null;
       const edges = connection?.edges || [];
-      const threads = edges.map((e) => e.node?.as_ig_direct_thread || {}).filter(Boolean);
+      const threads = edges.map((e) => e?.node?.as_ig_direct_thread).filter(isUsableThread);
       this._rememberInboxThreads(threads);
       return {
         threads,
@@ -106,8 +111,8 @@ class InboxMethods {
     const connection = mailbox?.threads_by_folder;
     pageInfo = connection?.page_info || null;
     let threads = (connection?.edges || [])
-      .map((e) => e.node?.as_ig_direct_thread || {})
-      .filter(Boolean);
+      .map((e) => e?.node?.as_ig_direct_thread)
+      .filter(isUsableThread);
 
     // If a caller supplies a cursor before this instance has learned the
     // mailbox id, use the bootstrap response only to resolve that id and then
@@ -123,8 +128,8 @@ class InboxMethods {
       const pagedConnection = data?.fetch__SlideMailbox?.threads_by_folder;
       pageInfo = pagedConnection?.page_info || null;
       threads = (pagedConnection?.edges || [])
-        .map((e) => e.node?.as_ig_direct_thread || {})
-        .filter(Boolean);
+        .map((e) => e?.node?.as_ig_direct_thread)
+        .filter(isUsableThread);
     }
 
     this._rememberInboxThreads(threads);
