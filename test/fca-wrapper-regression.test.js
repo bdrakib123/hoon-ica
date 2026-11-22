@@ -557,11 +557,28 @@ async function testUserInfoFirstNameIsFirstToken() {
   assert.equal(result["user-1"].firstName, "Rakib");
 }
 
+async function testThreadListRejectsUnsafePaginationArguments() {
+  let requests = 0;
+  const getThreadList = createGetThreadList({
+    api: { getInbox: async () => { requests += 1; return { threads: [] }; } }
+  });
+  for (const limit of [0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, 1e20]) {
+    await assert.rejects(() => getThreadList(limit), /positive safe integer/);
+  }
+  await assert.rejects(
+    () => getThreadList(10, Number.MAX_SAFE_INTEGER + 1),
+    /non-negative safe integer/
+  );
+  await assert.rejects(() => getThreadList(10, -1), /non-negative safe integer/);
+  assert.equal(requests, 0);
+}
+
 (async () => {
   await testThreadListPaginatesAndHonorsTimestamp();
   await testThreadListUnreadFilterAndCallbackOverload();
   await testThreadListSkipsMalformedEntries();
   await testThreadListGroupFallbackIncludesSeparateViewer();
+  await testThreadListRejectsUnsafePaginationArguments();
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
   await testSuccessCallbackThrowsOnlyOnce();
   await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
@@ -575,7 +592,7 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testFriendshipStatusPreservesUnknownFields();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 17 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 18 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
