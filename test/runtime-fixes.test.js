@@ -201,6 +201,52 @@ async function testRealtimeFallbackStartsOnlyOnce() {
   stop();
 }
 
+
+async function testRelayThreadListPreview() {
+  const createGetThreadList = require("../src/api/threads/getThreadList");
+  const getThreadList = createGetThreadList({
+    api: { getInbox: async () => ({ threads: [{
+      id: "thread-1",
+      slide_messages: { edges: [{ node: {
+        text_body: "latest message", timestamp_ms: 1700000000000
+      } }] }
+    }] }) }
+  });
+  const [thread] = await getThreadList(10);
+  assert.equal(thread.snippet, "latest message");
+  assert.equal(thread.timestamp, 1700000000000);
+}
+
+async function testDirectThreadClassification() {
+  const createGetThreadInfo = require("../src/api/threads/getThreadInfo");
+  const getThreadInfo = createGetThreadInfo({
+    api: { getThreadInfo: async () => ({
+      viewer: { id: "self-1", username: "bot" },
+      users: [{ id: "friend-1", username: "friend" }]
+    }) },
+    _learnThreads() {}
+  });
+  const info = await getThreadInfo("thread-1");
+  assert.equal(info.isGroup, false);
+}
+
+async function testXmaWithoutPreviewHasNoAttachment() {
+  const { attachmentsFromContent } = require("../src/messageContent");
+  assert.deepEqual(attachmentsFromContent({
+    __typename: "SlideMessageXMAContent",
+    xma_text_body: "Shared a post with you",
+    xma: {}
+  }), []);
+}
+
+async function testViewerFbidUsesViewerId() {
+  const { threadFbidMap } = require("../src/threadDetail");
+  const map = threadFbidMap({
+    viewer: { id: "viewer-ig-id", interop_messaging_user_fbid: "viewer-fbid" }
+  });
+  assert.equal(map["viewer-fbid"], "viewer-ig-id");
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -211,7 +257,11 @@ async function run() {
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeFallbackStartsOnlyOnce();
-  process.stdout.write("runtime-fixes.test.js: 9 regression tests passed\\n");
+  await testRelayThreadListPreview();
+  await testDirectThreadClassification();
+  await testXmaWithoutPreviewHasNoAttachment();
+  await testViewerFbidUsesViewerId();
+  process.stdout.write("runtime-fixes.test.js: 13 regression tests passed\\n");
 }
 
 run().catch((error) => {
