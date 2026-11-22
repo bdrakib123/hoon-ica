@@ -58,7 +58,10 @@ class RealtimeListener {
   }
 
   async _subscribeWithAck(cursor) {
-    const timeoutMs = Math.max(1, Number(this.options.subscriptionTimeoutMs) || 10000);
+    const requestedTimeoutMs = Number(this.options.subscriptionTimeoutMs);
+    const timeoutMs = Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
+      ? Math.min(2147483647, Math.max(1, Math.floor(requestedTimeoutMs)))
+      : 10000;
     let timer;
     let onAck;
     const cleanup = () => {
