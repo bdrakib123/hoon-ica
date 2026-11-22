@@ -15,7 +15,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 - Runtime fixes are now being made only on `audit/comprehensive-bug-hunt`, after the user authorized this work.
 - The normal `npm test` command now includes `test/runtime-fixes.test.js`; the separate `audit:repro` script has been converted to check corrected behavior for fixed cases and retain diagnostics for remaining candidates.
 - The published `@cexi/hoonica@1.0.0` release and `release/1.0.0` remain untouched.
-- Latest user-run validation on Node.js v20.20.2 / npm 10.8.2, after pulling commit `89fead4`: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0. The wrapper suite reported 6 tests, runtime fixes reported 26 regression tests passed, type checks passed, dependency audit found 0 vulnerabilities, npm package dry-run passed, and `git status --short` was empty. This confirms #25 and #26 locally; it does not validate live Instagram behavior. The subsequent #27 truncated-struct fix is pending a fresh local run.
+- Latest user-run validation on Node.js v20.20.2 / npm 10.8.2, after pulling commit `89fead4`: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0. The wrapper suite reported 6 tests, runtime fixes reported 26 regression tests passed, type checks passed, dependency audit found 0 vulnerabilities, npm package dry-run passed, and `git status --short` was empty. This confirms #25 and #26 locally; it does not validate live Instagram behavior. The user subsequently pulled `d5f5ff0` and confirmed all validation commands passed, including the #27 missing-STOP regression assertion; `npm test` reported 26 runtime regression tests and `git status --short` was empty.
 
 ## Diagnostic reproduction inventory
 
@@ -47,7 +47,8 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 24 | MQTT frame and buffer bounds | **Fixed on branch:** MQTT remaining-length varints are limited to the protocol's four-byte encoding, declared packets are capped (default 16 MiB), and buffered inbound data is bounded (default 32 MiB). Invalid or oversized frames fail and close the transport instead of growing memory indefinitely. | split TCP length-header, malformed-varint, oversized-frame, and buffer-limit regression test passed in the user's latest local run |
 | 25 | Compressed MQTT payload expansion | **Fixed on branch:** zlib publish payloads now have a 32 MiB decompressed-output cap, preventing a small compressed broker frame from expanding without bound. Oversized/malformed payloads retain the existing best-effort behavior and are returned unchanged. | normal decompression and 33 MiB expansion-cap regression test passed in user's latest local run |
 | 26 | Thrift decoder malformed-size handling | **Fixed on branch:** Thrift varints are limited to 10 bytes / 64 bits and reject truncation; binary reads cannot exceed remaining input; list/map sizes are capped (default 100,000), and nested structs are capped (default depth 64). | regression tests cover truncated varint, oversized list, truncated binary and valid list; passed in user's latest local run |
-| 27 | Truncated Thrift struct termination | **Fixed on branch:** `readStruct()` now requires the protocol STOP marker and rejects EOF after a partial/complete field sequence instead of silently returning a partial object. | missing-STOP regression added; fresh local run pending |
+| 27 | Truncated Thrift struct termination | **Fixed on branch:** `readStruct()` now requires the protocol STOP marker and rejects EOF after a partial/complete field sequence instead of silently returning a partial object. | missing-STOP regression passed in the user's latest local run |
+| 28 | Realtime disconnect fallback | **Fixed on branch:** if the MQTT connection drops after the iris subscription was acknowledged, `listen()` now starts the polling safety net instead of only reporting an error and leaving message delivery stopped. Fallback remains single-start guarded. | established-subscription disconnect regression added; pending user local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -55,7 +56,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 26 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed the full suite after commit 89fead4: all 26 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. #27 was added after that run and remains pending.
 
-**Execution status:** #20–#26 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including #25 decompression-output and #26 Thrift decoder bounds. #27 truncated-struct termination requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#27 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including #25 decompression-output, #26 Thrift decoder bounds, and #27 required STOP marker. #28 established-realtime-disconnect fallback requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -74,7 +75,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #27 truncated-struct rejection change.
+1. Re-run the full Node 20 validation suite after the #28 established-realtime-disconnect fallback change.
 2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
