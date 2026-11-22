@@ -88,9 +88,17 @@ function buildKeys(msg = {}) {
 // Sliding window of recently-seen message keys. Bounded so a long-running bot
 // does not grow it without limit.
 class MessageDeduper {
-  constructor({ ttlMs = 10 * 60 * 1000, max = 5000 } = {}) {
-    this.ttlMs = ttlMs;
-    this.max = max;
+  constructor(options = {}) {
+    const ttlMs = Number(options.ttlMs);
+    const max = Number(options.max);
+    this.ttlMs = Number.isFinite(ttlMs) && ttlMs > 0
+      ? Math.min(ttlMs, 24 * 60 * 60 * 1000)
+      : 10 * 60 * 1000;
+    // Zero explicitly disables retention; negative/invalid values fall back
+    // safely. A hard ceiling prevents a caller typo from making this cache huge.
+    this.max = Number.isSafeInteger(max) && max >= 0
+      ? Math.min(max, 100000)
+      : 5000;
     this._seen = new Map(); // key -> seenAt
   }
 
