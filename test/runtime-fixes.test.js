@@ -1657,6 +1657,30 @@ async function testRealtimePacketIdentifierWraps() {
 }
 
 
+async function testRealtimePublishIsAcknowledgedBeforeApplicationDispatch() {
+  const { RealtimeClient } = require("../src/realtime/client");
+  const order = [];
+  const transport = {
+    send: async packet => { order.push(["ack", [...packet]]); }
+  };
+  const client = new RealtimeClient({ sessionid: "session", deviceId: "device-123" }, { transport });
+  client.dispatch = () => {
+    order.push(["dispatch"]);
+    throw new Error("application listener failed");
+  };
+  assert.throws(() => client._handlePacket({
+    packetType: "publish",
+    topic: "146",
+    payload: Buffer.from("{}"),
+    qos: 1,
+    packetId: 7
+  }), /application listener failed/);
+  assert.deepEqual(order, [
+    ["ack", [0x40, 0x02, 0x00, 0x07]],
+    ["dispatch"]
+  ]);
+}
+
 async function testRealtimeReceiveFailureClosesTransport() {
   const { RealtimeClient } = require("../src/realtime/client");
   let receives = 0;
@@ -2787,6 +2811,7 @@ async function run() {
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
   await testRealtimeReceiveFailureClosesTransport();
+  await testRealtimePublishIsAcknowledgedBeforeApplicationDispatch();
   await testRealtimePacketIdentifierWraps();
   await testDecodePacketRejectsMalformedFrames();
   await testRealtimeConnectCanBeCancelled();
@@ -2828,7 +2853,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 88 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 89 regression tests passed\n");
 }
 
 run().catch((error) => {
