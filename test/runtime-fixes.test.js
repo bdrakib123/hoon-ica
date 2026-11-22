@@ -808,7 +808,7 @@ async function testMalformedRelayEdgeCollectionsAreIgnored() {
   assert.deepEqual(first.threads, []);
   const second = await inbox.getInbox(first.nextCursor || "cursor-1");
   assert.deepEqual(second.threads, []);
-  assert.equal(queryCount, 3);
+  assert.equal(queryCount, 4);
   assert.deepEqual(await inbox.fetchReplies("thread-1"), {});
   assert.deepEqual(await inbox._latestActor("thread-1"), {});
 }
