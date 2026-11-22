@@ -208,7 +208,14 @@ class RealtimeClient extends EventEmitter {
           try {
             this._handlePacket(packet);
           } catch (err) {
-            this.emit("error", err);
+            // If an application error listener itself throws, the receive loop
+            // exits through finally; mark it so the socket is closed as well.
+            try {
+              this.emit("error", err);
+            } catch (listenerError) {
+              receiveError = listenerError;
+              throw listenerError;
+            }
           }
         }
       } finally {
