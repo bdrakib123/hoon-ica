@@ -38,7 +38,7 @@ module.exports = function (client) {
         thumbSrc: u.profile_pic_url || null
       }));
       const userIds = new Set(userInfo.map((u) => u.id));
-      const adminIDs = (thread?.admin_user_ids || [])
+      const adminIDs = (Array.isArray(thread?.admin_user_ids) ? thread.admin_user_ids : [])
         .map(String)
         .filter((id) => userIds.has(id))
         .map((id) => ({ id }));
