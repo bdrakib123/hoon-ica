@@ -567,6 +567,9 @@ class InboxMethods {
       polling = true;
       try {
         const { threads } = await this.getInbox();
+        // stopListening() may be called while the network request is in flight.
+        // Do not dispatch stale events or schedule another poll after stop.
+        if (stopped) return;
 
         const wasBackingOff = backoff !== BACKOFF_START_MS;
         backoff = BACKOFF_START_MS;
@@ -588,7 +591,12 @@ class InboxMethods {
           return;
         }
 
-        for (const event of await this._extractEvents(threads)) callback(null, event);
+        const extractedEvents = await this._extractEvents(threads);
+        if (stopped) return;
+        for (const event of extractedEvents) {
+          if (stopped) return;
+          callback(null, event);
+        }
 
         if (this._statePrimed) {
           for (const [tid, snap] of state) {
@@ -597,6 +605,7 @@ class InboxMethods {
             const diff = this._diffThread(prev, snap);
             if (diff.some((e) => e.logMessageType === "log:subscribe" || e.logMessageType === "log:unsubscribe")) {
               const actors = await this._latestActor(tid);
+              if (stopped) return;
               for (const e of diff) {
                 const a = e.logMessageType === "log:unsubscribe" ? actors.remove : actors.add;
                 if (!a) continue;
@@ -607,7 +616,10 @@ class InboxMethods {
                 }
               }
             }
-            for (const evt of diff) callback(null, evt);
+            for (const evt of diff) {
+              if (stopped) return;
+              callback(null, evt);
+            }
           }
         }
         this._threadState = state;
@@ -616,6 +628,7 @@ class InboxMethods {
         }
         schedule(pollDelay());
       } catch (error) {
+        if (stopped) return;
         const kind = error.igKind || classify(error).kind;
 
         if (kind === "challenge" || kind === "suspended") {
