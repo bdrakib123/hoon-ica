@@ -89,7 +89,7 @@ async function run() {
   const staleBreaker = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 5 });
   let releaseStaleSuccess;
   let releaseOpenFailure;
-  let releaseProbe;
+  let releaseStaleProbe;
   const staleSuccess = staleBreaker.run("stale-probe", () => new Promise(resolve => {
     releaseStaleSuccess = resolve;
   }));
@@ -102,7 +102,7 @@ async function run() {
   await assert.rejects(openingFailure, /opens circuit/);
   await new Promise(resolve => setTimeout(resolve, 10));
   const activeProbe = staleBreaker.run("stale-probe", () => new Promise(resolve => {
-    releaseProbe = resolve;
+    releaseStaleProbe = resolve;
   }));
   releaseStaleSuccess("late success");
   assert.equal(await staleSuccess, "late success");
@@ -110,7 +110,7 @@ async function run() {
     staleBreaker.run("stale-probe", async () => "duplicate probe"),
     { code: "CIRCUIT_OPEN" }
   );
-  releaseProbe("probe recovered");
+  releaseStaleProbe("probe recovered");
   assert.equal(await activeProbe, "probe recovered");
 
   const cache = new IdempotencyCache({ ttlMs: 1000, maxSize: 5 });
