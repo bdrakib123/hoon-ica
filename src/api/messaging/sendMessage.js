@@ -64,6 +64,8 @@ module.exports = function (client) {
     try {
       const { body, attachment, attachments } = client._normalizeForm(form);
       const mediaList = toAttachmentList(attachment, attachments);
+      const sentMessageIDs = [];
+      const attachmentCount = mediaList.length;
       let result;
 
       if (mediaList.length) {
