@@ -17,7 +17,10 @@ module.exports = function (client) {
     try {
       const thread = await client.api.getThreadInfo(String(threadID));
       client._learnThreads(thread);
-      const users = (Array.isArray(thread?.users) ? thread.users : []).filter((u) => u && typeof u === "object");
+      const users = (Array.isArray(thread?.users) ? thread.users : []).filter((u) =>
+        u && typeof u === "object" &&
+        [u.id, u.pk].some((value) => value != null && String(value).trim() !== "")
+      );
       const viewer = thread?.viewer;
       const viewerID = viewer && (viewer.id || viewer.pk);
       // The thread-detail query lists only *other* participants; re-add the
