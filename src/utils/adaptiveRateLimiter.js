@@ -14,6 +14,7 @@ class AdaptiveRateLimiter {
     this.relaxAfterSuccesses = Math.max(1, Math.floor(positive(options.relaxAfterSuccesses, 10)));
     this.relaxFactor = clamp(options.relaxFactor, 0.1, 0.99, 0.9);
     this.bumpFactor = Math.max(1.1, positive(options.bumpFactor, 2));
+    this.maxEndpoints = boundedInteger(options.maxEndpoints, 1000, 10000);
     this.lastGlobalRequest = 0;
     this.endpoints = new Map();
   }
@@ -32,6 +33,11 @@ class AdaptiveRateLimiter {
     const key = this._key(url);
     let entry = this.endpoints.get(key);
     if (!entry) {
+      while (this.endpoints.size >= this.maxEndpoints) {
+        const oldest = this.endpoints.keys().next();
+        if (oldest.done) break;
+        this.endpoints.delete(oldest.value);
+      }
       entry = { delayMs: this.perUrlBaseDelayMs, lastRequest: 0, successStreak: 0 };
       this.endpoints.set(key, entry);
     }
@@ -109,6 +115,10 @@ class AdaptiveRateLimiter {
 function positive(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : fallback;
+}
+function boundedInteger(value, fallback, hardMax) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? Math.min(number, hardMax) : fallback;
 }
 function clamp(value, min, max, fallback) {
   const number = Number(value);
