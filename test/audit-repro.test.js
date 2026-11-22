@@ -321,6 +321,18 @@ async function main() {
     assert.equal(legacyCalls, 1);
   });
 
+  await reproduce("Thrift INT64 reader loses precision above Number.MAX_SAFE_INTEGER", async () => {
+    const original = 9007199254740993n;
+    const writer = new ThriftWriter();
+    writer.writeInt(1, original, 64);
+    writer.writeStop();
+    const reader = new ThriftReader(Buffer.from(writer.buffer));
+    const fieldType = reader.readField();
+    const decoded = reader.readValue(fieldType, null);
+    assert.equal(decoded, Number(original));
+    assert.notEqual(BigInt(decoded), original);
+  });
+
   process.stdout.write("\nAudit reproductions: " + reproduced.length + " reproduced\n");
   process.stdout.write("These checks reproduce current defects; they are not passing regression assertions.\n");
 }
