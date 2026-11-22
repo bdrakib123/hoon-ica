@@ -113,6 +113,37 @@ async function testThreadHistoryPreservesAmountAndCallbackOverloads() {
 }
 
 
+async function testSuccessCallbackThrowsOnlyOnce() {
+  const historyCalls = [];
+  const getHistory = createGetThreadHistory({
+    api: { getThreadHistory: async () => [{ messageID: "m-1" }] }
+  });
+  await assert.rejects(
+    () => getHistory("thread-1", 5, (error, items) => {
+      historyCalls.push([error, items]);
+      throw new Error("history callback failed");
+    }),
+    /history callback failed/
+  );
+  assert.equal(historyCalls.length, 1);
+  assert.equal(historyCalls[0][0], null);
+
+  const listCalls = [];
+  const getList = createGetThreadList({
+    api: { getInbox: async () => ({ threads: [], nextCursor: null }) }
+  });
+  await assert.rejects(
+    () => getList(5, null, [], (error, items) => {
+      listCalls.push([error, items]);
+      throw new Error("list callback failed");
+    }),
+    /list callback failed/
+  );
+  assert.equal(listCalls.length, 1);
+  assert.equal(listCalls[0][0], null);
+}
+
+
 async function testUserInfoCacheRemainsBounded() {
   const cache = new Map();
   const getUserInfo = createGetUserInfo({
@@ -196,12 +227,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadListUnreadFilterAndCallbackOverload();
   await testThreadListSkipsMalformedEntries();
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
+  await testSuccessCallbackThrowsOnlyOnce();
   await testUserInfoCacheRemainsBounded();
   await testShareContactReportsUnsupportedAdapter();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 9 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 10 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
