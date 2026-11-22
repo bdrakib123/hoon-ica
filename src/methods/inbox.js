@@ -14,6 +14,8 @@ const { globalAntiSuspension } = require("../utils/antiSuspension");
 const { setBounded } = require("../utils/boundedMap");
 const { normalizeSequenceId } = require("../utils/sequenceId");
 
+const MAX_TIMER_DELAY_MS = 2147483647;
+
 // Reads the DM inbox through the same Relay query the web client uses
 // (PolarisDirectInboxQuery). The old /api/v1/direct_v2/inbox/ endpoint is dead
 // (404) — Instagram moved the web DM inbox to GraphQL.
@@ -74,7 +76,13 @@ class InboxMethods {
     // push, so reply latency is bounded by one poll cycle. The 15000 default is
     // the conservative safe floor for a personal account; operators on a
     // residential/mobile proxy can lower it (e.g. 2000) for snappier replies.
-    this.minPollIntervalMs = Math.max(2000, Number(options.minPollIntervalMs) || 15000);
+    const configuredMinPollInterval = Number(options.minPollIntervalMs);
+    this.minPollIntervalMs = Math.min(
+      MAX_TIMER_DELAY_MS,
+      Math.max(2000, Number.isFinite(configuredMinPollInterval) && configuredMinPollInterval !== 0
+        ? configuredMinPollInterval
+        : 15000)
+    );
     this._seen = new Map();
     this._threadIdMap = new Map();
     this._pollTimer = null;
@@ -660,7 +668,11 @@ class InboxMethods {
 
   _startPolling(callback, intervalMs = 20000) {
     const MIN_INTERVAL_MS = this.minPollIntervalMs;
-    const BASE_INTERVAL_MS = Math.max(Number(intervalMs) || 20000, MIN_INTERVAL_MS);
+    const requestedInterval = Number(intervalMs);
+    const BASE_INTERVAL_MS = Math.min(
+      MAX_TIMER_DELAY_MS,
+      Math.max(Number.isFinite(requestedInterval) && requestedInterval !== 0 ? requestedInterval : 20000, MIN_INTERVAL_MS)
+    );
     const BACKOFF_START_MS = 30000;
     const BACKOFF_MAX_MS = 10 * 60 * 1000;
     const TRANSIENT_MAX_MS = 5 * 60 * 1000;
@@ -675,7 +687,7 @@ class InboxMethods {
     let authFailures = 0;
     let transientStreak = 0;
 
-    const jittered = (ms) => Math.round(ms * (0.8 + Math.random() * 0.5));
+    const jittered = (ms) => Math.min(MAX_TIMER_DELAY_MS, Math.round(ms * (0.8 + Math.random() * 0.5)));
     const pollDelay = () => jittered(BASE_INTERVAL_MS * (globalAntiSuspension.isCoolingDown() ? 3 : 1));
 
     const schedule = (delayMs) => {
