@@ -12,6 +12,8 @@ const { parseProfilePage, normalizeWebProfileInfo, normalizeGraphqlUser, normali
 // reused instead of re-hit, and a per-user failure is not retried in a tight
 // loop. Instagram rate-limits profile reads aggressively for web sessions.
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const PROFILE_CACHE_MAX = 2000;
+const { setBounded } = require("../utils/boundedMap");
 
 class UserMethods {
   constructor(http, getSelf, getLearned) {
@@ -158,9 +160,9 @@ class UserMethods {
 
     const merged = this._mergeProfiles(parts, { id: byId ? raw : null, username });
     const entry = { at: Date.now(), value: merged };
-    this._profileCache.set(key, entry);
-    if (merged.username) this._profileCache.set("user:" + merged.username.toLowerCase(), entry);
-    if (merged.id) this._profileCache.set("id:" + merged.id, entry);
+    setBounded(this._profileCache, key, entry, PROFILE_CACHE_MAX);
+    if (merged.username) setBounded(this._profileCache, "user:" + merged.username.toLowerCase(), entry, PROFILE_CACHE_MAX);
+    if (merged.id) setBounded(this._profileCache, "id:" + merged.id, entry, PROFILE_CACHE_MAX);
     return merged;
   }
 
@@ -238,3 +240,4 @@ class UserMethods {
 }
 
 module.exports = UserMethods;
+module.exports.PROFILE_CACHE_MAX = PROFILE_CACHE_MAX;
