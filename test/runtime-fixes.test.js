@@ -1143,6 +1143,56 @@ async function testEventNormalizerSkipsMalformedAttachmentsAndMentionIds() {
 }
 
 
+async function testCaptionedMediaReplyIsEnrichedFromHistory() {
+  const EventNormalizer = require("../src/events/normalizeEvent");
+  let historyCalls = 0;
+  const normalizer = new EventNormalizer({
+    api: {
+      getUserInfo: async () => ({ full_name: "Sender" }),
+      getThreadHistory: async () => {
+        historyCalls += 1;
+        return [{
+          messageID: "target-message",
+          item_id: "target-message",
+          senderID: "sender-2",
+          senderName: "Photo Sender",
+          body: "nice photo",
+          itemType: "image",
+          attachments: [{ type: "photo", url: "https://cdn.example/photo.jpg", caption: null }],
+          timestamp: 1700000000000
+        }];
+      }
+    },
+    getUserByUsername: () => null,
+    getThreadParticipantIDs: () => [],
+    rememberThread() {}
+  });
+  const event = await normalizer.normalize({
+    type: "message",
+    threadID: "thread-1",
+    senderID: "sender-1",
+    senderName: "Sender",
+    messageID: "reply-message",
+    body: "replying",
+    attachments: [],
+    timestamp: 1700000001000,
+    repliedToItemId: "target-message",
+    repliedToMessage: {
+      messageID: "target-message",
+      senderID: "sender-2",
+      senderName: "Photo Sender",
+      body: "nice photo",
+      itemType: "image",
+      attachments: []
+    }
+  });
+  assert.equal(historyCalls, 1);
+  assert.equal(event.type, "message_reply");
+  assert.equal(event.messageReply.attachments.length, 1);
+  assert.equal(event.messageReply.attachments[0].url, "https://cdn.example/photo.jpg");
+}
+
+
 async function testNormalizedReplyRetainsMetadata() {
   const EventNormalizer = require("../src/events/normalizeEvent");
   const { rawEventFromMessageSync } = require("../src/realtime/bridge");
@@ -1291,6 +1341,7 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testNormalizedReplyRetainsMetadata();
+  await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
   await testMalformedNestedThreadEdgesAreSkipped();
   await testMalformedRelayEdgeCollectionsAreIgnored();
@@ -1300,7 +1351,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 46 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 47 regression tests passed\n");
 }
 
 run().catch((error) => {
