@@ -557,6 +557,50 @@ async function testRealtimeConnectFailureClosesTransport() {
 }
 
 
+async function testMqttTransportCancelsPendingTlsSockets() {
+  const tls = require("node:tls");
+  const { EventEmitter } = require("node:events");
+  const { SocketMQTToTTransport } = require("../src/realtime/mqttot");
+  const originalConnect = tls.connect;
+  class FakeSocket extends EventEmitter {
+    setTimeout() {}
+    end() {}
+    destroy() {
+      this.destroyed = true;
+      this.emit("close");
+    }
+  }
+
+  try {
+    const sockets = [];
+    tls.connect = () => {
+      const socket = new FakeSocket();
+      sockets.push(socket);
+      return socket;
+    };
+    const transport = new SocketMQTToTTransport("mqtt.example", 443);
+    const firstConnect = transport.connect();
+    const firstRejected = assert.rejects(firstConnect, /closed during TLS handshake/);
+    transport.reset();
+    const secondConnect = transport.connect();
+
+    sockets[0].emit("secureConnect");
+    await firstRejected;
+    assert.equal(transport.socket, sockets[1]);
+    sockets[1].emit("secureConnect");
+    await secondConnect;
+    assert.equal(transport.socket, sockets[1]);
+
+    transport.disconnect();
+    assert.equal(transport.socket, null);
+    assert.equal(transport._closed, true);
+    assert.equal(sockets[1].destroyed, true);
+  } finally {
+    tls.connect = originalConnect;
+  }
+}
+
+
 async function testRealtimeConnectCanBeCancelled() {
   let releaseConnect;
   let connectPackets = 0;
@@ -1401,6 +1445,7 @@ async function run() {
   await testRealtimeConnectFailureClosesTransport();
   await testRealtimePacketIdentifierWraps();
   await testRealtimeConnectCanBeCancelled();
+  await testMqttTransportCancelsPendingTlsSockets();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
@@ -1426,7 +1471,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 49 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 50 regression tests passed\n");
 }
 
 run().catch((error) => {
