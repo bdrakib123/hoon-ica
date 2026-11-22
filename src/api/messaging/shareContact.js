@@ -17,12 +17,12 @@ module.exports = function (client) {
       const name = u?.full_name || u?.username || String(uid);
       const link = u?.username ? `https://instagram.com/${u.username}` : `https://instagram.com/${uid}`;
       const info = await client.sendMessage({ body: `\u{1F464} ${name}\n\u{1F517} ${link}\n\u{1F194} ${uid}` }, String(threadID));
-      if (cb) cb(null, info);
+      if (cb) await cb(null, info);
       return info;
     } catch (error) {
       client.lastShareContactError = error;
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return null;
     }
   };
