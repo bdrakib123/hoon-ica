@@ -149,18 +149,33 @@ class RealtimeClient extends EventEmitter {
     if (this._pingTimer) clearInterval(this._pingTimer);
     this._pingTimer = null;
     if (this.transport && typeof this.transport.reset === "function") this.transport.reset();
-    await this.transport.connect();
-    await this.transport.send(writeConnectPacket(this.buildConnection(), KEEP_ALIVE_SECONDS));
-    const packet = decodePacket(await this.transport.recvPacket());
-    if (packet.packetType !== "connack" || packet.returnCode !== 0) {
-      throw new Error(`Realtime MQTT connect failed (return code ${packet.returnCode})`);
+    try {
+      await this.transport.connect();
+      await this.transport.send(writeConnectPacket(this.buildConnection(), KEEP_ALIVE_SECONDS));
+      const packet = decodePacket(await this.transport.recvPacket());
+      if (packet.packetType !== "connack" || packet.returnCode !== 0) {
+        throw new Error(`Realtime MQTT connect failed (return code ${packet.returnCode})`);
+      }
+      this.connected = true;
+      this._stopRequested = false;
+      this.emit("connected", { host: this.host });
+      this._startPing();
+      this._startLoop();
+      return this;
+    } catch (error) {
+      // A failed TLS/MQTT handshake must not leave its socket alive. The
+      // listener may switch to polling and the same client may be retried later.
+      this.connected = false;
+      this._stopRequested = true;
+      if (this._pingTimer) clearInterval(this._pingTimer);
+      this._pingTimer = null;
+      try {
+        if (this.transport && typeof this.transport.disconnect === "function") {
+          this.transport.disconnect();
+        }
+      } catch (_) {}
+      throw error;
     }
-    this.connected = true;
-    this._stopRequested = false;
-    this.emit("connected", { host: this.host });
-    this._startPing();
-    this._startLoop();
-    return this;
   }
 
   _startPing() {
