@@ -64,10 +64,10 @@ class CircuitBreaker {
         entry.failures = 0;
         entry.successes += 1;
       }
-      entry.probeInFlight = false;
+      if (probe) entry.probeInFlight = false;
       return result;
     } catch (error) {
-      entry.probeInFlight = false;
+      if (probe) entry.probeInFlight = false;
       if (this.isFailure(error)) {
         entry.failures += 1;
         entry.successes = 0;
