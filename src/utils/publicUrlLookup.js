@@ -47,8 +47,46 @@ for (const [address, prefix] of [
   ["ff00::", 8]
 ]) blocked.addSubnet(address, prefix, "ipv6");
 
+function isPublicIPv4(address) {
+  const parts = String(address).split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => {
+    if (!/^(0|[1-9]\\d{0,2})$/.test(part)) return NaN;
+    const value = Number(part);
+    return value <= 255 ? value : NaN;
+  });
+  if (octets.some((value) => !Number.isInteger(value))) return false;
+  const value =
+    octets[0] * 0x1000000 +
+    octets[1] * 0x10000 +
+    octets[2] * 0x100 +
+    octets[3];
+  const ranges = [
+    ["0.0.0.0", 8],
+    ["10.0.0.0", 8],
+    ["100.64.0.0", 10],
+    ["127.0.0.0", 8],
+    ["169.254.0.0", 16],
+    ["172.16.0.0", 12],
+    ["192.0.0.0", 24],
+    ["192.0.2.0", 24],
+    ["192.88.99.0", 24],
+    ["192.168.0.0", 16],
+    ["198.18.0.0", 15],
+    ["198.51.100.0", 24],
+    ["203.0.113.0", 24],
+    ["224.0.0.0", 4],
+    ["240.0.0.0", 4]
+  ];
+  return !ranges.some(([base, prefix]) => {
+    const baseValue = base.split(".").reduce((total, part) => total * 256 + Number(part), 0);
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return (value & mask) === (baseValue & mask);
+  });
+}
+
 function isPublicAddress(address, family) {
-  if (family === 4) return !blocked.check(address, "ipv4");
+  if (family === 4) return isPublicIPv4(address);
   if (family !== 6 || !/^[23]/i.test(address)) return false;
   return !blocked.check(address, "ipv6");
 }
