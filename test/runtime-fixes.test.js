@@ -2246,6 +2246,19 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testEventNormalizerRejectsMissingCoreIdentifiers() {
+  const EventNormalizer = require("../src/events/normalizeEvent");
+  const normalizer = new EventNormalizer({
+    api: { getUserInfo: async () => { throw new Error("must not perform lookup"); } },
+    rememberThread() { throw new Error("must not cache malformed identifiers"); }
+  });
+  assert.equal(await normalizer.normalize({ type: "message", messageID: "mid-1", body: "x" }), null);
+  assert.equal(await normalizer.normalize({ type: "message", threadID: "thread-1", body: "x" }), null);
+  assert.equal(await normalizer.normalize({ type: "message", threadID: "", messageID: "mid-1" }), null);
+  assert.equal(await normalizer.normalize({ type: "event", threadID: "thread-1" }), null);
+  assert.equal(await normalizer.normalize({ type: "event", messageID: "event-1" }), null);
+}
+
 async function testSessionCookieFilesUseOwnerOnlyPermissions() {
   const fs = require("node:fs");
   const os = require("node:os");
@@ -2547,6 +2560,7 @@ async function run() {
   await testRetryAfterSupportsHttpDate();
   await testPostFormOmitsNullishFields();
   await testConcurrentTokenBootstrapIsDeduplicated();
+  await testEventNormalizerRejectsMissingCoreIdentifiers();
   await testSessionCookieFilesUseOwnerOnlyPermissions();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
@@ -2561,7 +2575,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 80 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 81 regression tests passed\n");
 }
 
 run().catch((error) => {
