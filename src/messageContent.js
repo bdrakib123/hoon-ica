@@ -57,12 +57,17 @@ function attachmentsFromContent(content) {
 // Builds an fca-shaped reply context from a raw replied_to_message node. The
 // sender fbid is mapped to the participant's Instagram id when the caller
 // passes a lookup table.
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? "" : String(value);
+}
+
 function normalizeRepliedMessage(replied, fbidToIgid = {}) {
   if (!replied) return null;
   const senderFbid = replied.sender_fbid != null ? String(replied.sender_fbid) : null;
   const mapped = senderFbid && fbidToIgid[senderFbid] ? fbidToIgid[senderFbid] : senderFbid;
   return {
-    messageID: String(replied.id || replied.message_id || ""),
+    messageID: firstUsableId(replied.id, replied.message_id),
     senderID: mapped,
     sender_fbid: senderFbid,
     senderName: replied.sender?.name || null,
