@@ -136,8 +136,8 @@ async function testNativeInboxLearningSkipsMalformedUserCollections() {
   api._learnInboxUsers();
   const result = await api.inbox.getInbox();
   assert.equal(result.threads.length, 3);
-  assert.equal(api.getUserByUsername("viewer").id, "viewer-1");
-  assert.equal(api.getUserByUsername("alice").id, "user-2");
+  assert.equal(api._learnedUser("viewer").id, "viewer-1");
+  assert.equal(api._learnedUser("alice").id, "user-2");
 }
 
 
