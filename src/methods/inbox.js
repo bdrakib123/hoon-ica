@@ -35,6 +35,13 @@ function isUsableThread(thread) {
   return [thread.id, thread.thread_id].some((value) => value != null && String(value).trim() !== "");
 }
 
+function isUsableMessage(message) {
+  if (!message || typeof message !== "object") return false;
+  return [message.id, message.item_id, message.message_id].some(
+    (value) => value != null && String(value).trim() !== ""
+  );
+}
+
 class InboxMethods {
   constructor(http, getUserID, options = {}) {
     this.http = http;
@@ -182,16 +189,18 @@ class InboxMethods {
   // both shapes are accepted.
   _threadMessages(thread) {
     const sm = thread.slide_messages;
-    if (Array.isArray(sm)) return sm.map((n) => n.node || n).filter(Boolean);
-    if (sm && Array.isArray(sm.edges)) return sm.edges.map((e) => e.node).filter(Boolean);
-    return (thread.items || []).map((i) => ({
-      id: i.item_id,
-      sender_fbid: i.user_id,
-      content_type: (i.item_type || "text").toUpperCase(),
-      text_body: i.text,
-      timestamp_ms: i.timestamp,
-      content: i
-    }));
+    if (Array.isArray(sm)) return sm.map((n) => n?.node || n).filter(isUsableMessage);
+    if (sm && Array.isArray(sm.edges)) return sm.edges.map((e) => e?.node).filter(isUsableMessage);
+    return (Array.isArray(thread.items) ? thread.items : [])
+      .filter(isUsableMessage)
+      .map((i) => ({
+        id: i.item_id || i.id || i.message_id,
+        sender_fbid: i.user_id,
+        content_type: (i.item_type || "text").toUpperCase(),
+        text_body: i.text,
+        timestamp_ms: i.timestamp,
+        content: i
+      }));
   }
 
   _contentToText(node) {
@@ -281,8 +290,9 @@ class InboxMethods {
     const thread = await fetchThreadDetail(this.http, threadID, 20);
     const out = {};
     for (const e of thread?.slide_messages?.edges || []) {
-      const n = e.node || e;
-      out[String(n.id)] = {
+      const n = e?.node || e;
+      if (!isUsableMessage(n)) continue;
+      out[String(n.id || n.item_id || n.message_id)] = {
         repliedToItemId: n.replied_to_message_id || null,
         repliedToMessage: normalizeRepliedMessage(n.replied_to_message, fbidToIgid),
         offlineThreadingId: n.offline_threading_id != null ? String(n.offline_threading_id) : null
@@ -296,7 +306,7 @@ class InboxMethods {
   // polling inbox reports none of these as discrete events, so the poller
   // diffs consecutive snapshots instead.
   _snapshot(thread) {
-    const users = thread.users || [];
+    const users = (Array.isArray(thread.users) ? thread.users : []).filter((u) => u && typeof u === "object");
     const members = new Set();
     const names = {};
     for (const u of users) {
@@ -409,11 +419,13 @@ class InboxMethods {
     if (!thread) return {};
     const map = threadFbidMap(thread);
     const byId = {};
-    for (const u of thread.users || []) {
+    for (const u of (Array.isArray(thread.users) ? thread.users : []).filter((entry) => entry && typeof entry === "object")) {
       const id = String(u.id || u.pk || "");
       if (id) byId[id] = u;
     }
-    const nodes = (thread.slide_messages?.edges || []).map((e) => e.node || e);
+    const nodes = (thread.slide_messages?.edges || [])
+      .map((e) => e?.node || e)
+      .filter(isUsableMessage);
     const out = {};
     for (const n of nodes) {
       const ct = String(n.content_type || "");
