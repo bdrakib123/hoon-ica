@@ -24,9 +24,9 @@ module.exports = function (client) {
       if (cb) await cb(null, res);
       return res;
     } catch (error) {
+      if (cb?.called) throw error;
       // Preserve FCA's non-throwing contract, but expose the reason for debugging.
       client.lastEditError = error;
-      if (cb?.called) throw error;
       if (cb) await cb(error, null);
       return false;
     }
