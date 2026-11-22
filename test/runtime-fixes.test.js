@@ -1289,6 +1289,26 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testExplicitFailureEnvelopeWithoutMessageIsRejected() {
+  const HttpClient = require("../src/http");
+  const { inspectBody } = require("../src/utils/errors");
+  const info = inspectBody({ status: "fail" });
+  assert.equal(info.kind, "unknown");
+  assert.match(info.message, /without an error message/);
+
+  const authInfo = inspectBody({ require_login: true });
+  assert.equal(authInfo.kind, "auth");
+  const challengeInfo = inspectBody({ checkpoint_url: "/challenge/" });
+  assert.equal(challengeInfo.kind, "challenge");
+
+  const http = new HttpClient({ sessionid: "unit-test-session" });
+  await assert.rejects(
+    http._onResponse({ status: 200, data: { status: "fail" }, headers: {} }),
+    error => error.igKind === "unknown" && /without an error message/.test(error.message)
+  );
+}
+
+
 async function testMissingProfileCountsRemainUnknown() {
   const { normalizeWebProfileInfo } = require("../src/profileParse");
   const missing = normalizeWebProfileInfo({
@@ -1394,6 +1414,7 @@ async function run() {
   await testBoundedSessionCache();
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
+  await testExplicitFailureEnvelopeWithoutMessageIsRejected();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
@@ -1405,7 +1426,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 48 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 49 regression tests passed\n");
 }
 
 run().catch((error) => {
