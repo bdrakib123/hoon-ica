@@ -386,11 +386,16 @@ class InstaAPI {
   async sharedRealtimeClient(options = {}) {
     if (this._realtime && this._realtime.connected) return this._realtime;
     if (this._realtimeConnecting) return this._realtimeConnecting;
-    if (this._realtime) {
-      try { this._realtime.disconnect(); } catch (_) {}
-    }
-    const client = this.realtimeClient(options);
+    // Reuse a previously created client when it has dropped: transport.reset()
+    // now safely closes stale sockets, and reusing preserves listeners already
+    // attached by realtimeOn().
+    const client = this._realtime || this.realtimeClient(options);
     this._realtime = client;
+    for (const entry of this._realtimeHandlers || []) {
+      if (typeof client.listeners !== "function" || !client.listeners(entry.event).includes(entry.handler)) {
+        client.on(entry.event, entry.handler);
+      }
+    }
     let connecting;
     connecting = (async () => {
       try {
@@ -406,8 +411,10 @@ class InstaAPI {
   }
 
   realtimeOn(event, handler) {
-    if (!this._realtime) this._realtime = this.realtimeClient();
-    this._realtime.on(event, handler);
+    if (typeof handler !== "function") throw new TypeError("realtimeOn: handler must be a function");
+    if (!this._realtimeHandlers) this._realtimeHandlers = [];
+    this._realtimeHandlers.push({ event, handler });
+    if (this._realtime) this._realtime.on(event, handler);
     return this;
   }
 
