@@ -6,6 +6,7 @@ const createGetUserFriendship = require("../src/api/users/getUserFriendship");
 const createGetUserInfo = require("../src/api/users/getUserInfo");
 const createGetThreadList = require("../src/api/threads/getThreadList");
 const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
+const createShareContact = require("../src/api/messaging/shareContact");
 
 async function testThreadListPaginatesAndHonorsTimestamp() {
   const calls = [];
@@ -133,6 +134,21 @@ async function testUserInfoCacheRemainsBounded() {
 }
 
 
+async function testShareContactReportsUnsupportedAdapter() {
+  const client = { api: {} };
+  const shareContact = createShareContact(client);
+  let callbackArgs;
+  const result = await shareContact("user-1", "contact-1", "thread-1", (...args) => {
+    callbackArgs = args;
+  });
+  assert.equal(result, null);
+  assert.equal(client.lastShareContactError.code, "IG_METHOD_UNSUPPORTED");
+  assert.match(client.lastShareContactError.message, /not implemented/);
+  assert.equal(callbackArgs[0], client.lastShareContactError);
+  assert.equal(callbackArgs[1], null);
+}
+
+
 async function testDirectThreadNameDoesNotUseViewer() {
   const client = {
     api: {
@@ -181,10 +197,11 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadListSkipsMalformedEntries();
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
   await testUserInfoCacheRemainsBounded();
+  await testShareContactReportsUnsupportedAdapter();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 8 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 9 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
