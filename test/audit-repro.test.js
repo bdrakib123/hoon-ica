@@ -27,7 +27,7 @@ const checked = [];
 async function checkCase(name, check) {
   await check();
   checked.push(name);
-  process.stdout.write("REPRODUCED: " + name + "\n");
+  process.stdout.write("CHECKED: " + name + "\n");
 }
 
 async function main() {
@@ -338,7 +338,7 @@ async function main() {
     assert.notEqual(BigInt(decoded), original);
   });
 
-  process.stdout.write("\nAudit reproductions: " + reproduced.length + " reproduced\n");
+  process.stdout.write("\nAudit checks: " + checked.length + " checked\n");
   process.stdout.write("Cases marked CHECKED may assert either corrected behavior or a remaining source-level defect signature. Not a live Instagram validation.\n");
 }
 
