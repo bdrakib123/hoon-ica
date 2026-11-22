@@ -256,6 +256,18 @@ async function testGetUidRejectsContentRoutes() {
   assert.equal(getUID("https://www.instagram.com/rakib.hasan/"), "rakib.hasan");
 }
 
+
+async function testThriftInt64BigIntMode() {
+  const { ThriftWriter, ThriftReader } = require("../src/realtime/mqttot");
+  const original = 9007199254740993n;
+  const writer = new ThriftWriter();
+  writer.writeInt(1, original, 64);
+  writer.writeStop();
+  const reader = new ThriftReader(Buffer.from(writer.buffer), { int64AsBigInt: true });
+  const fieldType = reader.readField();
+  assert.equal(reader.readValue(fieldType, null), original);
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -271,7 +283,8 @@ async function run() {
   await testXmaWithoutPreviewHasNoAttachment();
   await testViewerFbidUsesViewerId();
   await testGetUidRejectsContentRoutes();
-  process.stdout.write("runtime-fixes.test.js: 14 regression tests passed\\n");
+  await testThriftInt64BigIntMode();
+  process.stdout.write("runtime-fixes.test.js: 15 regression tests passed\\n");
 }
 
 run().catch((error) => {
