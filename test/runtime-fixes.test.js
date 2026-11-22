@@ -1493,7 +1493,7 @@ async function testRealtimeFallbackStartsOnlyOnce() {
 
 
 async function testRealtimeConnectFailureClosesTransport() {
-  const { RealtimeClient, PING_INTERVAL_MS } = require("../src/realtime/client");
+  const { RealtimeClient } = require("../src/realtime/client");
   let disconnects = 0;
   const transport = {
     reset() {},
@@ -1581,7 +1581,7 @@ async function testMqttTransportCancelsPendingTlsSockets() {
 
 
 async function testRealtimePingIntervalIsClamped() {
-  const { RealtimeClient } = require("../src/realtime/client");
+  const { RealtimeClient, PING_INTERVAL_MS } = require("../src/realtime/client");
   const originalSetInterval = global.setInterval;
   const delays = [];
   try {
