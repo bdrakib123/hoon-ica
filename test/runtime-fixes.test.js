@@ -346,7 +346,7 @@ async function testNativeMediaCallbacksAreAwaitedAndInvokedOnce() {
 
 async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
   const axios = require("axios");
-  const { Readable } = require("node:stream");
+  const { Readable, PassThrough } = require("node:stream");
   const InstaClient = require("../src/app/InstaClient");
   const context = { _resolveIgPictureUrl: async () => null };
   const originalGet = axios.get;
@@ -387,6 +387,17 @@ async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
       ),
       /Stream attachment exceeds the 4-byte limit/
     );
+
+    const stalledStream = new PassThrough();
+    await assert.rejects(
+      () => InstaClient.prototype._attachmentToBuffer.call(
+        context,
+        stalledStream,
+        { downloadTimeoutMs: 10 }
+      ),
+      /Attachment stream timed out after 10ms/
+    );
+    assert.equal(stalledStream.destroyed, true);
 
     const fs = require("node:fs");
     const os = require("node:os");
