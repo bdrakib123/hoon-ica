@@ -7,6 +7,11 @@
 
 const createCallback = require("../../utils/createCallback");
 
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 // fca.getThreadInfo(threadID, callback) - Instagram thread detail reshaped into
 // the fca thread-info object commands expect. Commands iterate `userInfo` and
 // `.some()`/ `.find()` `adminIDs`, so both are arrays here (GoatBot-Pro shape:
@@ -17,16 +22,20 @@ module.exports = function (client) {
     try {
       const thread = await client.api.getThreadInfo(String(threadID));
       client._learnThreads(thread);
-      const users = (Array.isArray(thread?.users) ? thread.users : []).filter((u) =>
-        u && typeof u === "object" &&
-        [u.id, u.pk].some((value) => value != null && String(value).trim() !== "")
-      );
-      const viewer = thread?.viewer;
-      const viewerID = viewer && (viewer.id || viewer.pk);
+      const rawUsers = (Array.isArray(thread?.users) ? thread.users : [])
+        .filter((u) => u && typeof u === "object" && firstUsableId(u.pk, u.id));
+      const usersById = new Map();
+      for (const user of rawUsers) {
+        const id = firstUsableId(user.pk, user.id);
+        if (!usersById.has(id)) usersById.set(id, user);
+      }
+      const users = [...usersById.values()];
+      const viewer = thread?.viewer && typeof thread.viewer === "object" ? thread.viewer : null;
+      const viewerID = viewer && firstUsableId(viewer.pk, viewer.id);
       // The thread-detail query lists only *other* participants; re-add the
       // viewer so participantIDs/name lookups are complete. Some response
       // shapes expose pk rather than id, so normalize both before comparing.
-      const hasViewer = viewerID != null && users.some((u) => String(u.id || u.pk) === String(viewerID));
+      const hasViewer = viewerID != null && users.some((u) => firstUsableId(u.pk, u.id) === viewerID);
       if (viewer && viewerID != null && !hasViewer) {
         users.unshift({
           id: viewerID, pk: viewerID, username: viewer.username,
@@ -35,8 +44,8 @@ module.exports = function (client) {
         });
       }
       const userInfo = users.map((u) => ({
-        id: String(u.pk || u.id),
-        name: u.full_name || u.username || String(u.pk || u.id),
+        id: firstUsableId(u.pk, u.id),
+        name: u.full_name || u.username || firstUsableId(u.pk, u.id),
         firstName: (u.full_name || u.username || "").trim().split(/\s+/)[0] || "",
         username: u.username || null,
         gender: u.gender === undefined ? 0 : u.gender,
@@ -50,7 +59,7 @@ module.exports = function (client) {
         .filter((id) => userIds.has(id))
         .map((id) => ({ id }));
       const otherParticipant = users.find((u) =>
-        viewerID == null || String(u.id || u.pk) !== String(viewerID)
+        viewerID == null || firstUsableId(u.pk, u.id) !== viewerID
       );
       const info = {
         threadID: String(threadID),
