@@ -5,6 +5,7 @@ const createGetThreadInfo = require("../src/api/threads/getThreadInfo");
 const createGetUserFriendship = require("../src/api/users/getUserFriendship");
 const createGetUserInfo = require("../src/api/users/getUserInfo");
 const createGetThreadList = require("../src/api/threads/getThreadList");
+const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
 
 async function testThreadListPaginatesAndHonorsTimestamp() {
   const calls = [];
@@ -82,6 +83,55 @@ async function testThreadListSkipsMalformedEntries() {
   assert.equal(list[0].snippet, "valid");
 }
 
+async function testThreadHistoryPreservesAmountAndCallbackOverloads() {
+  const calls = [];
+  const client = {
+    api: {
+      getThreadHistory: async (...args) => {
+        calls.push(args);
+        return [{ messageID: "m-1" }];
+      }
+    }
+  };
+  const getHistory = createGetThreadHistory(client);
+  let callbackArgs;
+  const withAmountCallback = await getHistory("thread-1", 5, (...args) => { callbackArgs = args; });
+  assert.equal(calls[0][1], 5);
+  assert.equal(calls[0][2], null);
+  assert.deepEqual(callbackArgs, [null, withAmountCallback]);
+
+  const withTimestamp = await getHistory("thread-1", 3, 1700000000000);
+  assert.equal(calls[1][1], 3);
+  assert.equal(calls[1][2], 1700000000000);
+
+  const callbackOnly = await getHistory("thread-1", (...args) => { callbackArgs = args; });
+  assert.equal(calls[2][1], 20);
+  assert.equal(calls[2][2], null);
+  assert.deepEqual(callbackArgs, [null, callbackOnly]);
+}
+
+
+async function testUserInfoCacheRemainsBounded() {
+  const cache = new Map();
+  const getUserInfo = createGetUserInfo({
+    api: { getUserInfo: async (id) => ({
+      id,
+      username: "user" + id,
+      full_name: "User " + id,
+      profile_pic_url: "https://cdn.example/" + id + ".jpg"
+    }) },
+    getUserByUsername: () => null,
+    _picCache: cache
+  });
+  const ids = Array.from({ length: 2600 }, (_, i) => String(i + 1));
+  await getUserInfo(ids);
+  assert.equal(cache.size, 5000);
+  assert.equal(cache.has("1"), false);
+  assert.equal(cache.has("name:1"), false);
+  assert.equal(cache.has("2600"), true);
+}
+
+
 async function testDirectThreadNameDoesNotUseViewer() {
   const client = {
     api: {
@@ -128,10 +178,12 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadListPaginatesAndHonorsTimestamp();
   await testThreadListUnreadFilterAndCallbackOverload();
   await testThreadListSkipsMalformedEntries();
+  await testThreadHistoryPreservesAmountAndCallbackOverloads();
+  await testUserInfoCacheRemainsBounded();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 6 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 8 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
