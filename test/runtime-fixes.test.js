@@ -287,10 +287,13 @@ async function testThreadHistoryTimestampPagination() {
   const olderConnection = {
     edges: [
       { node: { id: "m2", timestamp_ms: 2000, text_body: "boundary duplicate" } },
-      { node: { id: "m1", timestamp_ms: 1500, text_body: "older one" } },
-      { node: { id: "m0", timestamp_ms: 1000, text_body: "older two" } }
+      { node: { id: "m1", timestamp_ms: 1500, text_body: "older one" } }
     ],
     page_info: { has_next_page: true, end_cursor: "cursor-2" }
+  };
+  const oldestConnection = {
+    edges: [{ node: { id: "m0", timestamp_ms: 1000, text_body: "older two" } }],
+    page_info: { has_next_page: false, end_cursor: null }
   };
   const http = {
     postGraphQL: async (friendlyName, docId, variables) => {
@@ -299,7 +302,8 @@ async function testThreadHistoryTimestampPagination() {
         return { data: { get_slide_thread_nullable: { as_ig_direct_thread: firstThread } } };
       }
       if (friendlyName === "IGDMessageListOffMsysQuery") {
-        return { data: { fetch__SlideThread: { as_ig_direct_thread: { slide_messages: olderConnection } } } };
+        const connection = variables.after === "cursor-1" ? olderConnection : oldestConnection;
+        return { data: { fetch__SlideThread: { as_ig_direct_thread: { slide_messages: connection } } } };
       }
       throw new Error("Unexpected GraphQL operation: " + friendlyName);
     }
@@ -307,10 +311,11 @@ async function testThreadHistoryTimestampPagination() {
   const thread = new ThreadMethods(http);
   const items = await thread.getHistory("thread-key-1", 2, 2000);
   assert.deepEqual(items.map(item => item.messageID), ["m1", "m0"]);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.equal(calls[1].variables.after, "cursor-1");
   assert.equal(calls[1].variables.id, "thread-fbid-1");
   assert.equal(calls[1].variables.first, 2);
+  assert.equal(calls[2].variables.after, "cursor-2");
 }
 
 async function testFcaHistoryTimestampIsForwarded() {
