@@ -691,6 +691,17 @@ async function testCaptionAuthFailureDoesNotFallback() {
   assert.equal(legacyCalls, 0);
 }
 
+async function testSchedulerRejectsTimeoutsBeyondNodeLimit() {
+  const Scheduler = require("../src/utils/scheduler");
+  const scheduler = new Scheduler({ enabled: true });
+  assert.throws(
+    () => scheduler.scheduleOnce("too-far", Scheduler.MAX_TIMEOUT_MS + 1, () => {}),
+    /delayMs must not exceed/
+  );
+  assert.equal(scheduler.list().length, 0);
+  scheduler.removeAll();
+}
+
 async function testReadRetryConfigurationIsHardBounded() {
   const { resolveConfig, MAX_READ_RETRY_ATTEMPTS, MAX_READ_RETRY_WAIT_MS } = require("../src/utils/readRetry");
   const config = resolveConfig({
@@ -2666,6 +2677,7 @@ async function run() {
   await testNativeMediaCallbacksAreAwaitedAndInvokedOnce();
   await testReadRetryDoesNotRetryThrownErrors();
   await testReadRetryConfigurationIsHardBounded();
+  await testSchedulerRejectsTimeoutsBeyondNodeLimit();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingStopSuppressesLateAuthConfirmation();
@@ -2729,7 +2741,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 85 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 86 regression tests passed\n");
 }
 
 run().catch((error) => {
