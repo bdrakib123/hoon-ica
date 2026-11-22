@@ -93,7 +93,7 @@ class InboxMethods {
       data = this._unwrap(res);
       const connection = data?.fetch__SlideMailbox?.threads_by_folder;
       pageInfo = connection?.page_info || null;
-      const edges = connection?.edges || [];
+      const edges = Array.isArray(connection?.edges) ? connection.edges : [];
       const threads = edges.map((e) => e?.node?.as_ig_direct_thread).filter(isUsableThread);
       this._rememberInboxThreads(threads);
       return {
@@ -117,7 +117,7 @@ class InboxMethods {
     this._mailboxId = mailbox?.id != null ? String(mailbox.id) : null;
     const connection = mailbox?.threads_by_folder;
     pageInfo = connection?.page_info || null;
-    let threads = (connection?.edges || [])
+    let threads = (Array.isArray(connection?.edges) ? connection.edges : [])
       .map((e) => e?.node?.as_ig_direct_thread)
       .filter(isUsableThread);
 
@@ -134,7 +134,7 @@ class InboxMethods {
       data = this._unwrap(page);
       const pagedConnection = data?.fetch__SlideMailbox?.threads_by_folder;
       pageInfo = pagedConnection?.page_info || null;
-      threads = (pagedConnection?.edges || [])
+      threads = (Array.isArray(pagedConnection?.edges) ? pagedConnection.edges : [])
         .map((e) => e?.node?.as_ig_direct_thread)
         .filter(isUsableThread);
     }
@@ -292,7 +292,7 @@ class InboxMethods {
   async fetchReplies(threadID, fbidToIgid = {}) {
     const thread = await fetchThreadDetail(this.http, threadID, 20);
     const out = {};
-    for (const e of thread?.slide_messages?.edges || []) {
+    for (const e of (Array.isArray(thread?.slide_messages?.edges) ? thread.slide_messages.edges : [])) {
       const n = e?.node || e;
       if (!isUsableMessage(n)) continue;
       out[String(n.id || n.item_id || n.message_id)] = {
@@ -345,7 +345,7 @@ class InboxMethods {
       isGroup: !!thread.is_group,
       members,
       names,
-      adminIDs: new Set((thread.admin_user_ids || []).map(String)),
+      adminIDs: new Set((Array.isArray(thread.admin_user_ids) ? thread.admin_user_ids : []).map(String)),
       nicknames,
       threadID: String(thread.id || thread.thread_id)
     };
@@ -428,7 +428,7 @@ class InboxMethods {
       const id = String(u.id || u.pk || "");
       if (id) byId[id] = u;
     }
-    const nodes = (thread.slide_messages?.edges || [])
+    const nodes = (Array.isArray(thread.slide_messages?.edges) ? thread.slide_messages.edges : [])
       .map((e) => e?.node || e)
       .filter(isUsableMessage);
     const out = {};
