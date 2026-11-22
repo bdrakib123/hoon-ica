@@ -456,6 +456,9 @@ async function testMqttTransportRejectsOversizedAndMalformedFrames() {
   transport._buffer = Buffer.from([0x30, 0x80, 0x80, 0x80, 0x80, 0x00]);
   assert.throws(() => transport._tryRead(), /exceeds four bytes/);
 
+  // The malformed-frame assertions above intentionally leave invalid bytes
+  // in the parser buffer; isolate the receive-buffer overflow case.
+  transport._buffer = Buffer.alloc(0);
   const socket = new EventEmitter();
   socket.destroy = (error) => { socket.destroyError = error; };
   transport._attach(socket);
