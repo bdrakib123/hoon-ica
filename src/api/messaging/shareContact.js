@@ -18,6 +18,7 @@ module.exports = function (client) {
       if (cb) cb(null, info);
       return info;
     } catch (error) {
+      client.lastShareContactError = error;
       if (cb) cb(error, null);
       return null;
     }
