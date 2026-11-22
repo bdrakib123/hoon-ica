@@ -46,7 +46,7 @@ async function main() {
     assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "p");
   });
 
-  await reproduce("getThreadList ignores Relay slide_messages preview", async () => {
+  await reproduce("getThreadList reads Relay slide_messages preview", async () => {
     const getThreadList = createGetThreadList({
       api: {
         getInbox: async () => ({
@@ -65,8 +65,8 @@ async function main() {
       }
     });
     const [thread] = await getThreadList(10);
-    assert.equal(thread.snippet, "");
-    assert.equal(thread.timestamp, null);
+    assert.equal(thread.snippet, "latest Relay message");
+    assert.equal(thread.timestamp, 1700000000000);
   });
 
   await reproduce("anti-suspension configure updates nested cooldown values", async () => {
@@ -93,30 +93,26 @@ async function main() {
     });
     const info = await getThreadInfo("thread-1");
     assert.deepEqual(info.participantIDs, ["self-1", "friend-1"]);
-    assert.equal(info.isGroup, true);
+    assert.equal(info.isGroup, false);
   });
 
-  await reproduce("XMA text body is incorrectly returned as an attachment URL", async () => {
+  await reproduce("XMA text body is not returned as an attachment URL", async () => {
     const attachments = attachmentsFromContent({
       __typename: "SlideMessageXMAContent",
       xma_text_body: "Shared a post with you",
       xma: {}
     });
-    assert.deepEqual(attachments, [{
-      type: "share",
-      url: "Shared a post with you",
-      caption: null
-    }]);
+    assert.deepEqual(attachments, []);
   });
 
-  await reproduce("threadFbidMap creates an undefined viewer ID mapping", async () => {
+  await reproduce("threadFbidMap uses the viewer's own ID", async () => {
     const map = threadFbidMap({
       viewer: {
         id: "viewer-ig-id",
         interop_messaging_user_fbid: "viewer-fbid"
       }
     });
-    assert.equal(map["viewer-fbid"], "undefined");
+    assert.equal(map["viewer-fbid"], "viewer-ig-id");
   });
 
   await reproduce("readRetry surfaces thrown errors without retrying", async () => {
