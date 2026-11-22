@@ -30,7 +30,7 @@ module.exports = function (client) {
       const userInfo = users.map((u) => ({
         id: String(u.pk || u.id),
         name: u.full_name || u.username || String(u.pk || u.id),
-        firstName: (u.full_name || u.username || "").trim().split(/\\s+/)[0] || "",
+        firstName: (u.full_name || u.username || "").trim().split(/\s+/)[0] || "",
         username: u.username || null,
         gender: u.gender === undefined ? 0 : u.gender,
         type: "User",
