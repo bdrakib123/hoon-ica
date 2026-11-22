@@ -121,7 +121,12 @@ class MessageDeduper {
 
   add(keys) {
     const now = Date.now();
-    for (const key of keys) this._seen.set(key, now);
+    for (const key of keys) {
+      // Refresh insertion order as well as the timestamp so a recently seen
+      // message is not the first key evicted when the cache reaches capacity.
+      this._seen.delete(key);
+      this._seen.set(key, now);
+    }
     this._prune(now);
   }
 
