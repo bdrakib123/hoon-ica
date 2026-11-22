@@ -8,8 +8,14 @@ const STATE = Object.freeze({ CLOSED: "closed", OPEN: "open", HALF_OPEN: "half_o
  */
 class CircuitBreaker {
   constructor(options = {}) {
-    this.failureThreshold = Math.max(1, Math.floor(Number(options.failureThreshold) || 5));
-    this.cooldownMs = Math.max(1, Number(options.cooldownMs) || 30000);
+    const requestedThreshold = Number(options.failureThreshold);
+    this.failureThreshold = Number.isSafeInteger(requestedThreshold) && requestedThreshold > 0
+      ? Math.min(requestedThreshold, 1000)
+      : 5;
+    const requestedCooldown = Number(options.cooldownMs);
+    this.cooldownMs = Number.isFinite(requestedCooldown) && requestedCooldown > 0
+      ? Math.min(Math.floor(requestedCooldown), 24 * 60 * 60 * 1000)
+      : 30000;
     this.isFailure = typeof options.isFailure === "function" ? options.isFailure : defaultFailure;
     const requestedMax = Number(options.maxCircuits);
     this.maxCircuits = Number.isSafeInteger(requestedMax) && requestedMax > 0
