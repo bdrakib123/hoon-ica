@@ -765,6 +765,8 @@ async function testDecodePacketRejectsMalformedFrames() {
   const { writePublishPacket, writeSubscribePacket } = require("../src/realtime/mqttot");
   assert.throws(() => writePublishPacket("topic", Buffer.from("x"), 1, 0), /identifier/);
   assert.throws(() => writeSubscribePacket("topic", 0), /identifier/);
+  assert.throws(() => writePublishPacket("x".repeat(65536), Buffer.from("x"), 0), /65535 bytes/);
+  assert.throws(() => writeSubscribePacket("x".repeat(65536)), /65535 bytes/);
 }
 
 
