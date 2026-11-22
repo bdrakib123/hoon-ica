@@ -260,10 +260,12 @@ class RealtimeClient extends EventEmitter {
 
   _handlePacket(packet) {
     if (packet.packetType !== "publish" || packet.topic == null) return;
-    this.dispatch(packet.topic, packet.payload);
+    // A throwing application event listener must not prevent the QoS 1 PUBACK:
+    // otherwise the broker can redeliver the same message indefinitely.
     if (packet.qos === 1 && packet.packetId != null) {
       this.transport.send(Buffer.concat([Buffer.from([0x40, 0x02]), uint16(packet.packetId)])).catch(() => {});
     }
+    this.dispatch(packet.topic, packet.payload);
   }
 
   dispatch(topic, payload) {
