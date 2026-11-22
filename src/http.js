@@ -85,7 +85,7 @@ class HttpClient {
   _onResponse(res) {
     this._rememberClaim(res);
     const info = inspectBody(res.data);
-    if (info && ["auth", "challenge", "suspended", "blocked", "rate_limited"].includes(info.kind)) {
+    if (info) {
       const err = toIgError(new Error(info.message || `Instagram refused the request (${info.kind})`), {
         ...info,
         status: res.status
