@@ -7,6 +7,11 @@
 
 const createCallback = require("../../utils/createCallback");
 
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 // fca.getUserFriendship(userID, callback) -> { id, blocking, isRestricted,
 // isFollowedBy, follows }.
 //
@@ -27,9 +32,10 @@ module.exports = function (client) {
         return null;
       }
       const fs = learned.friendship_status;
+      const resolvedID = firstUsableId(learned.id, learned.pk, key);
       const out = {
-        id: String(learned.id || learned.pk || key),
-        userID: String(learned.id || learned.pk || key),
+        id: resolvedID,
+        userID: resolvedID,
         username: learned.username || null,
         blocking: typeof fs?.blocking === "boolean" ? fs.blocking : null,
         isRestricted: typeof fs?.is_restricted === "boolean" ? fs.is_restricted : null,
