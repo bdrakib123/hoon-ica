@@ -210,7 +210,15 @@ class ThriftReader {
     const result = {};
     for (let i = 0; i < size; i++) {
       const key = this.readValue(keyType, null);
-      result[key] = this.readValue(valueType, null);
+      const value = this.readValue(valueType, null);
+      // Define an own data property instead of assignment: a remote Thrift map
+      // key named "__proto__" must not mutate the result object's prototype.
+      Object.defineProperty(result, key, {
+        value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
     }
     return result;
   }
