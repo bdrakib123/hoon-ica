@@ -77,7 +77,10 @@ module.exports = function (client) {
             i === 0 ? body : ""
           );
           const sentId = extractMessageId(result);
-          if (sentId) setBounded(client._msgThread, sentId, String(threadID), 5000);
+          if (sentId) {
+            setBounded(client._msgThread, sentId, String(threadID), 5000);
+            sentMessageIDs.push(sentId);
+          }
         }
       } else {
         result = await client.api.sendMessage(client.convert(body), String(threadID), replyTo);
@@ -90,6 +93,13 @@ module.exports = function (client) {
       return info;
     } catch (error) {
       if (cb?.called) throw error;
+      if (sentMessageIDs.length && error && typeof error === "object") {
+        error.partialSend = {
+          sentCount: sentMessageIDs.length,
+          totalAttachments: attachmentCount,
+          messageIDs: sentMessageIDs.slice()
+        };
+      }
       if (cb) cb(error, null);
       throw error;
     }
