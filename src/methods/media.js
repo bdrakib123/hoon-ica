@@ -153,8 +153,24 @@ class MediaMethods {
       const caption = this._sendCaption(threadID, options.text);
       await globalAntiSuspension.waitForTurn(threadID, { immediate: true });
       const media = this._commitMedia(threadID, fbid, options);
-      const [, mediaResult] = await Promise.all([caption, media]);
-      return mediaResult;
+      // Promise.all rejects as soon as either half fails, even though the other
+      // message may still be committing. Wait for both outcomes so callers get
+      // an accurate partial-send report and do not retry while a commit is live.
+      const [captionResult, mediaResult] = await Promise.allSettled([caption, media]);
+      if (captionResult.status === "rejected" || mediaResult.status === "rejected") {
+        const error = captionResult.status === "rejected" ? captionResult.reason : mediaResult.reason;
+        if (error && typeof error === "object") {
+          error.partialSend = {
+            captionSent: captionResult.status === "fulfilled",
+            mediaSent: mediaResult.status === "fulfilled"
+          };
+          if (captionResult.status === "rejected" && mediaResult.status === "rejected") {
+            error.mediaError = mediaResult.reason;
+          }
+        }
+        throw error;
+      }
+      return mediaResult.value;
     } catch (error) {
       globalAntiSuspension.noteSendError(error);
       throw error;
