@@ -398,11 +398,12 @@ async function testPollingDeliversAllMessagesSinceLastSeen() {
   const old = { id: "old-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
   const middle = { id: "middle-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "middle" };
   const newest = { id: "newest-message", sender_fbid: "friend-1", content_type: "TEXT", text_body: "newest" };
+  const arrivedDuringDetail = { id: "arrived-during-detail", sender_fbid: "friend-1", content_type: "TEXT", text_body: "latest" };
   const http = {
     postGraphQL: async () => ({
       data: { get_slide_thread_nullable: { as_ig_direct_thread: {
         users: [],
-        slide_messages: { edges: [newest, middle, old].map(node => ({ node })) }
+        slide_messages: { edges: [arrivedDuringDetail, newest, middle, old].map(node => ({ node })) }
       } } }
     })
   };
@@ -413,8 +414,18 @@ async function testPollingDeliversAllMessagesSinceLastSeen() {
     users: [],
     slide_messages: { edges: [{ node: newest }] }
   }]);
-  assert.deepEqual(events.map(event => event.messageID), ["middle-message", "newest-message"]);
-  assert.equal(inbox._seen.get("thread-1"), "newest-message");
+  assert.deepEqual(events.map(event => event.messageID), [
+    "middle-message",
+    "newest-message",
+    "arrived-during-detail"
+  ]);
+  assert.equal(inbox._seen.get("thread-1"), "arrived-during-detail");
+  const nextPoll = await inbox._extractEvents([{
+    id: "thread-1",
+    users: [],
+    slide_messages: { edges: [{ node: arrivedDuringDetail }] }
+  }]);
+  assert.deepEqual(nextPoll, []);
 }
 
 
