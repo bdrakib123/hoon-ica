@@ -772,6 +772,48 @@ async function testInboxSkipsMalformedRelayThreads() {
   assert.equal(inbox._threadIdMap.has("undefined"), false);
 }
 
+async function testMalformedRelayEdgeCollectionsAreIgnored() {
+  let queryCount = 0;
+  const http = {
+    session: { __hsi: "device-1" },
+    uuid: () => "device-1",
+    postGraphQL: async (name) => {
+      queryCount += 1;
+      if (name === "PolarisDirectInboxQuery") {
+        return { data: { get_slide_mailbox_for_iris_subscription: {
+          id: "mailbox-1",
+          threads_by_folder: {
+            edges: { malformed: true },
+            page_info: { has_next_page: true, end_cursor: "cursor-1" }
+          }
+        } } };
+      }
+      if (name === "IGDThreadListOffMsysPaginationQuery") {
+        return { data: { fetch__SlideMailbox: { threads_by_folder: {
+          edges: { malformed: true },
+          page_info: { has_next_page: false, end_cursor: null }
+        } } } };
+      }
+      if (name === "IGDThreadDetailQuery") {
+        return { data: { get_slide_thread_nullable: { as_ig_direct_thread: {
+          users: [],
+          slide_messages: { edges: { malformed: true } }
+        } } } };
+      }
+      throw new Error("Unexpected query " + name);
+    }
+  };
+  const inbox = new InboxMethods(http, () => "self-1");
+  const first = await inbox.getInbox();
+  assert.deepEqual(first.threads, []);
+  const second = await inbox.getInbox(first.nextCursor || "cursor-1");
+  assert.deepEqual(second.threads, []);
+  assert.equal(queryCount, 3);
+  assert.deepEqual(await inbox.fetchReplies("thread-1"), {});
+  assert.deepEqual(await inbox._latestActor("thread-1"), {});
+}
+
+
 async function testMalformedNestedThreadEdgesAreSkipped() {
   const ThreadMethods = require("../src/methods/thread");
   const { threadFbidMap } = require("../src/threadDetail");
@@ -909,13 +951,14 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testMalformedNestedThreadEdgesAreSkipped();
+  await testMalformedRelayEdgeCollectionsAreIgnored();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 36 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 37 regression tests passed\n");
 }
 
 run().catch((error) => {
