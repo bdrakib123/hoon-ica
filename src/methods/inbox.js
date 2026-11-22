@@ -376,6 +376,12 @@ class InboxMethods {
       const allowFallback = rtOpts.fallback !== false;
       let stopped = false;
       let stopPoll = null;
+      let fallbackStarted = false;
+      const startFallback = () => {
+        if (!allowFallback || stopped || fallbackStarted) return;
+        fallbackStarted = true;
+        stopPoll = this._startPolling(callback, intervalMs);
+      };
       const listener = new RealtimeListener(
         {
           sessionid: this.http.getCookie("sessionid"),
@@ -403,8 +409,8 @@ class InboxMethods {
           onError: (err) => {
             // Before the subscription is confirmed a failure means realtime is
             // not usable; degrade to polling so the bot still gets events.
-            if (allowFallback && !listener._subscribed && !stopped) {
-              stopPoll = this._startPolling(callback, intervalMs);
+            if (!listener._subscribed && allowFallback && !stopped) {
+              startFallback();
             } else {
               callback(err, null);
             }
@@ -412,7 +418,7 @@ class InboxMethods {
         }
       );
       listener.start(callback).catch((err) => {
-        if (allowFallback && !stopped) stopPoll = this._startPolling(callback, intervalMs);
+        if (allowFallback && !stopped) startFallback();
         else callback(err, null);
       });
       const stop = () => {
@@ -498,7 +504,7 @@ class InboxMethods {
         const state = new Map();
         for (const t of threads) state.set(String(t.id || t.thread_id), this._snapshot(t));
 
-        if (this._seen.size === 0) {
+        if (!this._statePrimed) {
           for (const t of threads) {
             const tid = String(t.id || t.thread_id);
             const first = this._threadMessages(t)[0];
