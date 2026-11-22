@@ -8,7 +8,7 @@
 const axios = require("axios");
 const { UPLOAD, DOC_ID, EP } = require("../constants");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
-const { classify } = require("../utils/errors");
+const { classify, hasGraphQLPartialData } = require("../utils/errors");
 
 const NO_CAPTION_FALLBACK_KINDS = new Set(["rate_limited", "challenge", "blocked", "suspended", "auth"]);
 
