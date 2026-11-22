@@ -5,6 +5,8 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.sendMessage(form, threadID, callback, replyToMessage) on Instagram.
 // `form` is a string or { body, attachment | attachments }; `replyToMessage` is
 // the target message id (or an event / messageReply object).
@@ -17,7 +19,6 @@
 // first entry so the text renders above the images; the callback reports the last
 // message.
 const { extractMessageId } = require("../../utils/format");
-const createCallback = require("../../utils/createCallback");
 const { setBounded } = require("../../utils/boundedMap");
 
 // Normalises `attachment` / `attachments` into a flat, non-null list. A nested
