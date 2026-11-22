@@ -575,13 +575,19 @@ class SocketMQTToTTransport {
     maxPacketSize = 16 * 1024 * 1024,
     maxBufferedBytes = 32 * 1024 * 1024
   } = {}) {
+    const positiveLimit = (value, fallback, max) => {
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
+    };
     this.host = host;
-    this.port = port;
-    this.timeout = timeout;
-    this.maxPacketSize = Math.max(1, Math.floor(Number(maxPacketSize) || 16 * 1024 * 1024));
+    this.port = Number.isInteger(Number(port)) && Number(port) > 0 && Number(port) <= 65535
+      ? Number(port)
+      : 443;
+    this.timeout = positiveLimit(timeout, 30000, 120000);
+    this.maxPacketSize = positiveLimit(maxPacketSize, 16 * 1024 * 1024, 64 * 1024 * 1024);
     this.maxBufferedBytes = Math.max(
       this.maxPacketSize + 5,
-      Math.floor(Number(maxBufferedBytes) || 32 * 1024 * 1024)
+      positiveLimit(maxBufferedBytes, 32 * 1024 * 1024, 128 * 1024 * 1024)
     );
     this.socket = null;
     this._buffer = Buffer.alloc(0);
