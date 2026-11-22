@@ -617,6 +617,15 @@ async function testPartialGraphqlDataPreventsLegacyFallback() {
 }
 
 
+async function testGraphQLPartialDataHelperIsExported() {
+  const { hasGraphQLPartialData } = require("../src/utils/errors");
+  assert.equal(typeof hasGraphQLPartialData, "function");
+  assert.equal(hasGraphQLPartialData({ graphQLData: { message: { id: "1" } } }), true);
+  assert.equal(hasGraphQLPartialData({ graphQLData: { message: null } }), false);
+  assert.equal(hasGraphQLPartialData({ errors: [{ message: "failed" }] }), false);
+}
+
+
 async function testLegacyTextFallbackUsesOfflineThreadingId() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -2700,6 +2709,7 @@ async function run() {
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
+  await testGraphQLPartialDataHelperIsExported();
   await testLegacyTextFallbackUsesOfflineThreadingId();
   await testPartialGraphqlDataPreventsLegacyFallback();
   await testCaptionedMediaWaitsForBothCommitOutcomes();
