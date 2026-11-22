@@ -10,6 +10,7 @@ const { textOf, attachmentsFromContent, normalizeRepliedMessage } = require("../
 const { fetchThreadDetail, threadFbidMap } = require("../threadDetail");
 const { classify, toIgError } = require("../utils/errors");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
+const { setBounded } = require("../utils/boundedMap");
 
 // Reads the DM inbox through the same Relay query the web client uses
 // (PolarisDirectInboxQuery). The old /api/v1/direct_v2/inbox/ endpoint is dead
@@ -141,7 +142,7 @@ class InboxMethods {
     }
     for (const t of threads) {
       const tid = String(t.id || t.thread_id);
-      if (tid) this._members.set(tid, (t.users || []).map((u) => String(u.id || u.pk)).filter(Boolean));
+      if (tid) setBounded(this._members, tid, (t.users || []).map((u) => String(u.id || u.pk)).filter(Boolean), 2000);
     }
     this._learnThreadIds(threads);
   }
@@ -155,7 +156,7 @@ class InboxMethods {
     for (const t of threads) {
       const internal = t.thread_id != null ? String(t.thread_id) : null;
       const inbox = t.id != null ? String(t.id) : (t.thread_fbid != null ? String(t.thread_fbid) : null);
-      if (internal && inbox) this._threadIdMap.set(internal, inbox);
+      if (internal && inbox) setBounded(this._threadIdMap, internal, inbox, 2000);
     }
   }
 
@@ -261,7 +262,7 @@ class InboxMethods {
         });
       }
 
-      if (nodes[0]) this._seen.set(threadID, nodes[0].id);
+      if (nodes[0]) setBounded(this._seen, threadID, nodes[0].id, 5000);
     }
     return events;
   }
@@ -572,7 +573,7 @@ class InboxMethods {
           for (const t of threads) {
             const tid = String(t.id || t.thread_id);
             const first = this._threadMessages(t)[0];
-            if (first) this._seen.set(tid, first.id);
+            if (first) setBounded(this._seen, tid, first.id, 5000);
           }
           this._threadState = state;
           this._statePrimed = true;
