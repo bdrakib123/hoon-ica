@@ -6,8 +6,18 @@
  */
 class IdempotencyCache {
   constructor(options = {}) {
-    this.ttlMs = Math.max(1, Number(options.ttlMs) || 300000);
-    this.maxSize = Math.max(1, Math.floor(Number(options.maxSize) || 1000));
+    const requestedTtl = Number(options.ttlMs);
+    this.ttlMs = Number.isFinite(requestedTtl) && requestedTtl > 0
+      ? Math.min(Math.floor(requestedTtl), 7 * 24 * 60 * 60 * 1000)
+      : 300000;
+    const requestedMax = Number(options.maxSize);
+    this.maxSize = Number.isSafeInteger(requestedMax) && requestedMax > 0
+      ? Math.min(requestedMax, 100000)
+      : 1000;
+    const requestedInflight = Number(options.maxInflight);
+    this.maxInflight = Number.isSafeInteger(requestedInflight) && requestedInflight > 0
+      ? Math.min(requestedInflight, 100000)
+      : 10000;
     this.store = new Map();
     this.inflight = new Map();
     this.generation = 0;
@@ -40,6 +50,9 @@ class IdempotencyCache {
     const cached = this.get(id);
     if (cached !== undefined) return cached;
     if (this.inflight.has(id)) return this.inflight.get(id);
+    if (this.inflight.size >= this.maxInflight) {
+      throw new RangeError("Idempotency cache has reached its configured in-flight limit");
+    }
 
     const generation = this.generation;
     let promise;
