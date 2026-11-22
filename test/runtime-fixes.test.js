@@ -1003,6 +1003,39 @@ async function testThreadHistoryPaginatesWithoutTimestamp() {
 }
 
 
+async function testThreadHistoryBoundsPageAndRequestedLimits() {
+  const ThreadMethods = require("../src/methods/thread");
+  const thread = new ThreadMethods({});
+  let detailLimit = null;
+  let olderLimit = null;
+  thread.fetchDetail = async (_threadID, limit) => {
+    detailLimit = limit;
+    return {
+      id: "thread-fbid",
+      users: [],
+      slide_messages: {
+        edges: [],
+        page_info: { has_next_page: true, end_cursor: "cursor-1" }
+      }
+    };
+  };
+  thread.fetchOlderMessages = async (_threadID, _cursor, limit) => {
+    olderLimit = limit;
+    return { edges: [], page_info: { has_next_page: false } };
+  };
+
+  await thread.getHistory("thread-1", 5000);
+  assert.equal(detailLimit, 50);
+  assert.equal(olderLimit, 50);
+
+  let fetched = false;
+  thread.fetchDetail = async () => { fetched = true; return null; };
+  for (const invalid of [0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, 5001]) {
+    await assert.rejects(() => thread.getHistory("thread-1", invalid), /limit must be/);
+  }
+  assert.equal(fetched, false);
+}
+
 async function testFcaLearnedThreadMembersDeduplicateViewer() {
   const InstaClient = require("../src/app/InstaClient");
   const client = {
@@ -2735,6 +2768,7 @@ async function run() {
   await testInboxParticipantSnapshotsIncludeViewer();
   await testFcaLearnedThreadMembersDeduplicateViewer();
   await testThreadHistoryPaginatesWithoutTimestamp();
+  await testThreadHistoryBoundsPageAndRequestedLimits();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
   await testListenReplacesPreviousPollingListener();
@@ -2790,7 +2824,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 87 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 88 regression tests passed\n");
 }
 
 run().catch((error) => {
