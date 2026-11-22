@@ -4,6 +4,63 @@ const assert = require("node:assert/strict");
 const createGetThreadInfo = require("../src/api/threads/getThreadInfo");
 const createGetUserFriendship = require("../src/api/users/getUserFriendship");
 const createGetUserInfo = require("../src/api/users/getUserInfo");
+const createGetThreadList = require("../src/api/threads/getThreadList");
+
+async function testThreadListPaginatesAndHonorsTimestamp() {
+  const calls = [];
+  const pages = [
+    {
+      threads: [
+        { id: "new-1", read_state: 1, slide_messages: { edges: [{ node: { timestamp_ms: 3000, text_body: "new" } }] } },
+        { id: "old-1", read_state: 1, slide_messages: { edges: [{ node: { timestamp_ms: 1000, text_body: "old" } }] } }
+      ],
+      nextCursor: "cursor-1",
+      hasNextPage: true
+    },
+    {
+      threads: [
+        { id: "old-2", read_state: 0, slide_messages: { edges: [{ node: { timestamp_ms: 900, text_body: "older" } }] } },
+        { id: "old-3", read_state: 1, slide_messages: { edges: [{ node: { timestamp_ms: 800, text_body: "oldest" } }] } }
+      ],
+      nextCursor: null,
+      hasNextPage: false
+    }
+  ];
+  const client = {
+    api: {
+      getInbox: async (cursor) => {
+        calls.push(cursor || null);
+        return pages[calls.length - 1];
+      }
+    }
+  };
+  const getThreadList = createGetThreadList(client);
+  const list = await getThreadList(2, 2000, ["INBOX"]);
+  assert.deepEqual(calls, [null, "cursor-1"]);
+  assert.deepEqual(list.map((item) => item.threadID), ["old-1", "old-2"]);
+  assert.equal(list[0].snippet, "old");
+}
+
+async function testThreadListUnreadFilterAndCallbackOverload() {
+  const client = {
+    api: {
+      getInbox: async () => ({
+        threads: [
+          { id: "read", read_state: 0, slide_messages: { edges: [{ node: { timestamp_ms: 2000 } }] } },
+          { id: "unread", read_state: 2, slide_messages: { edges: [{ node: { timestamp_ms: 1000 } }] } }
+        ],
+        nextCursor: null
+      })
+    }
+  };
+  const getThreadList = createGetThreadList(client);
+  let callbackArgs;
+  const list = await getThreadList(10, ["INBOX", "unread"], (...args) => { callbackArgs = args; });
+  assert.deepEqual(list.map((item) => item.threadID), ["unread"]);
+  assert.equal(callbackArgs[0], null);
+  assert.deepEqual(callbackArgs[1], list);
+  await assert.rejects(() => getThreadList(10, null, ["ARCHIVED"]), /INBOX pagination only/);
+}
 
 async function testDirectThreadNameDoesNotUseViewer() {
   const client = {
@@ -48,10 +105,12 @@ async function testUserInfoFirstNameIsFirstToken() {
 }
 
 (async () => {
+  await testThreadListPaginatesAndHonorsTimestamp();
+  await testThreadListUnreadFilterAndCallbackOverload();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 3 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 5 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
