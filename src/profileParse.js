@@ -52,8 +52,9 @@ function parseJsonAt(text, from) {
 }
 
 function countOf(edge) {
-  const n = edge && edge.count;
-  return Number.isFinite(Number(n)) ? Number(n) : null;
+  if (edge == null) return null;
+  const n = typeof edge === "object" ? edge.count : edge;
+  return n != null && Number.isFinite(Number(n)) ? Number(n) : null;
 }
 
 // Accepts either a Relay field-count edge (`{ count: n }`) or a plain number.
