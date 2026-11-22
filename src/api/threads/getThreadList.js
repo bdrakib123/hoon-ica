@@ -29,7 +29,7 @@ module.exports = function (client) {
         throw new TypeError("getThreadList: timestamp must be an integer or null");
       }
 
-      const requestedTags = typeof tags === "string" ? [tags] : tags;
+      const requestedTags = tags == null ? [] : typeof tags === "string" ? [tags] : tags;
       if (!Array.isArray(requestedTags)) {
         throw new TypeError("getThreadList: tags must be an array or string");
       }
