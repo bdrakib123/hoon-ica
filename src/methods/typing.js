@@ -6,6 +6,7 @@
  */
 
 const { EP } = require("../constants");
+const { classify } = require("../utils/errors");
 
 const FALLBACK_PATHS = [
   (t) => `https://www.instagram.com/api/v1/direct_v2/threads/${t}/indicate_activity/`,
@@ -24,7 +25,12 @@ class TypingMethods {
       try {
         await this.http.postForm(build(), form);
         return true;
-      } catch (_) {}
+      } catch (error) {
+        // Only try another legacy route for an endpoint-specific/unknown
+        // rejection. Repeating typing writes after auth, challenge, rate-limit,
+        // or transport failures adds requests without improving delivery.
+        if (classify(error).kind !== "unknown") return false;
+      }
     }
     return false;
   }
