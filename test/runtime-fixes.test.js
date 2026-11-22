@@ -1516,6 +1516,28 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testConcurrentTokenBootstrapIsDeduplicated() {
+  const HttpClient = require("../src/http");
+  const http = new HttpClient({ sessionid: "unit-test-session" });
+  let calls = 0;
+  let release;
+  http.client.get = () => {
+    calls += 1;
+    return new Promise(resolve => { release = resolve; });
+  };
+  const html = '"LSD",[],{"token":"lsd-token"} DTSGInitialData",[],{"token":"dtsg-token"}';
+  const first = http.bootstrapTokens();
+  const second = http.bootstrapTokens();
+  assert.equal(calls, 1);
+  release({ data: html });
+  const results = await Promise.all([first, second]);
+  assert.equal(calls, 1);
+  assert.deepEqual(results[0], { fbDtsg: "dtsg-token", lsd: "lsd-token" });
+  assert.deepEqual(results[1], results[0]);
+  assert.equal(http._bootstrapPromise, null);
+}
+
+
 async function testPostFormOmitsNullishFields() {
   const HttpClient = require("../src/http");
   const http = new HttpClient({ sessionid: "unit-test-session" });
@@ -1687,6 +1709,7 @@ async function run() {
   await testExplicitFailureEnvelopeWithoutMessageIsRejected();
   await testRetryAfterSupportsHttpDate();
   await testPostFormOmitsNullishFields();
+  await testConcurrentTokenBootstrapIsDeduplicated();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
@@ -1698,7 +1721,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 57 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 58 regression tests passed\n");
 }
 
 run().catch((error) => {
