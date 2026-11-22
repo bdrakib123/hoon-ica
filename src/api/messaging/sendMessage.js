@@ -25,16 +25,22 @@ const { setBounded } = require("../../utils/boundedMap");
 // array is flattened one level deep; null/undefined entries are dropped.
 function toAttachmentList(attachment, attachments) {
   const list = [];
-  const add = (value) => {
-    if (value == null) return;
+  const stack = [attachments, attachment];
+  const seenArrays = new WeakSet();
+  while (stack.length) {
+    const value = stack.pop();
+    if (value == null) continue;
     if (Array.isArray(value)) {
-      for (const entry of value) add(entry);
-      return;
+      // Attachment arrays may be nested or even circular when supplied by a
+      // caller. Flatten iteratively so hostile/deep input cannot exhaust the
+      // JavaScript call stack, and ignore an already visited array.
+      if (seenArrays.has(value)) continue;
+      seenArrays.add(value);
+      for (let i = value.length - 1; i >= 0; i--) stack.push(value[i]);
+      continue;
     }
     list.push(value);
-  };
-  add(attachment);
-  add(attachments);
+  }
   return list;
 }
 
