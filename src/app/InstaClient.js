@@ -168,7 +168,10 @@ class InstaClient {
       const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
       if (t.viewer && typeof t.viewer === "object") users.unshift(t.viewer);
       for (const u of users) this._rememberUser(u);
-      const threadID = t.id != null ? String(t.id) : t.thread_id != null ? String(t.thread_id) : null;
+      const rawThreadID = [t.id, t.thread_id].find(
+        (value) => value != null && String(value).trim() !== ""
+      );
+      const threadID = rawThreadID == null ? null : String(rawThreadID);
       if (threadID) {
         setBounded(
           this._threadMembers,
