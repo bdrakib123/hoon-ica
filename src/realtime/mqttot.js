@@ -364,11 +364,17 @@ function compressPayload(data) {
 }
 
 // Publish payloads are zlib streams (0x78 ...). Anything else is left as-is.
+// Bound decompressed broker payloads independently of the MQTT frame limit.
+// A small compressed publish must not be able to expand into unbounded memory.
+const MAX_DECOMPRESSED_PAYLOAD_BYTES = 32 * 1024 * 1024;
+
 function tryDecompressPayload(data) {
   if (!data || !data.length || data[0] !== 0x78) return data;
   try {
-    return zlib.inflateSync(data);
+    return zlib.inflateSync(data, { maxOutputLength: MAX_DECOMPRESSED_PAYLOAD_BYTES });
   } catch (_) {
+    // Preserve the existing best-effort contract: malformed or oversized
+    // compressed payloads are returned unchanged for the caller to ignore.
     return data;
   }
 }
