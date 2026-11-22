@@ -113,6 +113,9 @@ class InstaAPI {
     const target = file || dataPath("session-params.json");
     try {
       if (!fs.existsSync(target)) return null;
+      // Session params contain reusable GraphQL security tokens; protect an
+      // existing file just like the persisted cookie jar before reading it.
+      fs.chmodSync(target, 0o600);
       return JSON.parse(fs.readFileSync(target, "utf8"));
     } catch (_) {
       return null;
