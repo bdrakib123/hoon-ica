@@ -691,6 +691,34 @@ async function testCaptionAuthFailureDoesNotFallback() {
   assert.equal(legacyCalls, 0);
 }
 
+async function testInboxPollIntervalsRespectNodeTimerLimit() {
+  const MAX_TIMER_DELAY_MS = 2147483647;
+  const inbox = new InboxMethods({}, () => "self-1", { minPollIntervalMs: Infinity });
+  assert.equal(inbox.minPollIntervalMs, 15000);
+  inbox.getInbox = async () => ({ threads: [] });
+
+  const delays = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let stop;
+  try {
+    global.setTimeout = (fn, delay) => {
+      const timer = { fn, delay, unref() {} };
+      delays.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling(() => {}, Number.MAX_VALUE);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(delays.length, 1);
+    assert.ok(delays[0].delay <= MAX_TIMER_DELAY_MS);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
 async function testSchedulerRejectsTimeoutsBeyondNodeLimit() {
   const Scheduler = require("../src/utils/scheduler");
   const scheduler = new Scheduler({ enabled: true });
@@ -2683,6 +2711,7 @@ async function run() {
   await testReadRetryDoesNotRetryThrownErrors();
   await testReadRetryConfigurationIsHardBounded();
   await testSchedulerRejectsTimeoutsBeyondNodeLimit();
+  await testInboxPollIntervalsRespectNodeTimerLimit();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingStopSuppressesLateAuthConfirmation();
@@ -2746,7 +2775,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 86 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 87 regression tests passed\n");
 }
 
 run().catch((error) => {
