@@ -281,6 +281,48 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
 }
 
 
+async function testNativeMediaCallbacksAreAwaitedAndInvokedOnce() {
+  const InstaClient = require("../src/app/InstaClient");
+  let calls = 0;
+  const client = {
+    _msgThread: new Map(),
+    _sendAttachment: async () => ({ messageID: "media-1" })
+  };
+  await assert.rejects(
+    () => InstaClient.prototype._mediaSend.call(
+      client,
+      "thread-1",
+      Buffer.from("image"),
+      {},
+      async () => {
+        calls += 1;
+        await Promise.resolve();
+        throw new Error("async media callback failed");
+      }
+    ),
+    /async media callback failed/
+  );
+  assert.equal(calls, 1);
+  assert.equal(client._msgThread.get("media-1"), "thread-1");
+
+  calls = 0;
+  await assert.rejects(
+    () => InstaClient.prototype._mediaSend.call(
+      client,
+      "thread-2",
+      Buffer.from("image"),
+      {},
+      () => {
+        calls += 1;
+        throw new Error("sync media callback failed");
+      }
+    ),
+    /sync media callback failed/
+  );
+  assert.equal(calls, 1);
+}
+
+
 async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
   const axios = require("axios");
   const { Readable } = require("node:stream");
@@ -2168,6 +2210,7 @@ async function run() {
   await testCaptionedMediaWaitsForBothCommitOutcomes();
   await testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds();
   await testFcaAttachmentDownloadsAndStreamsAreBounded();
+  await testNativeMediaCallbacksAreAwaitedAndInvokedOnce();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -2225,7 +2268,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 73 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 74 regression tests passed\n");
 }
 
 run().catch((error) => {
