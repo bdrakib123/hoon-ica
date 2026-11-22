@@ -19,6 +19,7 @@
 
 const { RealtimeClient } = require("./client");
 const { rawEventFromMessageSync } = require("./bridge");
+const { normalizeSequenceId } = require("../utils/sequenceId");
 
 class RealtimeListener {
   constructor(context, options = {}) {
@@ -88,7 +89,9 @@ class RealtimeListener {
     });
 
     try {
-      await this._client.irisSubscribe(Number(cursor.seqId) || 0, Number(cursor.snapshotAtMs));
+      const seqId = normalizeSequenceId(cursor.seqId);
+      if (seqId == null) throw new TypeError("Realtime sequence ID must be a non-negative safe integer or decimal string");
+      await this._client.irisSubscribe(seqId, Number(cursor.snapshotAtMs));
       return await acknowledgement;
     } catch (error) {
       cleanup();
