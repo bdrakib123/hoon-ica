@@ -2796,6 +2796,13 @@ async function testMissingProfileCountsRemainUnknown() {
   assert.equal(present.followerCount, 12);
   assert.equal(present.followingCount, 34);
   assert.equal(present.mediaCount, 5);
+
+  const fallback = normalizeWebProfileInfo({ id: " ", pk: "profile-pk", username: "fallback" });
+  assert.equal(fallback.id, "profile-pk");
+  const inboxUser = require("../src/profileParse").normalizeInboxUser({
+    id: "  ", pk: "inbox-pk", username: "inbox-user"
+  });
+  assert.equal(inboxUser.id, "inbox-pk");
 }
 
 
