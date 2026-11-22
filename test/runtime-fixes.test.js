@@ -684,6 +684,18 @@ async function testRealtimeConnectCanBeCancelled() {
 }
 
 
+async function testDecodePacketRejectsMalformedFrames() {
+  const { decodePacket } = require("../src/realtime/mqttot");
+  assert.throws(() => decodePacket(Buffer.alloc(0)), /missing fixed header/);
+  assert.throws(() => decodePacket(Buffer.from([0x20])), /truncated remaining length/);
+  assert.throws(() => decodePacket(Buffer.from([0x20, 0x01, 0x00])), /two-byte body/);
+  assert.throws(() => decodePacket(Buffer.from([0xd0, 0x01, 0x00])), /empty body/);
+  assert.throws(() => decodePacket(Buffer.from([0x30, 0x02, 0x00, 0x05])), /truncated UTF-8 value/);
+  assert.throws(() => decodePacket(Buffer.from([0x30, 0x03, 0x00, 0x01, 0x61, 0x62])), /frame size/);
+  assert.throws(() => decodePacket(Buffer.from([0x30, 0x02, 0x00, 0x01, 0x61])), /frame size/);
+}
+
+
 async function testRealtimePacketIdentifierWraps() {
   const { RealtimeClient } = require("../src/realtime/client");
   const { decodePacket } = require("../src/realtime/mqttot");
@@ -1496,6 +1508,7 @@ async function run() {
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
   await testRealtimePacketIdentifierWraps();
+  await testDecodePacketRejectsMalformedFrames();
   await testRealtimeConnectCanBeCancelled();
   await testOldRealtimeLoopCannotCloseNewConnection();
   await testMqttTransportCancelsPendingTlsSockets();
@@ -1524,7 +1537,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 51 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 52 regression tests passed\n");
 }
 
 run().catch((error) => {
