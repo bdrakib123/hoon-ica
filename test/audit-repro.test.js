@@ -1,9 +1,8 @@
 "use strict";
 
-// Diagnostic reproductions for issues found during the comprehensive source audit.
-// Kept separate from the normal test gate: these checks confirm current bug
-// signatures without changing runtime code or the release test command.
-// After a fix, update the corresponding check to assert the corrected behavior.
+// Mixed audit checks for the comprehensive source audit.
+// Fixed cases assert corrected behavior; unresolved cases retain controlled
+// source-level defect signatures. This suite is separate from the release gate.
 
 const assert = require("node:assert/strict");
 const { normalizeCookie } = require("../src/cookies");
