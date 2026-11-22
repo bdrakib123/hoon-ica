@@ -53,6 +53,38 @@ class RealtimeListener {
     return Promise.resolve(null);
   }
 
+  async _subscribeWithAck(cursor) {
+    const timeoutMs = Math.max(100, Number(this.options.subscriptionTimeoutMs) || 10000);
+    let timer;
+    let onAck;
+    const acknowledgement = new Promise((resolve, reject) => {
+      onAck = (payload) => {
+        clearTimeout(timer);
+        this._client.removeListener("iris_sub_response", onAck);
+        if (payload && (payload.error || payload.error_type || payload.status === "fail")) {
+          reject(new Error("Realtime iris subscription was rejected"));
+          return;
+        }
+        resolve(payload);
+      };
+      this._client.once("iris_sub_response", onAck);
+      timer = setTimeout(() => {
+        this._client.removeListener("iris_sub_response", onAck);
+        reject(new Error("Realtime iris subscription acknowledgement timed out"));
+      }, timeoutMs);
+      if (timer && typeof timer.unref === "function") timer.unref();
+    });
+
+    try {
+      await this._client.irisSubscribe(Number(cursor.seqId) || 0, Number(cursor.snapshotAtMs));
+      return await acknowledgement;
+    } catch (error) {
+      clearTimeout(timer);
+      if (onAck) this._client.removeListener("iris_sub_response", onAck);
+      throw error;
+    }
+  }
+
   async start(callback) {
     this._callback = callback;
     // Prefer a caller-supplied client (the session's single shared MQTT
@@ -85,11 +117,10 @@ class RealtimeListener {
 
     const cursor = await this._resolveCursor();
     if (cursor && cursor.seqId != null && cursor.snapshotAtMs != null) {
-      await this._client.irisSubscribe(Number(cursor.seqId) || 0, Number(cursor.snapshotAtMs));
+      await this._subscribeWithAck(cursor);
       this._subscribed = true;
-    } else if (typeof this.options.onReady === "function") {
-      this.options.onReady(this);
     }
+    if (typeof this.options.onReady === "function") this.options.onReady(this);
     return this;
   }
 
