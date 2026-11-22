@@ -322,8 +322,18 @@ class HttpClient {
   }
 
   async postForm(url, fields) {
-    const body = new URLSearchParams(fields).toString();
-    const res = await this.client.post(url, body, {
+    let params;
+    if (fields instanceof URLSearchParams || Array.isArray(fields)) {
+      params = new URLSearchParams(fields);
+    } else {
+      params = new URLSearchParams();
+      for (const [key, value] of Object.entries(fields || {})) {
+        if (value === undefined || value === null) continue;
+        const encoded = typeof value === "object" ? JSON.stringify(value) : String(value);
+        params.append(key, encoded);
+      }
+    }
+    const res = await this.client.post(url, params.toString(), {
       headers: this._webHeaders({ "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" })
     });
     return res.data;
