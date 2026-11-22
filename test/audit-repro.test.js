@@ -291,7 +291,7 @@ async function main() {
     }
   });
 
-  await checkCase("getInbox ignores a supplied pagination cursor", async () => {
+  await checkCase("getInbox cursor argument is ignored; public pagination contract remains unverified", async () => {
     let variables;
     const inbox = new InboxMethods({
       session: { __hsi: "device-1" },
