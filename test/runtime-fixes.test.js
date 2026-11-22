@@ -372,6 +372,47 @@ async function testFcaHistoryTimestampIsForwarded() {
   assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
 }
 
+async function testInboxSkipsMalformedRelayThreads() {
+  const InboxMethods = require("../src/methods/inbox");
+  const http = {
+    session: {},
+    uuid: () => "device-1",
+    postGraphQL: async (name) => {
+      if (name === "PolarisDirectInboxQuery") {
+        return { data: { get_slide_mailbox_for_iris_subscription: {
+          id: "mailbox-1",
+          threads_by_folder: {
+            edges: [
+              null,
+              { node: null },
+              { node: { as_ig_direct_thread: {} } },
+              { node: { as_ig_direct_thread: { id: "thread-1", thread_id: "internal-1", users: [] } } }
+            ],
+            page_info: { has_next_page: true, end_cursor: "cursor-1" }
+          }
+        } } };
+      }
+      if (name === "IGDThreadListOffMsysPaginationQuery") {
+        return { data: { fetch__SlideMailbox: { threads_by_folder: {
+          edges: [
+            { node: { as_ig_direct_thread: { id: "thread-2", thread_id: "internal-2", users: [] } } },
+            { node: { as_ig_direct_thread: { thread_title: "missing id" } } }
+          ],
+          page_info: { has_next_page: false, end_cursor: null }
+        } } } };
+      }
+      throw new Error("Unexpected query: " + name);
+    }
+  };
+  const inbox = new InboxMethods(http, () => "self-1");
+  const first = await inbox.getInbox();
+  assert.deepEqual(first.threads.map(thread => thread.id), ["thread-1"]);
+  const second = await inbox.getInbox(first.nextCursor);
+  assert.deepEqual(second.threads.map(thread => thread.id), ["thread-2"]);
+  assert.equal(inbox._members.has("undefined"), false);
+  assert.equal(inbox._threadIdMap.has("undefined"), false);
+}
+
 async function testBoundedSessionCache() {
   const cache = new Map();
   setBounded(cache, "a", 1, 2);
@@ -405,8 +446,9 @@ async function run() {
   await testThreadHistoryTimestampPagination();
   await testFcaHistoryTimestampIsForwarded();
   await testInboxCursorPagination();
+  await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
-  process.stdout.write("runtime-fixes.test.js: 19 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 20 regression tests passed\n");
 }
 
 run().catch((error) => {
