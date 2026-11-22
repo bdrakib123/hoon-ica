@@ -305,6 +305,7 @@ async function main() {
     let legacyCalls = 0;
     const media = new MediaMethods({
       offlineThreadingId: () => "offline-1",
+      uuid: () => "client-context-1",
       postGraphQL: async () => {
         const error = new Error("login required");
         error.response = { status: 401, data: { message: "login_required" } };
