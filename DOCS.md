@@ -271,7 +271,10 @@ Relay **doc_ids** (stable per friendly-name, rotate rarely):
    Instagram may answer `412 AuthorizationFailedError` transiently — the client
    retries with backoff.
 2. **Commit** with `IGDirectMediaSendMutation`:
-   `{ attachment_fbid, thread_id, offline_threading_id }`.
+   `{ attachment_fbid, thread_id, offline_threading_id }`. Only errors classified as
+   transient are retried, and every attempt reuses the same `offline_threading_id`
+   to avoid creating a second logical send after an ambiguous response. GraphQL
+   `field_exception` errors are surfaced rather than blindly retried.
 
 ### Reactions
 
