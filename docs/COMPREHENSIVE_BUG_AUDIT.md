@@ -147,7 +147,6 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 - `getThreadList` supports the currently verified INBOX folder and unread filter. Archived, pending and other folders remain unsupported; implement only after their current Instagram web query contracts are verified.
 - Inbox polling currently consumes the first inbox page only, while the FCA `getThreadList` wrapper can paginate. Assess whether polling beyond the first 15 threads is required and balance coverage against additional GraphQL request volume before changing it.
-- The fallback group-count rules in thread-list and thread-detail wrappers are not consistent; validate against captured inbox and thread-detail payloads before changing either.
 - Verify whether inbox/realtime participant lists consistently include the viewer/self ID for every event type.
 - Stress-test bounded caches under long-running multi-thread load and confirm eviction does not break expected command lookups; the helper test alone cannot establish practical memory behavior.
 - Verify media upload and commit error classification against real response shapes, especially transient 412 and authentication/challenge responses.
