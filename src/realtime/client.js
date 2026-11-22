@@ -325,7 +325,9 @@ class RealtimeClient extends EventEmitter {
   }
 
   publishBytes(topic, payload) {
-    this._packetId += 1;
+    // MQTT packet identifiers are non-zero unsigned 16-bit values. Wrap before
+    // uint16 encoding would silently turn 65536 into the invalid id 0.
+    this._packetId = (this._packetId % 65535) + 1;
     const packet = writePublishPacket(topic, payload, 1, this._packetId);
     return this.transport.send(packet);
   }
