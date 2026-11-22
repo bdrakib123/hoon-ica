@@ -436,6 +436,26 @@ async function testMediaCommitRetryReusesOfflineThreadingId() {
 }
 
 
+async function testThriftReaderRejectsMalformedAndOversizedValues() {
+  const { ThriftReader } = require("../src/realtime/mqttot");
+  assert.throws(
+    () => new ThriftReader(Buffer.from([0x15, 0x80])).readStruct([]),
+    /Truncated Thrift varint/
+  );
+  assert.throws(
+    () => new ThriftReader(Buffer.from([0x19, 0xf1, 0xa1, 0x8d, 0x06])).readStruct([]),
+    /list exceeds configured collection limit/
+  );
+  assert.throws(
+    () => new ThriftReader(Buffer.from([0x18, 0x05, 0x61])).readStruct([]),
+    /binary field exceeds available data/
+  );
+  assert.deepEqual(
+    new ThriftReader(Buffer.from([0x19, 0x11, 0x01])).readStruct([]),
+    {}
+  );
+}
+
 async function testMqttDecompressionOutputIsBounded() {
   const zlib = require("node:zlib");
   const { tryDecompressPayload } = require("../src/realtime/mqttot");
@@ -570,7 +590,8 @@ async function run() {
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
-  process.stdout.write("runtime-fixes.test.js: 25 regression tests passed\n");
+  await testThriftReaderRejectsMalformedAndOversizedValues();
+  process.stdout.write("runtime-fixes.test.js: 26 regression tests passed\n");
 }
 
 run().catch((error) => {
