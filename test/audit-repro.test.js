@@ -31,9 +31,13 @@ async function reproduce(name, check) {
 }
 
 async function main() {
-  await reproduce("documented cookie object/array inputs throw before normalization", async () => {
-    assert.throws(() => normalizeCookie({ sessionid: "session-value", csrftoken: "csrf-value" }), TypeError);
-    assert.throws(() => normalizeCookie([{ name: "sessionid", value: "session-value" }]), TypeError);
+  await reproduce("documented cookie object/array inputs normalize correctly", async () => {
+    assert.deepEqual(normalizeCookie({ sessionid: "session-value", csrftoken: "csrf-value" }), {
+      sessionid: "session-value", csrftoken: "csrf-value"
+    });
+    assert.deepEqual(normalizeCookie([{ name: "sessionid", value: "session-value" }]), {
+      sessionid: "session-value"
+    });
   });
 
   await reproduce("getUID treats a reel route as a username", async () => {
@@ -65,14 +69,13 @@ async function main() {
     assert.equal(thread.timestamp, null);
   });
 
-  await reproduce("anti-suspension configure does not update nested cooldown values", async () => {
+  await reproduce("anti-suspension configure updates nested cooldown values", async () => {
     const pacer = new SendPacer();
     try {
       pacer.configure({ cooldownMs: 1234, strikesToActivate: 5 });
-      assert.equal(pacer.baseCooldownMs, 60 * 60 * 1000);
-      assert.equal(pacer.cooldown.strikesToActivate, 2);
-      assert.equal(pacer.cooldownMs, 1234);
-      assert.equal(pacer.strikesToActivate, 5);
+      assert.equal(pacer.baseCooldownMs, 1234);
+      assert.equal(pacer.cooldown.durationMs, 1234);
+      assert.equal(pacer.cooldown.strikesToActivate, 5);
     } finally {
       pacer.destroy();
     }
@@ -116,7 +119,7 @@ async function main() {
     assert.equal(map["viewer-fbid"], "undefined");
   });
 
-  await reproduce("readRetry retries thrown permanent errors instead of surfacing immediately", async () => {
+  await reproduce("readRetry surfaces thrown errors without retrying", async () => {
     let calls = 0;
     const client = {
       getThreadInfo: async () => {
@@ -126,7 +129,7 @@ async function main() {
     };
     installReadRetry(client, { attempts: 2, firstWaitMs: 0, maxWaitMs: 0 });
     await assert.rejects(client.getThreadInfo("bad-id"), /invalid thread id/);
-    assert.equal(calls, 2);
+    assert.equal(calls, 1);
   });
 
   await reproduce("RealtimeListener omits onReady after a cursor subscription", async () => {
@@ -271,7 +274,7 @@ async function main() {
     }
   });
 
-  await reproduce("sendLink bypasses the configured outbound send pacer", async () => {
+  await reproduce("sendLink uses the configured outbound send pacer", async () => {
     const originalWaitForTurn = globalAntiSuspension.waitForTurn;
     let pacingCalls = 0;
     globalAntiSuspension.waitForTurn = async () => { pacingCalls += 1; };
@@ -281,7 +284,7 @@ async function main() {
         postForm: async () => ({ status: "ok" })
       }, {});
       await methods.sendLink("thread-1", "https://example.com", "example");
-      assert.equal(pacingCalls, 0);
+      assert.equal(pacingCalls, 1);
     } finally {
       globalAntiSuspension.waitForTurn = originalWaitForTurn;
     }
@@ -302,7 +305,7 @@ async function main() {
     assert.equal(Object.prototype.hasOwnProperty.call(variables, "before"), false);
   });
 
-  await reproduce("media caption falls back to legacy send after an auth error", async () => {
+  await reproduce("media caption does not fallback to legacy send after an auth error", async () => {
     let legacyCalls = 0;
     const media = new MediaMethods({
       offlineThreadingId: () => "offline-1",
@@ -317,8 +320,8 @@ async function main() {
         return { status: "ok" };
       }
     }, {});
-    await media._sendCaption("thread-1", "caption");
-    assert.equal(legacyCalls, 1);
+    await assert.rejects(media._sendCaption("thread-1", "caption"), /login required/);
+    assert.equal(legacyCalls, 0);
   });
 
   await reproduce("Thrift INT64 reader loses precision above Number.MAX_SAFE_INTEGER", async () => {
@@ -334,7 +337,7 @@ async function main() {
   });
 
   process.stdout.write("\nAudit reproductions: " + reproduced.length + " reproduced\n");
-  process.stdout.write("These checks reproduce current defects; they are not passing regression assertions.\n");
+  process.stdout.write("Remaining diagnostic cases reproduce source-level defects; fixed cases assert corrected behavior. Not a live Instagram validation.\n");
 }
 
 main().catch((error) => {
