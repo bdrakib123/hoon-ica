@@ -324,6 +324,7 @@ class InstaClient {
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
           throw new TypeError("Attachment URL protocol must be HTTP or HTTPS");
         }
+        let previousProtocol = parsed.protocol;
         const res = await axios.get(parsed.href, {
           responseType: "arraybuffer",
           timeout,
@@ -331,9 +332,14 @@ class InstaClient {
           maxBodyLength: maxDownloadBytes,
           maxRedirects: 3,
           beforeRedirect: (requestOptions) => {
-            if (parsed.protocol === "https:" && requestOptions.protocol !== "https:") {
+            const nextProtocol = requestOptions.protocol;
+            if (nextProtocol !== "http:" && nextProtocol !== "https:") {
+              throw new Error("Attachment URL redirect must use HTTP or HTTPS");
+            }
+            if (previousProtocol === "https:" && nextProtocol !== "https:") {
               throw new Error("Attachment URL redirect cannot downgrade HTTPS to HTTP");
             }
+            previousProtocol = nextProtocol;
           }
         });
         const buffer = Buffer.from(res.data);
