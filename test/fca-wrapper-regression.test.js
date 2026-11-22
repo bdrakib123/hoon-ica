@@ -11,6 +11,10 @@ const createUnsendMessage = require("../src/api/messaging/unsendMessage");
 const createEditMessage = require("../src/api/messaging/editMessage");
 const createSendMessage = require("../src/api/messaging/sendMessage");
 const createGetUserProfile = require("../src/api/users/getUserProfile");
+const createGetUserID = require("../src/api/users/getUserID");
+const createGetSelfInfo = require("../src/api/users/getSelfInfo");
+const createGetProfilePictureV2 = require("../src/api/users/getProfilePictureV2");
+const createGetProfileBio = require("../src/api/users/getProfileBio");
 const createGetUserInfoV2 = require("../src/api/users/getUserInfoV2");
 const createShareContact = require("../src/api/messaging/shareContact");
 
@@ -322,6 +326,40 @@ async function testSendMessageHandlesDeepAndCircularAttachmentArrays() {
 }
 
 
+async function testAsyncCallbacksPropagateAcrossProfileAndIdAdapters() {
+  const rejects = async (operation, message) => {
+    await assert.rejects(
+      () => operation(async () => {
+        await Promise.resolve();
+        throw new Error(message);
+      }),
+      new RegExp(message)
+    );
+  };
+  await rejects(
+    cb => createGetProfileBio({ getProfile: async () => ({ id: "u-1", fullName: "User", biography: "bio" }) })("u-1", cb),
+    "bio callback failed"
+  );
+  await rejects(
+    cb => createGetProfilePictureV2({
+      getProfile: async () => ({ id: "u-1", profilePicUrl: "https://cdn.example/p.jpg" })
+    })("u-1", {}, cb),
+    "picture callback failed"
+  );
+  await rejects(
+    cb => createGetSelfInfo({
+      getCurrentUserID: () => "self-1",
+      getUserInfoV2: async () => ({ "self-1": { id: "self-1" } })
+    })(cb),
+    "self callback failed"
+  );
+  await rejects(
+    cb => createGetUserID({ getProfile: async () => ({ id: "u-1" }) })("friend", cb),
+    "id callback failed"
+  );
+}
+
+
 async function testUserInfoCacheRemainsBounded() {
   const cache = new Map();
   const getUserInfo = createGetUserInfo({
@@ -418,12 +456,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testSendMessageHandlesDeepAndCircularAttachmentArrays();
   await testMultiAttachmentFailureReportsPartialProgress();
   await testAsyncFcaCallbackRejectionsArePropagated();
+  await testAsyncCallbacksPropagateAcrossProfileAndIdAdapters();
   await testUserInfoCacheRemainsBounded();
   await testShareContactSendsProfileLink();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 14 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 15 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
