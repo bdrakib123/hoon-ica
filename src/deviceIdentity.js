@@ -16,6 +16,7 @@ function generateDeviceId() {
 function loadOrCreate(filePath, igDid) {
   if (fs.existsSync(filePath)) {
     try {
+      fs.chmodSync(filePath, 0o600);
       const saved = JSON.parse(fs.readFileSync(filePath, "utf8"));
       if (saved.deviceId && saved.uuid) return saved;
     } catch (_) {}
@@ -28,7 +29,8 @@ function loadOrCreate(filePath, igDid) {
 
   try {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify(identity, null, 2));
+    fs.writeFileSync(filePath, JSON.stringify(identity, null, 2), { mode: 0o600 });
+    fs.chmodSync(filePath, 0o600);
   } catch (_) {}
 
   return identity;
