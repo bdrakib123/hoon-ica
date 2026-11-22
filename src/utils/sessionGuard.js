@@ -78,8 +78,12 @@ function install(client, appStatePath) {
       if (fs.existsSync(filePath)) {
         try {
           const existing = JSON.parse(fs.readFileSync(filePath, "utf8"));
-          if (Array.isArray(existing) && state.length < existing.length * 0.8) return false;
-          writeAtomic(`${filePath}.bak`, JSON.stringify(existing, null, 2));
+          if (Array.isArray(existing) && existing.length >= MIN_COOKIES) {
+            if (state.length < existing.length * 0.8) return false;
+            // Never replace a known-good backup with a syntactically valid but
+            // incomplete primary cookie file.
+            writeAtomic(`${filePath}.bak`, JSON.stringify(existing, null, 2));
+          }
         } catch (_) {}
       }
       writeAtomic(filePath, JSON.stringify(state, null, 2));
