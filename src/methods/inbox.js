@@ -154,7 +154,10 @@ class InboxMethods {
     }
     for (const t of threads) {
       const tid = String(t.id || t.thread_id);
-      if (tid) setBounded(this._members, tid, (t.users || []).map((u) => String(u.id || u.pk)).filter(Boolean), 2000);
+      if (tid) {
+        const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
+        setBounded(this._members, tid, users.map((u) => String(u.id || u.pk || "")).filter(Boolean), 2000);
+      }
     }
     this._learnThreadIds(threads);
   }
@@ -310,7 +313,9 @@ class InboxMethods {
     const members = new Set();
     const names = {};
     for (const u of users) {
-      const id = String(u.id || u.pk);
+      const rawId = u.id || u.pk;
+      if (rawId == null || String(rawId).trim() === "") continue;
+      const id = String(rawId);
       members.add(id);
       names[id] = u.full_name || u.username || id;
     }
