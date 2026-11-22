@@ -191,36 +191,40 @@ class RealtimeClient extends EventEmitter {
   _startLoop() {
     this._loop = (async () => {
       let receiveError = null;
-      while (this.connected) {
-        let packet;
-        try {
-          packet = decodePacket(await this.transport.recvPacket());
-        } catch (err) {
-          receiveError = err;
-          if (!this._stopRequested) this.emit("error", err);
-          break;
-        }
-        try {
-          this._handlePacket(packet);
-        } catch (err) {
-          this.emit("error", err);
-        }
-      }
-      this.connected = false;
-      if (this._pingTimer) clearInterval(this._pingTimer);
-      this._pingTimer = null;
-      // A malformed packet can terminate the receive loop while the TLS socket
-      // is still open. Close it before announcing disconnection so polling
-      // fallback/reconnect cannot leave an idle broker connection behind.
-      if (receiveError && !this._stopRequested) {
-        this._stopRequested = true;
-        try {
-          if (this.transport && typeof this.transport.disconnect === "function") {
-            this.transport.disconnect();
+      try {
+        while (this.connected) {
+          let packet;
+          try {
+            packet = decodePacket(await this.transport.recvPacket());
+          } catch (err) {
+            receiveError = err;
+            if (!this._stopRequested) this.emit("error", err);
+            break;
           }
-        } catch (_) {}
+          try {
+            this._handlePacket(packet);
+          } catch (err) {
+            this.emit("error", err);
+          }
+        }
+      } finally {
+        this.connected = false;
+        if (this._pingTimer) clearInterval(this._pingTimer);
+        this._pingTimer = null;
+        // A malformed packet can terminate the receive loop while the TLS socket
+        // is still open. Close it before announcing disconnection so polling
+        // fallback/reconnect cannot leave an idle broker connection behind.
+        // The finally block also guarantees cleanup if an error listener throws.
+        if (receiveError && !this._stopRequested) {
+          this._stopRequested = true;
+          try {
+            if (this.transport && typeof this.transport.disconnect === "function") {
+              this.transport.disconnect();
+            }
+          } catch (_) {}
+        }
+        this.emit("disconnected", {});
       }
-      this.emit("disconnected", {});
     })();
   }
 
