@@ -31,12 +31,12 @@ module.exports = function (client) {
         id: String(learned.id || learned.pk || key),
         userID: String(learned.id || learned.pk || key),
         username: learned.username || null,
-        blocking: fs ? fs.blocking === true : null,
-        isRestricted: fs ? fs.is_restricted === true : null,
-        isFollowedBy: fs ? fs.is_followed_by === true : null,
-        follows: fs ? fs.following === true : null,
-        incomingRequest: fs ? fs.incoming_request === true : null,
-        outgoingRequest: fs ? fs.outgoing_request === true : null
+        blocking: typeof fs?.blocking === "boolean" ? fs.blocking : null,
+        isRestricted: typeof fs?.is_restricted === "boolean" ? fs.is_restricted : null,
+        isFollowedBy: typeof fs?.is_followed_by === "boolean" ? fs.is_followed_by : null,
+        follows: typeof fs?.following === "boolean" ? fs.following : null,
+        incomingRequest: typeof fs?.incoming_request === "boolean" ? fs.incoming_request : null,
+        outgoingRequest: typeof fs?.outgoing_request === "boolean" ? fs.outgoing_request : null
       };
       if (cb) await cb(null, out);
       return out;
