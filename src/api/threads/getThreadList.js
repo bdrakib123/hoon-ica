@@ -58,6 +58,14 @@ module.exports = function (client) {
           thread.slide_messages?.[0] ||
           thread.items?.[0] ||
           null;
+        const users = (Array.isArray(thread.users) ? thread.users : [])
+          .filter((user) => user && typeof user === "object");
+        const viewer = thread.viewer && typeof thread.viewer === "object" ? thread.viewer : null;
+        const viewerID = viewer && (viewer.id || viewer.pk);
+        const viewerAlreadyListed = viewerID != null && users.some(
+          (user) => String(user.id || user.pk) === String(viewerID)
+        );
+        const participantCount = users.length + (viewerID != null && !viewerAlreadyListed ? 1 : 0);
         return {
           threadID: String(rawThreadID),
           name: thread.thread_title || null,
@@ -68,7 +76,7 @@ module.exports = function (client) {
           // when a snapshot omits it.
           isGroup: typeof thread.is_group === "boolean"
             ? thread.is_group
-            : Array.isArray(thread.users) && thread.users.length > 2
+            : participantCount > 2
         };
       };
 
