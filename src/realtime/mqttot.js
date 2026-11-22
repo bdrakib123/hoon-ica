@@ -119,8 +119,9 @@ class ThriftWriter {
 }
 
 class ThriftReader {
-  constructor(data) {
+  constructor(data, options = {}) {
     this.data = data;
+    this.int64AsBigInt = options.int64AsBigInt === true;
     this.pos = 0;
     this._fieldStack = [];
     this._field = 0;
@@ -154,7 +155,13 @@ class ThriftReader {
     if (fieldType === ThriftTypes.TRUE) return true;
     if (fieldType === ThriftTypes.FALSE) return false;
     if (fieldType === ThriftTypes.BYTE) return this.readBytes(1).readInt8(0);
-    if (fieldType === ThriftTypes.INT_16 || fieldType === ThriftTypes.INT_32 || fieldType === ThriftTypes.INT_64) {
+    if (fieldType === ThriftTypes.INT_64) {
+      const value = unzigzag(this.readVarint());
+      // Keep Number as the backwards-compatible default, but let callers opt
+      // into exact 64-bit values without silently rounding large integers.
+      return this.int64AsBigInt ? value : Number(value);
+    }
+    if (fieldType === ThriftTypes.INT_16 || fieldType === ThriftTypes.INT_32) {
       return Number(unzigzag(this.readVarint()));
     }
     if (fieldType === ThriftTypes.BINARY) return this.readBytes(Number(this.readVarint())).toString("utf8");
@@ -621,7 +628,7 @@ module.exports = {
   writeThriftObject,
   writeThriftStruct,
   KEEP_ALIVE_SECONDS,
-  readThriftObject: (data, descriptors) => new ThriftReader(data).readStruct(descriptors),
+  readThriftObject: (data, descriptors, options) => new ThriftReader(data, options).readStruct(descriptors),
   zigzag,
   unzigzag
 };
