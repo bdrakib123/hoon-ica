@@ -103,6 +103,27 @@ export interface SendOptions {
   text?: string;
   caption?: string;
   replyToMessageId?: string;
+  /** Maximum bytes accepted from URL-based media downloads (default 100 MiB, hard cap 512 MiB). */
+  maxDownloadBytes?: number;
+  /** URL-based media download timeout in milliseconds (default 30 s, hard cap 120 s). */
+  downloadTimeoutMs?: number;
+}
+
+export interface PartialAttachmentSend {
+  sentCount: number;
+  totalAttachments: number;
+  messageIDs: string[];
+}
+
+export interface PartialCaptionedMediaSend {
+  captionSent: boolean;
+  mediaSent: boolean;
+}
+
+/** Error objects from multi-part sends may carry one of these partialSend details. */
+export interface PartialSendError extends Error {
+  partialSend?: PartialAttachmentSend | PartialCaptionedMediaSend;
+  mediaError?: unknown;
 }
 
 export interface Attachment {
