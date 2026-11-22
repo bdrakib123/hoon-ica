@@ -47,6 +47,9 @@ function normalizeReplyFromPush(replied) {
       senderName: null,
       body: replied.text || replied.text_body || "",
       attachments: attachmentsFromContent(replied.media || replied.content || {}),
+      itemType: String(replied.item_type ?? replied.content_type ?? "").toLowerCase(),
+      clientContext: replied.client_context || null,
+      offlineThreadingId: replied.offline_threading_id != null ? String(replied.offline_threading_id) : null,
       timestamp: Number(replied.timestamp || replied.timestamp_ms) || null
     }
   };
