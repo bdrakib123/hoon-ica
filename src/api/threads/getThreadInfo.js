@@ -60,11 +60,11 @@ module.exports = function (client) {
         emoji: null,
         color: null
       };
-      if (cb) cb(null, info);
+      if (cb) await cb(null, info);
       return info;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return null;
     }
   };
