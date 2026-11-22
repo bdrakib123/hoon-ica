@@ -131,6 +131,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 108 | Realtime subscription rounds 64-bit sequence IDs | **Fixed on branch:** inbox cursor normalization preserves large decimal sequence IDs as exact strings and rejects unsafe numeric values that have already lost precision; the listener passes the normalized cursor to MQTT without coercing it through `Number()`. | regression covers values above `Number.MAX_SAFE_INTEGER`, safe integers, invalid values, inbox extraction and subscription forwarding; pending batch local run |
 | 109 | Poller reports auth failure after stop during confirmation probe | **Fixed on branch:** after the asynchronous session-confirmation request resolves, the poller rechecks its stopped state before invoking callbacks or scheduling further work. | deferred-auth-probe regression stops the poller before resolving an invalid-session result and asserts no late callback/timer; pending batch local run |
 | 110 | Direct-thread name fallback mistakes a pk-only viewer for the other participant | **Fixed on branch:** `getThreadInfo` now excludes the viewer using the already-normalized `viewerID` (`id` or `pk`) when selecting the other participant for a direct-thread title fallback. | existing pk-only viewer fixture now asserts that the friend username, not the logged-in viewer username, becomes `threadName`; pending batch local run |
+| 111 | Inbox group fallback omits the separate viewer participant | **Fixed on branch:** `getThreadList` now counts a separate `viewer.id` / `viewer.pk` exactly once when `is_group` is absent, matching the thread-detail wrapper. | regression covers a 3-person group with viewer outside `users`, a direct chat, and a viewer already present in `users`; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -138,7 +139,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 84 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-six runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#110 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 84 runtime regression tests and 15 FCA wrapper regression tests (99 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#111 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 84 runtime regression tests and 16 FCA wrapper regression tests (100 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -157,7 +158,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#110 batch.
+1. Run the full Node 20 validation suite once after the current #30–#111 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
