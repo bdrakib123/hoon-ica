@@ -11,6 +11,11 @@
 
 const USERNAME_RE = /@([A-Za-z0-9._]{1,30})/g;
 
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 function normalizeAttachments(list) {
   if (!Array.isArray(list)) return [];
   return list.filter((attachment) => attachment && typeof attachment === "object")
@@ -132,8 +137,8 @@ class EventNormalizer {
     for (const username of names) {
       try {
         const user = await this.client.api.getUserInfoByUsername(username);
-        const userID = user && (user.pk || user.id);
-        if (userID != null) mentions[String(userID)] = user.username || username;
+        const userID = user && firstUsableId(user.pk, user.id);
+        if (userID) mentions[userID] = user.username || username;
       } catch (_) {}
     }
     return mentions;
