@@ -892,11 +892,12 @@ async function testRealtimeListenerStopDuringClientLookup() {
 async function testRealtimeMissingAcknowledgementFails() {
   const { EventEmitter } = require("node:events");
   const { RealtimeListener } = require("../src/realtime/listener");
+  let disconnects = 0;
   class FakeClient extends EventEmitter {
     constructor() { super(); this.connected = true; }
     async connect() {}
     async irisSubscribe() {}
-    disconnect() {}
+    disconnect() { disconnects += 1; }
   }
   const client = new FakeClient();
   const listener = new RealtimeListener({}, {
@@ -908,6 +909,10 @@ async function testRealtimeMissingAcknowledgementFails() {
   await assert.rejects(listener.start(() => {}), /acknowledgement timed out/);
   assert.equal(listener._subscribed, false);
   assert.equal(client.listenerCount("iris_sub_response"), 0);
+  assert.equal(client.listenerCount("message"), 0);
+  assert.equal(client.listenerCount("error"), 0);
+  assert.equal(client.listenerCount("disconnected"), 0);
+  assert.equal(disconnects, 1);
   listener.stop();
 }
 
