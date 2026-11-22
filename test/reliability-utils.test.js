@@ -84,6 +84,35 @@ async function run() {
   assert.equal(await lateSuccess, "late success");
   assert.equal(raceBreaker.state("concurrent"), "open");
 
+  // A request that began before the breaker opened must not release a
+  // half-open probe lock when it eventually settles.
+  const staleBreaker = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 5 });
+  let releaseStaleSuccess;
+  let releaseOpenFailure;
+  let releaseProbe;
+  const staleSuccess = staleBreaker.run("stale-probe", () => new Promise(resolve => {
+    releaseStaleSuccess = resolve;
+  }));
+  const openingFailure = staleBreaker.run("stale-probe", () => new Promise((_, reject) => {
+    releaseOpenFailure = reject;
+  }));
+  const openError = new Error("opens circuit");
+  openError.code = "ECONNRESET";
+  releaseOpenFailure(openError);
+  await assert.rejects(openingFailure, /opens circuit/);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  const activeProbe = staleBreaker.run("stale-probe", () => new Promise(resolve => {
+    releaseProbe = resolve;
+  }));
+  releaseStaleSuccess("late success");
+  assert.equal(await staleSuccess, "late success");
+  await assert.rejects(
+    staleBreaker.run("stale-probe", async () => "duplicate probe"),
+    { code: "CIRCUIT_OPEN" }
+  );
+  releaseProbe("probe recovered");
+  assert.equal(await activeProbe, "probe recovered");
+
   const cache = new IdempotencyCache({ ttlMs: 1000, maxSize: 5 });
   let calls = 0;
   const operation = async () => {
