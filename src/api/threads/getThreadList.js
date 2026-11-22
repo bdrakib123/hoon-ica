@@ -20,6 +20,7 @@ module.exports = function (client) {
       tags = [];
     }
     const cb = typeof callback === "function" ? callback : null;
+    let list = [];
 
     try {
       if (!Number.isInteger(limit) || limit <= 0) {
@@ -71,7 +72,7 @@ module.exports = function (client) {
         };
       };
 
-      const list = [];
+      list = [];
       const seenThreads = new Set();
       const seenCursors = new Set();
       const before = timestamp == null ? null : Number(timestamp);
