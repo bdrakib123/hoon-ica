@@ -481,14 +481,14 @@ function encodeRemainingLength(value) {
 function decodeRemainingLength(data, offset) {
   let multiplier = 1;
   let value = 0;
-  let byte;
-  do {
-    byte = data[offset];
-    offset += 1;
-    value += (byte & 127) * multiplier;
+  for (let count = 0; count < 4; count++) {
+    if (offset >= data.length) throw new Error("Malformed MQTT packet: truncated remaining length");
+    const byte = data[offset++];
+    value += (byte & 0x7f) * multiplier;
+    if ((byte & 0x80) === 0) return { value, offset };
     multiplier *= 128;
-  } while (byte & 128);
-  return { value, offset };
+  }
+  throw new Error("Malformed MQTT packet: remaining length exceeds four bytes");
 }
 
 // A TLS transport that frames MQTT packets. `recvPacket()` resolves with one
@@ -496,10 +496,19 @@ function decodeRemainingLength(data, offset) {
 // asynchronous, so unlike the reference (blocking) transport this buffers and
 // hands out packets as they arrive.
 class SocketMQTToTTransport {
-  constructor(host, port = 443, { timeout = 30000 } = {}) {
+  constructor(host, port = 443, {
+    timeout = 30000,
+    maxPacketSize = 16 * 1024 * 1024,
+    maxBufferedBytes = 32 * 1024 * 1024
+  } = {}) {
     this.host = host;
     this.port = port;
     this.timeout = timeout;
+    this.maxPacketSize = Math.max(1, Math.floor(Number(maxPacketSize) || 16 * 1024 * 1024));
+    this.maxBufferedBytes = Math.max(
+      this.maxPacketSize + 5,
+      Math.floor(Number(maxBufferedBytes) || 32 * 1024 * 1024)
+    );
     this.socket = null;
     this._buffer = Buffer.alloc(0);
     this._waiters = [];
@@ -542,8 +551,20 @@ class SocketMQTToTTransport {
   _attach(socket) {
     this.socket = socket;
     socket.on("data", (chunk) => {
+      if (this._closed) return;
+      if (this._buffer.length + chunk.length > this.maxBufferedBytes) {
+        const error = new Error("MQTT receive buffer exceeded its configured limit");
+        this._fail(error);
+        socket.destroy(error);
+        return;
+      }
       this._buffer = Buffer.concat([this._buffer, chunk]);
-      this._drain();
+      try {
+        this._drain();
+      } catch (error) {
+        this._fail(error);
+        socket.destroy(error);
+      }
     });
     socket.on("error", (err) => this._fail(err));
     socket.on("close", () => this._fail(new Error("MQTT socket closed")));
@@ -559,17 +580,10 @@ class SocketMQTToTTransport {
 
   _tryRead() {
     if (this._buffer.length < 2) return null;
-    let multiplier = 1;
-    let size = 0;
-    let offset = 1;
-    let byte;
-    do {
-      if (offset >= this._buffer.length) return null;
-      byte = this._buffer[offset];
-      size += (byte & 0x7f) * multiplier;
-      multiplier *= 128;
-      offset += 1;
-    } while (byte & 0x80);
+    const { value: size, offset } = decodeRemainingLength(this._buffer, 1);
+    if (size > this.maxPacketSize) {
+      throw new Error(`MQTT packet exceeds configured limit (${this.maxPacketSize} bytes)`);
+    }
     const total = offset + size;
     if (this._buffer.length < total) return null;
     const packet = this._buffer.slice(0, total);
