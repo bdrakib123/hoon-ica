@@ -167,11 +167,14 @@ class EventNormalizer {
     if (raw.type !== "message") return null;
     // A malformed push must not poison message->thread lookup with "undefined".
     if (raw.threadID == null || String(raw.threadID).trim() === "" ||
-        raw.messageID == null || String(raw.messageID).trim() === "") return null;
+        raw.messageID == null || String(raw.messageID).trim() === "" ||
+        raw.senderID == null || String(raw.senderID).trim() === "") return null;
 
     const threadID = String(raw.threadID);
-    const senderID = String(raw.senderID || "");
-    const body = raw.body || "";
+    const senderID = String(raw.senderID);
+    // Text payloads are strings. Keep malformed structured values from reaching
+    // includes()/match() mention parsing while preserving attachment-only DMs.
+    const body = typeof raw.body === "string" ? raw.body : "";
 
     let senderName = raw.senderName || null;
     // Prefer the name the client already learned from the inbox/thread views.
