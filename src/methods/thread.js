@@ -100,12 +100,19 @@ class ThreadMethods {
       if (boundary > 0 && boundary < 1e12) boundary *= 1000;
     }
 
-    const thread = await this.fetchDetail(threadID, limit);
+    const wanted = limit == null ? 20 : Number(limit);
+    if (!Number.isSafeInteger(wanted) || wanted <= 0 || wanted > 5000) {
+      throw new RangeError("getThreadHistory: limit must be a positive safe integer no greater than 5000");
+    }
+    // Bound each GraphQL page independently. A large caller-requested history
+    // is still supported through Relay cursors without asking Instagram for an
+    // unbounded first page or constructing an oversized query.
+    const pageSize = Math.min(wanted, 50);
+    const thread = await this.fetchDetail(threadID, pageSize);
     if (!thread) return [];
 
     const fbidToIgid = threadFbidMap(thread);
     const firstConnection = thread.slide_messages || {};
-    const wanted = Math.max(1, Number(limit) || 20);
     const threadFBID = thread.thread_fbid || thread.id || String(threadID);
     const results = [];
     const seenIDs = new Set();
@@ -131,7 +138,7 @@ class ThreadMethods {
       if (!pageInfo.has_next_page || !cursor || seenCursors.has(cursor)) break;
       seenCursors.add(cursor);
       try {
-        connection = await this.fetchOlderMessages(threadFBID, cursor, wanted - results.length);
+        connection = await this.fetchOlderMessages(threadFBID, cursor, Math.min(pageSize, wanted - results.length));
       } catch (_) {
         break;
       }
