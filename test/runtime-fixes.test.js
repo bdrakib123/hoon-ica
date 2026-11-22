@@ -1542,6 +1542,14 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
     client.saveSession();
     assert.equal(fs.statSync(filePath).mode & 0o777, 0o600);
     assert.equal(fs.statSync(backup).mode & 0o777, 0o600);
+
+    const { loadOrCreate } = require("../src/deviceIdentity");
+    const deviceFile = path.join(directory, "device.json");
+    loadOrCreate(deviceFile, "12345678-1234-1234-1234-123456789abc");
+    assert.equal(fs.statSync(deviceFile).mode & 0o777, 0o600);
+    fs.chmodSync(deviceFile, 0o644);
+    loadOrCreate(deviceFile, "12345678-1234-1234-1234-123456789abc");
+    assert.equal(fs.statSync(deviceFile).mode & 0o777, 0o600);
   } finally {
     guard.stop();
     fs.rmSync(directory, { recursive: true, force: true });
