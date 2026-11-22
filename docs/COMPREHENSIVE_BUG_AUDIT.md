@@ -32,7 +32,7 @@ Scope: source inspection and diagnostic reproduction cases only.
 | 13 | Inbox polling | If the first poll is empty, the first later-arriving message is used to seed `_seen` and is not emitted as a new event. | first DM skipped after empty startup |
 | 14 | Link sending | `sendLink()` posts directly without calling the shared outbound send pacer, unlike text/media sends. | sendLink bypasses pacer |
 | 15 | Inbox pagination | Native `getInbox()` takes no cursor argument and sends fixed query variables; a supplied cursor is ignored. | getInbox ignores pagination cursor |
-| 16 | Media caption fallback | Caption send catches a GraphQL auth error and falls back to the legacy broadcast send path instead of treating auth as non-retriable. | auth error triggers legacy caption send |
+| 16 | Media caption fallback | Caption send catches a GraphQL auth error and falls back to the legacy broadcast send path instead of treating auth as non-retriable. | auth error triggers legacy caption send |\n| 17 | Thrift integer precision | `ThriftReader.readValue()` converts every INT64 to JavaScript `Number`, losing exact values above `Number.MAX_SAFE_INTEGER`. | INT64 precision loss |
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -43,7 +43,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 - Verify whether inbox/realtime participant lists consistently include the viewer/self ID for every event type.
 - Exercise cache/map growth under long-running multi-thread load; source inspection alone cannot establish a practical memory leak.
 - Verify media upload and commit error classification against real response shapes, especially transient 412 and authentication/challenge responses.
-- Verify 64-bit Thrift values end-to-end. The reader converts decoded integers to JavaScript Number, which cannot exactly represent every integer above `Number.MAX_SAFE_INTEGER`; determine which decoded fields are consumed as numeric values.
+- Determine which decoded INT64 fields require exact integer fidelity. The diagnostic fixture now demonstrates precision loss above `Number.MAX_SAFE_INTEGER`; audit consumers before choosing a BigInt/string-compatible public representation.
 
 ## Recommended next validation sequence
 
