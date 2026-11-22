@@ -8,10 +8,11 @@
 // fca.getUserInfo(id | id[], callback) -> { <id>: { name, firstName, username,
 // profileUrl, thumbSrc, gender } }.
 const { setBounded } = require("../../utils/boundedMap");
+const createCallback = require("../../utils/createCallback");
 
 module.exports = function (client) {
   return async function getUserInfo(ids, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     const list = Array.isArray(ids) ? ids : [ids];
     try {
       const out = {};
@@ -39,6 +40,7 @@ module.exports = function (client) {
       if (cb) cb(null, out);
       return out;
     } catch (error) {
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       return {};
     }
