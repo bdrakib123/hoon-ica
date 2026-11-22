@@ -388,6 +388,53 @@ async function testMediaUploadDoesNotRetryPermanentAuthFailure() {
   assert.equal(calls, 1);
 }
 
+
+async function testMediaCommitDoesNotRetryGraphqlFieldException() {
+  let calls = 0;
+  let ids = 0;
+  const media = new MediaMethods({
+    offlineThreadingId: () => `offline-${++ids}`,
+    postGraphQL: async (_name, _doc, variables) => {
+      calls += 1;
+      assert.equal(variables.offline_threading_id, "offline-1");
+      throw new Error("field_exception");
+    }
+  }, {});
+  await assert.rejects(media._commitMedia("thread-1", "media-1"), /field_exception/);
+  assert.equal(calls, 1);
+  assert.equal(ids, 1);
+}
+
+async function testMediaCommitRetryReusesOfflineThreadingId() {
+  let calls = 0;
+  let ids = 0;
+  const sentIds = [];
+  const media = new MediaMethods({
+    offlineThreadingId: () => `offline-${++ids}`,
+    postGraphQL: async (_name, _doc, variables) => {
+      calls += 1;
+      sentIds.push(variables.offline_threading_id);
+      if (calls === 1) {
+        const error = new Error("temporary network failure");
+        error.code = "ECONNRESET";
+        throw error;
+      }
+      return { data: { status: "ok" } };
+    }
+  }, {});
+  const originalSetTimeout = global.setTimeout;
+  try {
+    global.setTimeout = (fn) => { fn(); return 0; };
+    const result = await media._commitMedia("thread-1", "media-1");
+    assert.deepEqual(result, { data: { status: "ok" } });
+  } finally {
+    global.setTimeout = originalSetTimeout;
+  }
+  assert.equal(calls, 2);
+  assert.deepEqual(sentIds, ["offline-1", "offline-1"]);
+  assert.equal(ids, 1);
+}
+
 async function testInboxSkipsMalformedRelayThreads() {
   const InboxMethods = require("../src/methods/inbox");
   const http = {
@@ -477,7 +524,9 @@ async function run() {
   await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
-  process.stdout.write("runtime-fixes.test.js: 21 regression tests passed\n");
+  await testMediaCommitDoesNotRetryGraphqlFieldException();
+  await testMediaCommitRetryReusesOfflineThreadingId();
+  process.stdout.write("runtime-fixes.test.js: 23 regression tests passed\n");
 }
 
 run().catch((error) => {
