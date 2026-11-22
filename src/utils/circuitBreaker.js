@@ -11,6 +11,10 @@ class CircuitBreaker {
     this.failureThreshold = Math.max(1, Math.floor(Number(options.failureThreshold) || 5));
     this.cooldownMs = Math.max(1, Number(options.cooldownMs) || 30000);
     this.isFailure = typeof options.isFailure === "function" ? options.isFailure : defaultFailure;
+    const requestedMax = Number(options.maxCircuits);
+    this.maxCircuits = Number.isSafeInteger(requestedMax) && requestedMax > 0
+      ? Math.min(requestedMax, 10000)
+      : 1000;
     this.circuits = new Map();
   }
 
@@ -18,6 +22,13 @@ class CircuitBreaker {
     const id = String(key || "default");
     let entry = this.circuits.get(id);
     if (!entry) {
+      if (this.circuits.size >= this.maxCircuits) {
+        const evictable = [...this.circuits].find(([, candidate]) =>
+          candidate.state === STATE.CLOSED && !candidate.probeInFlight
+        );
+        if (!evictable) throw new RangeError("Circuit breaker has reached its configured circuit limit");
+        this.circuits.delete(evictable[0]);
+      }
       entry = { state: STATE.CLOSED, failures: 0, successes: 0, openedAt: 0, probeInFlight: false };
       this.circuits.set(id, entry);
     }
