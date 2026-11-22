@@ -32,10 +32,10 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 9 | Realtime readiness | **Fixed:** `onReady` runs after a cursor subscription is acknowledged. | regression test added |
 | 10 | Realtime fallback | **Fixed:** polling fallback is guarded so error/disconnect/start rejection can start it only once. | regression test added |
 | 11 | Realtime acknowledgement | **Fixed:** listener waits for `iris_sub_response`; missing acknowledgement times out and is not marked subscribed. | regression test added |
-| 12 | Thread history | **Fixed on branch:** FCA timestamp is forwarded; older pages are fetched with the Relay message-list query using the opaque `end_cursor`, and results are filtered strictly before the timestamp boundary. | regression tests added; execution pending |
+| 12 | Thread history | **Fixed on branch:** FCA timestamp is forwarded; older pages are fetched with the Relay message-list query using the opaque `end_cursor`, and results are filtered strictly before the timestamp boundary. | regression tests passed in the user-run suite |
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
-| 15 | Inbox pagination | **Implemented on branch:** `getInbox(cursor)` uses `IGDThreadListOffMsysPaginationQuery` with the mailbox id, Relay cursor, count, required `INBOX` folder, timestamp bound and Relay provider flags. Returns `nextCursor` and `hasNextPage` while preserving `threads`. | mock regression added; local execution pending |
+| 15 | Inbox pagination | **Implemented on branch:** `getInbox(cursor)` uses `IGDThreadListOffMsysPaginationQuery` with the mailbox id, Relay cursor, count, required `INBOX` folder, timestamp bound and Relay provider flags. Returns `nextCursor` and `hasNextPage` while preserving `threads`. | mock regression passed in the user-run suite |
 | 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |
 | 17 | Thrift integer precision | **Mitigated:** `ThriftReader` supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default and can still round large values. | regression test added |
 | 18 | FCA thread-list contract | **Fixed in part on branch:** `getThreadList` follows inbox cursors for limits above 15, filters by the requested millisecond timestamp, and supports inbox unread filtering. `ARCHIVED`, `PENDING`, and `OTHER` are explicitly rejected because the verified web pagination query only documents `folder: INBOX`. | two wrapper regression tests passed locally (5-test suite) |
@@ -82,8 +82,8 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
-- **Implemented on branch, execution pending:** #12 history timestamp. The wrapper forwards the FCA millisecond timestamp; the thread method walks `slide_messages.page_info.end_cursor` via `IGDMessageListOffMsysQuery` and returns messages strictly older than the boundary. The timestamp is never used as the Relay cursor.
-- **Implemented on branch, execution pending:** #15 inbox cursor pagination. Uses mailbox id + opaque Relay cursor; returns `nextCursor` and `hasNextPage`.
+- **Implemented and locally regression-tested:** #12 history timestamp. The wrapper forwards the FCA millisecond timestamp; the thread method walks `slide_messages.page_info.end_cursor` via `IGDMessageListOffMsysQuery` and returns messages strictly older than the boundary. The timestamp is never used as the Relay cursor.
+- **Implemented and locally regression-tested:** #15 inbox cursor pagination. Uses mailbox id + opaque Relay cursor; returns `nextCursor` and `hasNextPage`.
 
 ### Required before release
 - Run all four validation commands listed above on Node 20 and inspect their complete outputs.
