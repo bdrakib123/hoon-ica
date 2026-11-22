@@ -76,12 +76,11 @@ class MessageMethods {
       // unless GraphQL explicitly returned an operation error.
       const explicitGraphQLError = error.name === "InstagramGraphQLError" && Array.isArray(error.errors);
       if (!explicitGraphQLError || NO_FALLBACK_KINDS.has(kind) || globalAntiSuspension.isCoolingDown()) throw error;
-      const clientContextId = this.http.uuid();
       const params = {
         action: "send_item",
         thread_ids: JSON.stringify([String(threadID)]),
-        client_context: clientContextId,
-        offline_threading_id: clientContextId,
+        client_context: this.http.uuid(),
+        offline_threading_id: this.http.offlineThreadingId(),
         text: String(text)
       };
       if (replyId) params.replied_to_item_id = replyId;
