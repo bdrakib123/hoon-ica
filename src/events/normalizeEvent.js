@@ -192,10 +192,11 @@ class EventNormalizer {
       // commands (all.js, ban.js) read event.participantIDs, so fill it from the
       // members the client learned from thread introspection. Undefined when
       // unknown — the same shape as upstream, so `|| []` guards behave.
-      participantIDs:
-        typeof this.client.getThreadParticipantIDs === "function"
-          ? this.client.getThreadParticipantIDs(threadID)
-          : undefined,
+      participantIDs: (() => {
+        if (typeof this.client.getThreadParticipantIDs !== "function") return undefined;
+        const ids = this.client.getThreadParticipantIDs(threadID);
+        return Array.isArray(ids) ? ids.map(String) : undefined;
+      })(),
       mentions: body.includes("@") ? await this._resolveMentions(body) : {},
       attachments: normalizeAttachments(raw.attachments),
       timestamp: raw.timestamp
