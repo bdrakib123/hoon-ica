@@ -464,7 +464,7 @@ async function testDirectThreadNameDoesNotUseViewer() {
       getThreadInfo: async () => ({
         is_group: false,
         viewer: { pk: "self-2", username: "my_account" },
-        users: [{ pk: "other-2", username: "friend_two" }]
+        users: [{}, null, { id: "", pk: " " }, { pk: "other-2", username: "friend_two" }]
       })
     },
     _learnThreads() {}
