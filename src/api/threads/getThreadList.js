@@ -8,6 +8,11 @@
 // fca.getThreadList(limit, timestamp, tags, callback) - the DM inbox.
 // Instagram's current web Relay pagination exposes the INBOX folder only.
 // Do not silently return INBOX data for ARCHIVED/PENDING/OTHER requests.
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 module.exports = function (client) {
   return async function getThreadList(limit = 10, timestamp = null, tags = [], callback) {
     // FCA callers commonly omit optional timestamp/tags arguments.
@@ -60,12 +65,11 @@ module.exports = function (client) {
           null;
         const users = (Array.isArray(thread.users) ? thread.users : [])
           .filter((user) => user && typeof user === "object");
+        const participantIDs = new Set(users.map((user) => firstUsableId(user.id, user.pk)).filter(Boolean));
         const viewer = thread.viewer && typeof thread.viewer === "object" ? thread.viewer : null;
-        const viewerID = viewer && (viewer.id || viewer.pk);
-        const viewerAlreadyListed = viewerID != null && users.some(
-          (user) => String(user.id || user.pk) === String(viewerID)
-        );
-        const participantCount = users.length + (viewerID != null && !viewerAlreadyListed ? 1 : 0);
+        const viewerID = viewer && firstUsableId(viewer.id, viewer.pk);
+        if (viewerID) participantIDs.add(viewerID);
+        const participantCount = participantIDs.size;
         return {
           threadID: String(rawThreadID),
           name: thread.thread_title || null,
