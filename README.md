@@ -194,7 +194,7 @@ binds a thread. `EventNormalizer` maps raw inbox events to the FCA event shape.
 | Method | Description |
 |--------|-------------|
 | `getThreadInfo(threadID)` | Thread metadata. |
-| `getThreadHistory(threadID, limit)` | Recent messages. |
+| `getThreadHistory(threadID, limit, beforeTimestamp?)` | Recent messages; pass the oldest message timestamp from the previous batch to fetch older messages. |
 | `markThreadSeen(threadID, itemID)` | Mark as read. |
 | `muteThread` / `unmuteThread` / `hideThread` | Thread state. |
 | `getUserInfo(userID)` / `getUserInfoByUsername(username)` | User lookup. |
