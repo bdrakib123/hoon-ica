@@ -102,7 +102,7 @@ module.exports = function (client) {
 
     } catch (error) {
       if (cb) {
-        cb(error, null);
+        await cb(error, null);
         return [];
       }
       throw error;
@@ -110,7 +110,7 @@ module.exports = function (client) {
 
     // Keep user callback exceptions outside the request/validation catch so
     // they cannot be mistaken for API failures or trigger a second callback.
-    if (cb) cb(null, list);
+    if (cb) await cb(null, list);
     return list;
   };
 };
