@@ -335,6 +335,7 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
     assert.equal(request.options.maxBodyLength, 5);
     assert.equal(request.options.timeout, 4000);
     assert.equal(request.options.maxRedirects, 3);
+    assert.equal(typeof request.options.lookup, "function");
     assert.equal(typeof request.options.beforeRedirect, "function");
     assert.throws(
       () => request.options.beforeRedirect({ protocol: "http:" }),
@@ -435,6 +436,7 @@ async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
     assert.equal(downloaded.buffer.toString(), "image");
     assert.equal(request.options.timeout, 60000);
     assert.equal(request.options.maxContentLength, 100 * 1024 * 1024);
+    assert.equal(typeof request.options.lookup, "function");
     assert.equal(request.options.maxBodyLength, 100 * 1024 * 1024);
     assert.equal(request.options.maxRedirects, 3);
 
