@@ -36,13 +36,13 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
 | 15 | Inbox pagination | Native `getInbox()` takes no cursor argument and sends fixed query variables; a supplied cursor is ignored. | getInbox ignores pagination cursor |
-| 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |\n| 17 | Thrift integer precision | `ThriftReader.readValue()` converts every INT64 to JavaScript `Number`, losing exact values above `Number.MAX_SAFE_INTEGER`. | INT64 precision loss |
+| 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |\n| 17 | Thrift integer precision | **Compatibility-safe fix:** `ThriftReader` now supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default. | regression test added |
 
 ## Runtime fix progress (2026-11-22)
 
-**14 of the 17 original diagnostic cases now have source fixes and regression assertions** on this branch: #1–#11, #13, #14, and #16. The other three (#12 history timestamp, #15 inbox cursor, and #17 Thrift INT64 precision) remain open pending contract/consumer review.
+**15 of the 17 original diagnostic cases now have source fixes and regression assertions** on this branch: #1–#11, #13, #14, #16, and #17. The other two (#12 history timestamp and #15 inbox cursor) remain open pending contract review.
 
-New test file: `test/runtime-fixes.test.js` (14 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
+New test file: `test/runtime-fixes.test.js` (15 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
 **Execution status:** these new tests and the full normal test suite have not yet been run in Node after the source edits. Do not treat source review or successful GitHub commits as test passes.
 
@@ -55,7 +55,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 - Verify whether inbox/realtime participant lists consistently include the viewer/self ID for every event type.
 - Exercise cache/map growth under long-running multi-thread load; source inspection alone cannot establish a practical memory leak.
 - Verify media upload and commit error classification against real response shapes, especially transient 412 and authentication/challenge responses.
-- Determine which decoded INT64 fields require exact integer fidelity. The diagnostic fixture now demonstrates precision loss above `Number.MAX_SAFE_INTEGER`; audit consumers before choosing a BigInt/string-compatible public representation.
+- The INT64 reader now offers exact BigInt decoding as an opt-in while preserving Number as the default. Audit any external consumers and document the option wherever the low-level Thrift reader is exposed.
 
 
 - Long-lived inbox instances retain `_seen`, `_threadIdMap`, `_members`, and `_threadState` entries for threads that disappear from later inbox snapshots. This is a potential unbounded-growth/stale-state issue; validate expected thread churn and whether these maps need TTL/LRU pruning before classifying it as a confirmed defect.
@@ -75,10 +75,10 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P1 — original high-priority cases (status updated)
 - **Fixed on branch:** #1 cookie normalization, #10–11 realtime fallback/acknowledgement, #13 first inbox message, #14 sendLink pacing, and #16 media auth fallback. Regression tests are authored; execution is pending.
-- **Still open:** #17 Thrift INT64 precision. Exact large identifiers/values may be corrupted; inspect consumers and wire schema before choosing a compatible representation.
+- **Fixed on branch:** #17 adds an opt-in exact BigInt mode; default Number output is retained to avoid a breaking change.
 
 ### P2 — fix after P1, with contract fixtures
-- **Fixed on branch:** #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
+- **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
 - **Still open:** #12 history timestamp and #15 inbox cursor (confirm public API semantics and pagination contracts first).
 
 ### Required before release
