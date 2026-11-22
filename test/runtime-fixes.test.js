@@ -281,6 +281,55 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
 }
 
 
+async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
+  const axios = require("axios");
+  const { Readable } = require("node:stream");
+  const InstaClient = require("../src/app/InstaClient");
+  const context = { _resolveIgPictureUrl: async () => null };
+  const originalGet = axios.get;
+  let request;
+  axios.get = async (url, options) => {
+    request = { url, options };
+    return { data: Buffer.from("image"), headers: { "content-type": "image/jpeg" } };
+  };
+  try {
+    const downloaded = await InstaClient.prototype._attachmentToBuffer.call(
+      context,
+      "https://cdn.example/photo.jpg"
+    );
+    assert.equal(downloaded.buffer.toString(), "image");
+    assert.equal(request.options.timeout, 60000);
+    assert.equal(request.options.maxContentLength, 100 * 1024 * 1024);
+    assert.equal(request.options.maxBodyLength, 100 * 1024 * 1024);
+    assert.equal(request.options.maxRedirects, 3);
+
+    axios.get = async () => ({ data: Buffer.from("too-large"), headers: {} });
+    await assert.rejects(
+      () => InstaClient.prototype._attachmentToBuffer.call(
+        context,
+        "https://cdn.example/large.jpg",
+        { maxDownloadBytes: 4 }
+      ),
+      /exceeds the 4-byte limit/
+    );
+    await assert.rejects(
+      () => InstaClient.prototype._attachmentToBuffer.call(context, Buffer.alloc(5), { maxDownloadBytes: 4 }),
+      /exceeds the 4-byte limit/
+    );
+    await assert.rejects(
+      () => InstaClient.prototype._attachmentToBuffer.call(
+        context,
+        Readable.from([Buffer.alloc(3), Buffer.alloc(3)]),
+        { maxDownloadBytes: 4 }
+      ),
+      /Stream attachment exceeds the 4-byte limit/
+    );
+  } finally {
+    axios.get = originalGet;
+  }
+}
+
+
 async function testCaptionedMediaWaitsForBothCommitOutcomes() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -2118,6 +2167,7 @@ async function run() {
   await testPartialGraphqlDataPreventsLegacyFallback();
   await testCaptionedMediaWaitsForBothCommitOutcomes();
   await testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds();
+  await testFcaAttachmentDownloadsAndStreamsAreBounded();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -2175,7 +2225,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 72 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 73 regression tests passed\n");
 }
 
 run().catch((error) => {
