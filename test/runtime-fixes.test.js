@@ -204,6 +204,38 @@ async function testRealtimeFallbackStartsOnlyOnce() {
 }
 
 
+async function testRealtimeFallbackAfterEstablishedDisconnect() {
+  const { EventEmitter } = require("node:events");
+  const InboxMethods = require("../src/methods/inbox");
+  class FakeClient extends EventEmitter {
+    constructor() { super(); this.connected = true; }
+    async connect() {}
+    async irisSubscribe() { this.emit("iris_sub_response", { status: "ok" }); }
+    disconnect() {}
+  }
+  const fake = new FakeClient();
+  const inbox = new InboxMethods({ getCookie: () => "session-value" }, () => "self-1", {
+    realtime: {
+      enabled: true,
+      fallback: true,
+      seqId: 1,
+      snapshotAtMs: 1700000000000
+    },
+    getSharedClient: () => fake
+  });
+  let fallbackStarts = 0;
+  inbox._startPolling = () => { fallbackStarts += 1; return () => {}; };
+  const stop = inbox.listen(() => {});
+  await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(inbox._realtimeListener._subscribed, true);
+  fake.emit("disconnected", {});
+  fake.emit("error", new Error("socket already closed"));
+  assert.equal(fallbackStarts, 1);
+  stop();
+}
+
+
 async function testRelayThreadListPreview() {
   const createGetThreadList = require("../src/api/threads/getThreadList");
   const getThreadList = createGetThreadList({
@@ -578,6 +610,7 @@ async function run() {
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeFallbackStartsOnlyOnce();
+  await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
@@ -595,7 +628,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 26 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 27 regression tests passed\n");
 }
 
 run().catch((error) => {
