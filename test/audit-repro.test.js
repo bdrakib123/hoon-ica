@@ -156,6 +156,35 @@ async function main() {
   });
 
 
+  await reproduce("realtime error and disconnect events can start duplicate polling fallbacks", async () => {
+    class FakeRealtimeClient extends EventEmitter {
+      constructor() {
+        super();
+        this.connected = true;
+      }
+      async connect() { this.connected = true; }
+      disconnect() {}
+    }
+    const fake = new FakeRealtimeClient();
+    const inbox = new InboxMethods({
+      getCookie: () => "session-value"
+    }, () => "self-1", {
+      realtime: { enabled: true, getRealtimeState: async () => null },
+      getSharedClient: () => fake
+    });
+    let fallbackStarts = 0;
+    inbox._startPolling = () => {
+      fallbackStarts += 1;
+      return () => {};
+    };
+    const stop = inbox.listen(() => {});
+    await new Promise((resolve) => setImmediate(resolve));
+    fake.emit("error", new Error("socket receive failed"));
+    fake.emit("disconnected", {});
+    assert.equal(fallbackStarts, 2);
+    stop();
+  });
+
   await reproduce("RealtimeListener treats an unacknowledged iris publish as subscribed", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
