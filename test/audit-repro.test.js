@@ -40,14 +40,14 @@ async function main() {
     });
   });
 
-  await reproduce("getUID ignores reel and post routes instead of treating them as usernames", async () => {
+  await checkCase("getUID ignores reel and post routes instead of treating them as usernames", async () => {
     const getUID = createGetUID({ userID: "self-uid" });
     assert.equal(getUID("https://www.instagram.com/reel/ABC123/"), "self-uid");
     assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "self-uid");
     assert.equal(getUID("https://www.instagram.com/rakib.hasan/"), "rakib.hasan");
   });
 
-  await reproduce("getThreadList reads Relay slide_messages preview", async () => {
+  await checkCase("getThreadList reads Relay slide_messages preview", async () => {
     const getThreadList = createGetThreadList({
       api: {
         getInbox: async () => ({
@@ -70,7 +70,7 @@ async function main() {
     assert.equal(thread.timestamp, 1700000000000);
   });
 
-  await reproduce("anti-suspension configure updates nested cooldown values", async () => {
+  await checkCase("anti-suspension configure updates nested cooldown values", async () => {
     const pacer = new SendPacer();
     try {
       pacer.configure({ cooldownMs: 1234, strikesToActivate: 5 });
@@ -82,7 +82,7 @@ async function main() {
     }
   });
 
-  await reproduce("getThreadInfo marks a one-to-one DM as a group when is_group is absent", async () => {
+  await checkCase("getThreadInfo marks a one-to-one DM as a group when is_group is absent", async () => {
     const getThreadInfo = createGetThreadInfo({
       api: {
         getThreadInfo: async () => ({
@@ -97,7 +97,7 @@ async function main() {
     assert.equal(info.isGroup, false);
   });
 
-  await reproduce("XMA text body is not returned as an attachment URL", async () => {
+  await checkCase("XMA text body is not returned as an attachment URL", async () => {
     const attachments = attachmentsFromContent({
       __typename: "SlideMessageXMAContent",
       xma_text_body: "Shared a post with you",
@@ -106,7 +106,7 @@ async function main() {
     assert.deepEqual(attachments, []);
   });
 
-  await reproduce("threadFbidMap uses the viewer's own ID", async () => {
+  await checkCase("threadFbidMap uses the viewer's own ID", async () => {
     const map = threadFbidMap({
       viewer: {
         id: "viewer-ig-id",
@@ -116,7 +116,7 @@ async function main() {
     assert.equal(map["viewer-fbid"], "viewer-ig-id");
   });
 
-  await reproduce("readRetry surfaces thrown errors without retrying", async () => {
+  await checkCase("readRetry surfaces thrown errors without retrying", async () => {
     let calls = 0;
     const client = {
       getThreadInfo: async () => {
@@ -129,7 +129,7 @@ async function main() {
     assert.equal(calls, 1);
   });
 
-  await reproduce("RealtimeListener invokes onReady after an acknowledged cursor subscription", async () => {
+  await checkCase("RealtimeListener invokes onReady after an acknowledged cursor subscription", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -158,7 +158,7 @@ async function main() {
   });
 
 
-  await reproduce("realtime error and disconnect events start only one polling fallback", async () => {
+  await checkCase("realtime error and disconnect events start only one polling fallback", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -187,7 +187,7 @@ async function main() {
     stop();
   });
 
-  await reproduce("RealtimeListener rejects an unacknowledged iris subscription", async () => {
+  await checkCase("RealtimeListener rejects an unacknowledged iris subscription", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -215,7 +215,7 @@ async function main() {
     listener.stop();
   });
 
-  await reproduce("getThreadHistory ignores its timestamp argument", async () => {
+  await checkCase("getThreadHistory ignores its timestamp argument", async () => {
     let received;
     const getThreadHistory = createGetThreadHistory({
       api: {
@@ -229,7 +229,7 @@ async function main() {
     assert.deepEqual(received, ["thread-1", 20]);
   });
 
-  await reproduce("first DM is delivered after an empty initial inbox poll", async () => {
+  await checkCase("first DM is delivered after an empty initial inbox poll", async () => {
     const inbox = new InboxMethods({}, () => "self-1");
     let polls = 0;
     inbox.getInbox = async () => {
@@ -276,7 +276,7 @@ async function main() {
     }
   });
 
-  await reproduce("sendLink uses the configured outbound send pacer", async () => {
+  await checkCase("sendLink uses the configured outbound send pacer", async () => {
     const originalWaitForTurn = globalAntiSuspension.waitForTurn;
     let pacingCalls = 0;
     globalAntiSuspension.waitForTurn = async () => { pacingCalls += 1; };
@@ -292,7 +292,7 @@ async function main() {
     }
   });
 
-  await reproduce("getInbox ignores a supplied pagination cursor", async () => {
+  await checkCase("getInbox ignores a supplied pagination cursor", async () => {
     let variables;
     const inbox = new InboxMethods({
       session: { __hsi: "device-1" },
@@ -307,7 +307,7 @@ async function main() {
     assert.equal(Object.prototype.hasOwnProperty.call(variables, "before"), false);
   });
 
-  await reproduce("media caption does not fallback to legacy send after an auth error", async () => {
+  await checkCase("media caption does not fallback to legacy send after an auth error", async () => {
     let legacyCalls = 0;
     const media = new MediaMethods({
       offlineThreadingId: () => "offline-1",
@@ -326,16 +326,20 @@ async function main() {
     assert.equal(legacyCalls, 0);
   });
 
-  await reproduce("Thrift INT64 reader loses precision above Number.MAX_SAFE_INTEGER", async () => {
+  await checkCase("Thrift INT64 supports exact opt-in BigInt decoding without changing the default", async () => {
     const original = 9007199254740993n;
     const writer = new ThriftWriter();
     writer.writeInt(1, original, 64);
     writer.writeStop();
-    const reader = new ThriftReader(Buffer.from(writer.buffer));
-    const fieldType = reader.readField();
-    const decoded = reader.readValue(fieldType, null);
-    assert.equal(decoded, Number(original));
-    assert.notEqual(BigInt(decoded), original);
+    const bytes = Buffer.from(writer.buffer);
+    const legacyReader = new ThriftReader(bytes);
+    const legacyType = legacyReader.readField();
+    const legacyDecoded = legacyReader.readValue(legacyType, null);
+    assert.equal(legacyDecoded, Number(original));
+    assert.notEqual(BigInt(legacyDecoded), original);
+    const exactReader = new ThriftReader(bytes, { int64AsBigInt: true });
+    const exactType = exactReader.readField();
+    assert.equal(exactReader.readValue(exactType, null), original);
   });
 
   process.stdout.write("\nAudit checks: " + checked.length + " checked\n");
