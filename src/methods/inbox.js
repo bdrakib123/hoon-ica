@@ -8,7 +8,7 @@
 const { DOC_ID } = require("../constants");
 const { textOf, attachmentsFromContent, normalizeRepliedMessage } = require("../messageContent");
 const { fetchThreadDetail, threadFbidMap } = require("../threadDetail");
-const { classify, toIgError } = require("../utils/errors");
+const { classify, toIgError, retryAfterMs } = require("../utils/errors");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
 const { setBounded } = require("../utils/boundedMap");
 
@@ -682,12 +682,17 @@ class InboxMethods {
           authFailures += 1;
           if (authFailures >= AUTH_CONFIRMATIONS) {
             const check = await this.http.checkSession({ attempts: 1 });
-            if (["ok", "transient", "rate_limited", "graphql_error", "unexpected_response"].includes(check.state)) {
+            if (check.state === "rate_limited") {
+              authFailures = 0;
+              schedule(Math.max(check.retryAfterMs || 0, AUTH_RECHECK_MS));
+              return;
+            }
+            if (["ok", "transient", "graphql_error", "unexpected_response"].includes(check.state)) {
               // A GraphQL validation error or unexpected body does not prove
               // the cookie is invalid. Keep the listener alive and recheck
               // later instead of permanently stopping on an inconclusive probe.
               authFailures = 0;
-              schedule(jittered(AUTH_RECHECK_MS));
+              schedule(check.retryAfterMs || jittered(AUTH_RECHECK_MS));
               return;
             }
             stopped = true;
@@ -699,8 +704,9 @@ class InboxMethods {
         }
 
         if (kind === "rate_limited") {
-          const wait = Math.min(backoff, BACKOFF_MAX_MS);
-          backoff = Math.min(backoff * 2, BACKOFF_MAX_MS);
+          // Never retry earlier than Instagram's explicit Retry-After value.
+          const wait = Math.max(Math.min(backoff, BACKOFF_MAX_MS), retryAfterMs(error));
+          backoff = Math.min(Math.max(backoff * 2, wait), BACKOFF_MAX_MS);
           try { this._emitter && this._emitter.emit && this._emitter.emit("rateLimit", { wait }); } catch (_) {}
           callback(error, null);
           schedule(jittered(wait));
@@ -708,9 +714,10 @@ class InboxMethods {
         }
 
         if (kind === "blocked") {
-          try { this._emitter && this._emitter.emit && this._emitter.emit("rateLimit", { wait: BLOCKED_WAIT_MS }); } catch (_) {}
+          const wait = Math.max(BLOCKED_WAIT_MS, retryAfterMs(error));
+          try { this._emitter && this._emitter.emit && this._emitter.emit("rateLimit", { wait }); } catch (_) {}
           callback(error, null);
-          schedule(jittered(BLOCKED_WAIT_MS));
+          schedule(wait);
           return;
         }
 
