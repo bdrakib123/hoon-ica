@@ -276,6 +276,36 @@ async function testReadRetryDoesNotRetryThrownErrors() {
 }
 
 
+async function testInboxPollerHonorsRetryAfterHeader() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  inbox.getInbox = async () => {
+    const error = new Error("too many requests");
+    error.response = { status: 429, headers: { "retry-after": "120" } };
+    throw error;
+  };
+  const delays = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let stop;
+  try {
+    global.setTimeout = (fn, delay) => {
+      const timer = { fn, delay, unref() {} };
+      delays.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling(() => {}, 2000);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(delays.length, 1);
+    assert.ok(delays[0].delay >= 120000);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
+
 async function testPollingSurvivesInconclusiveAuthCheck() {
   const inbox = new InboxMethods({}, () => "self-1");
   let inboxCalls = 0;
@@ -1519,6 +1549,7 @@ async function run() {
   await testPollingStopSuppressesInflightResults();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testPollingSurvivesInconclusiveAuthCheck();
+  await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeListenerStopDuringClientLookup();
@@ -1556,7 +1587,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 53 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 54 regression tests passed\n");
 }
 
 run().catch((error) => {
