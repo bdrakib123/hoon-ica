@@ -87,7 +87,7 @@ Facebook-Chat-API shape. Its methods live one-per-file under
 |-------|---------|
 | messaging | `sendMessage(form, threadID, cb?, replyToMessage?)`, `sendMessageSync`, `editMessage(text, messageID)`, `unsendMessage(messageID, cb?, threadID?)`, `setMessageReaction(emoji, messageID, cb?, threadID?)`, `sendTypingIndicator`, `markAsRead`, `shareContact`, `resolvePhotoUrl` |
 
-**Contact-card sharing:** `shareContact` is currently unsupported by the Instagram web adapter because no verified web mutation is implemented. It returns `null` and stores the reason in `client.lastShareContactError` (code `IG_METHOD_UNSUPPORTED`); it does not silently invoke a missing method.
+**Contact sharing:** Instagram's web adapter does not expose a verified native contact-card mutation. The FCA `shareContact` compatibility method therefore sends the contact's profile link and id as a normal DM; a send failure is returned as `null` and recorded in `client.lastShareContactError`.
 | threads | `getThreadInfo`, `getThreadList`, `getThreadHistory` |
 | users | `getUserInfo`, `getUserInfoV2`, `getUserProfile`, `getProfilePictureV2`, `getProfileBio`, `getUserFriendship`, `getUserID`, `getUID`, `getProfilePictureUrl` |
 | account | `getCurrentUserID`, `getSelfInfo`, `getAppState`, `getCookies`, `setOptions` |
@@ -95,9 +95,19 @@ Facebook-Chat-API shape. Its methods live one-per-file under
 | media | `sendPhoto`, `sendPhotoFromUrl`, `sendVideoFromUrl`, `sendVoiceFromUrl` |
 
 Group-management calls Instagram DMs cannot do (`changeNickname`, `setTitle`,
-`addUserToGroup`, `removeUserFromGroup`, `changeThreadColor`, `changeThreadEmoji`,
-`changeGroupImage`, `changeAvatar`) return `false` instead of throwing, so
-ported commands degrade cleanly.
+`changeThreadColor`, `changeThreadEmoji`, `changeGroupImage`, `changeAvatar`)
+return `false` instead of throwing, so ported commands degrade cleanly.
+Adding and removing participants are supported when Instagram accepts the
+requested user id.
+
+**Multi-attachment sends:** FCA `sendMessage` accepts `attachment` or
+`attachments` arrays and sends one media message per item in order; the text
+caption is attached to the first item only. If a later item fails, the thrown
+error includes `partialSend: { sentCount, totalAttachments, messageIDs }`
+for items known to have been sent. Captioned native media sends are two
+Instagram commits (text + media); if one succeeds and the other fails, the
+error includes `partialSend: { captionSent, mediaSent }`. Check this metadata
+before retrying to avoid duplicate messages.
 
 `createFcaClient(client)` returns a namespaced view (`messages.send()`,
 `threads.getInfo()`, `users.getInfo()`, …) if you prefer namespaces over the
