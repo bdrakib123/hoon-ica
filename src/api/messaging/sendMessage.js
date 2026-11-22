@@ -89,7 +89,7 @@ module.exports = function (client) {
       const messageID = extractMessageId(result);
       if (messageID) setBounded(client._msgThread, messageID, String(threadID), 5000);
       const info = { messageID, threadID: String(threadID), timestamp: Date.now() };
-      if (cb) cb(null, info);
+      if (cb) await cb(null, info);
       return info;
     } catch (error) {
       if (cb?.called) throw error;
@@ -100,7 +100,7 @@ module.exports = function (client) {
           messageIDs: sentMessageIDs.slice()
         };
       }
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       throw error;
     }
   };
