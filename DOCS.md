@@ -165,7 +165,7 @@ renders the quote bubble in the thread.
 `sendVideo` / `sendVideoBuffer` / `sendVideoFromUrl`,
 `sendVoice` / `sendVoiceBuffer` / `sendVoiceFromUrl`.
 
-All take `(threadID, source, options)` where `options = { filename, text }`.
+All take `(threadID, source, options)`. Options include `{ filename, text }`; URL-based sends also accept `maxDownloadBytes` (100 MiB default, capped at 512 MiB) and `downloadTimeoutMs` (30 s default, capped at 120 s). URL downloads accept HTTP(S) only.
 
 ### Threads
 
