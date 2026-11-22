@@ -90,6 +90,7 @@ class MessageMethods {
   }
 
   async sendLink(threadID, link, text) {
+    await globalAntiSuspension.waitForTurn(threadID);
     return this.http.postForm(EP.BROADCAST_LINK, {
       action: "send_item",
       thread_ids: JSON.stringify([String(threadID)]),
