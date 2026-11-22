@@ -15,7 +15,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 - Runtime fixes are now being made only on `audit/comprehensive-bug-hunt`, after the user authorized this work.
 - The normal `npm test` command now includes `test/runtime-fixes.test.js`; the separate `audit:repro` script has been converted to check corrected behavior for fixed cases and retain diagnostics for remaining candidates.
 - The published `@cexi/hoonica@1.0.0` release and `release/1.0.0` remain untouched.
-- The user ran the updated suite on Node.js v20.20.2 / npm 10.8.2 after #18: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0; the wrapper suite reported 5 tests, runtime fixes 18 tests, type checks passed, security audit found 0 vulnerabilities, and npm dry-run passed. Working tree was clean.
+- The user ran the updated suite on Node.js v20.20.2 / npm 10.8.2 through #19: `npm test`, `npm run audit:repro`, `npm run test:types`, and `npm run release:check` all exited 0; the wrapper suite reported 6 tests, runtime fixes 18 tests, type checks passed, security audit found 0 vulnerabilities, and npm dry-run passed. Working tree was clean. The subsequent #20 bounded-cache change and its new regression test are pending a fresh local run.
 
 ## Diagnostic reproduction inventory
 
@@ -39,15 +39,16 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |
 | 17 | Thrift integer precision | **Mitigated:** `ThriftReader` supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default and can still round large values. | regression test added |
 | 18 | FCA thread-list contract | **Fixed in part on branch:** `getThreadList` follows inbox cursors for limits above 15, filters by the requested millisecond timestamp, and supports inbox unread filtering. `ARCHIVED`, `PENDING`, and `OTHER` are explicitly rejected because the verified web pagination query only documents `folder: INBOX`. | two wrapper regression tests passed locally (5-test suite) |
-| 19 | Malformed thread-list edges | **Fixed on branch:** entries without a usable `id` / `thread_id` are skipped instead of becoming the shared string `undefined` and suppressing valid threads. | regression test added; fresh local run pending |
+| 19 | Malformed thread-list edges | **Fixed on branch:** entries without a usable `id` / `thread_id` are skipped instead of becoming the shared string `undefined` and suppressing valid threads. | regression test passed in the user-run suite (6 wrapper tests) |
+| 20 | Long-lived session cache growth | **Mitigated on branch:** inbox seen/member/thread-ID maps and FCA user/avatar/message/thread-member lookup maps now use bounded FIFO insertion with explicit limits. Eviction can require a later lookup to be learned again; it does not promise a fixed process-memory ceiling. | bounded-cache unit regression added; fresh local run pending |
 
 ## Runtime fix progress (2026-11-22)
 
-**All 17 original diagnostic cases have a branch-level response, and #18 has partial FCA compatibility.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user confirmed the complete suite through commit `78528cc`; a subsequent #19 malformed-edge guard and its new test are pending a fresh local run. None of these protocol changes has been validated against a live Instagram session.
+**All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user confirmed the full suite through #19, including the malformed-edge guard. The new #20 cache utility/test still needs a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-New test file: `test/runtime-fixes.test.js` (18 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature. The user has confirmed those 18 checks and the full suite through #18 locally. The wrapper regression suite reported 5 passing tests.
+New test file: `test/runtime-fixes.test.js` (18 original focused regression checks; a 19th bounded-cache helper check has now been added and awaits execution). It is part of the normal `npm test` command. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed 18 runtime checks and the full suite through #19 locally. The wrapper regression suite reported 6 passing tests.
 
-**Execution status:** the user-confirmed test run covers #15 and #18. The additional #19 malformed-edge regression test is new and requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** the user-confirmed test run covers #15, #18, and #19. The additional #20 bounded-cache helper regression test is new and requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -57,17 +58,17 @@ These require more focused fixtures, payload captures, or runtime validation bef
 - Inbox polling currently consumes the first inbox page only, while the FCA `getThreadList` wrapper can paginate. Assess whether polling beyond the first 15 threads is required and balance coverage against additional GraphQL request volume before changing it.
 - The fallback group-count rules in thread-list and thread-detail wrappers are not consistent; validate against captured inbox and thread-detail payloads before changing either.
 - Verify whether inbox/realtime participant lists consistently include the viewer/self ID for every event type.
-- Exercise cache/map growth under long-running multi-thread load; source inspection alone cannot establish a practical memory leak.
+- Stress-test bounded caches under long-running multi-thread load and confirm eviction does not break expected command lookups; the helper test alone cannot establish practical memory behavior.
 - Verify media upload and commit error classification against real response shapes, especially transient 412 and authentication/challenge responses.
 - The INT64 reader now offers exact BigInt decoding as an opt-in while preserving Number as the default. Audit any external consumers and document the option wherever the low-level Thrift reader is exposed.
 
 
-- Long-lived inbox instances retain `_seen`, `_threadIdMap`, `_members`, and `_threadState` entries for threads that disappear from later inbox snapshots. This is a potential unbounded-growth/stale-state issue; validate expected thread churn and whether these maps need TTL/LRU pruning before classifying it as a confirmed defect.
+- Inbox thread maps and FCA identity/message lookup caches were unbounded by entry count. #20 now applies FIFO limits (5,000 entries for seen-message/user/avatar/message-thread maps; 2,000 for thread-member/internal-thread-ID maps). Old entries may remain stale until eviction, and eviction may cause a later lookup to require re-learning; stress-test this behavior before release.
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #19 malformed-edge guard.
-2. Assess first-page-only inbox polling and long-lived cache/map growth under high thread churn.
+1. Re-run the full Node 20 validation suite after the #20 bounded-cache change.
+2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
