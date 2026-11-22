@@ -47,7 +47,7 @@ module.exports = function (client) {
         .filter((id) => userIds.has(id))
         .map((id) => ({ id }));
       const otherParticipant = users.find((u) =>
-        !viewer || String(u.id || u.pk) !== String(viewer.id)
+        viewerID == null || String(u.id || u.pk) !== String(viewerID)
       );
       const info = {
         threadID: String(threadID),
