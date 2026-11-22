@@ -6,6 +6,7 @@ import login, {
   InstaClient,
   IncomingEvent,
   SendOptions,
+  RealtimeOptions,
   PartialSendError,
   utilities
 } from "../index";
@@ -56,3 +57,13 @@ const partialSendError: PartialSendError = Object.assign(new Error("partial"), {
   partialSend: { captionSent: true, mediaSent: false }
 });
 void partialSendError.partialSend;
+
+const exactRealtimeCursor: RealtimeOptions = {
+  seqId: "9007199254740993",
+  snapshotAtMs: Date.now(),
+  getRealtimeState: () => ({
+    seqId: "9007199254740993",
+    snapshotAtMs: Date.now()
+  })
+};
+void exactRealtimeCursor;
