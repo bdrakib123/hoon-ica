@@ -772,6 +772,45 @@ async function testInboxSkipsMalformedRelayThreads() {
   assert.equal(inbox._threadIdMap.has("undefined"), false);
 }
 
+async function testMalformedNestedThreadEdgesAreSkipped() {
+  const ThreadMethods = require("../src/methods/thread");
+  const { threadFbidMap } = require("../src/threadDetail");
+  const inbox = new InboxMethods({}, () => "self-1");
+  const malformed = [
+    null,
+    { node: null },
+    { node: {} },
+    { node: { id: "valid-message", sender_fbid: "fb-1", content_type: "TEXT", text_body: "ok" } }
+  ];
+
+  const fromEdges = inbox._threadMessages({ slide_messages: { edges: malformed } });
+  assert.deepEqual(fromEdges.map(node => node.id), ["valid-message"]);
+  const fromArray = inbox._threadMessages({ slide_messages: [null, { node: null }, { id: "valid-array" }] });
+  assert.deepEqual(fromArray.map(node => node.id), ["valid-array"]);
+
+  const mapped = new ThreadMethods({})._mapHistoryEdges(malformed, {});
+  assert.equal(mapped.length, 1);
+  assert.equal(mapped[0].messageID, "valid-message");
+  assert.deepEqual(threadFbidMap({ users: [null, {}, { id: "u-1", interop_messaging_user_fbid: "fb-1" }] }), {
+    "fb-1": "u-1"
+  });
+
+  const detailHttp = {
+    postGraphQL: async () => ({
+      data: { get_slide_thread_nullable: { as_ig_direct_thread: {
+        users: [null, { id: "u-1", interop_messaging_user_fbid: "fb-1" }],
+        slide_messages: { edges: malformed }
+      } } }
+    })
+  };
+  const detailInbox = new InboxMethods(detailHttp, () => "self-1");
+  const replies = await detailInbox.fetchReplies("thread-1");
+  assert.deepEqual(Object.keys(replies), ["valid-message"]);
+  const actor = await detailInbox._latestActor("thread-1");
+  assert.deepEqual(actor, {});
+}
+
+
 async function testMissingProfileCountsRemainUnknown() {
   const { normalizeWebProfileInfo } = require("../src/profileParse");
   const missing = normalizeWebProfileInfo({
@@ -869,13 +908,14 @@ async function run() {
   await testBoundedSessionCache();
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
+  await testMalformedNestedThreadEdgesAreSkipped();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 35 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 36 regression tests passed\n");
 }
 
 run().catch((error) => {
