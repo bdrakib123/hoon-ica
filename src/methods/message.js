@@ -7,7 +7,7 @@
 
 const { EP, DOC_ID } = require("../constants");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
-const { classify } = require("../utils/errors");
+const { classify, hasGraphQLPartialData } = require("../utils/errors");
 
 const NO_FALLBACK_KINDS = new Set(["rate_limited", "challenge", "blocked", "suspended", "auth"]);
 
@@ -74,7 +74,10 @@ class MessageMethods {
       // A transport timeout/reset is ambiguous: Instagram may already have
       // accepted the GraphQL send. Never replay it through the legacy endpoint
       // unless GraphQL explicitly returned an operation error.
-      const explicitGraphQLError = error.name === "InstagramGraphQLError" && Array.isArray(error.errors);
+      const explicitGraphQLError =
+        error.name === "InstagramGraphQLError" &&
+        Array.isArray(error.errors) &&
+        !hasGraphQLPartialData(error);
       if (!explicitGraphQLError || NO_FALLBACK_KINDS.has(kind) || globalAntiSuspension.isCoolingDown()) throw error;
       const params = {
         action: "send_item",
