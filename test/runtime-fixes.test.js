@@ -691,6 +691,28 @@ async function testCaptionAuthFailureDoesNotFallback() {
   assert.equal(legacyCalls, 0);
 }
 
+async function testReadRetryConfigurationIsHardBounded() {
+  const { resolveConfig, MAX_READ_RETRY_ATTEMPTS, MAX_READ_RETRY_WAIT_MS } = require("../src/utils/readRetry");
+  const config = resolveConfig({
+    attempts: Infinity,
+    firstWaitMs: Number.MAX_VALUE,
+    maxWaitMs: Number.MAX_VALUE
+  });
+  assert.equal(config.attempts, MAX_READ_RETRY_ATTEMPTS);
+  assert.equal(config.firstWaitMs, MAX_READ_RETRY_WAIT_MS);
+  assert.equal(config.maxWaitMs, MAX_READ_RETRY_WAIT_MS);
+
+  const huge = resolveConfig({ attempts: 1000000000, firstWaitMs: 0, maxWaitMs: 0 });
+  assert.equal(huge.attempts, MAX_READ_RETRY_ATTEMPTS);
+  assert.equal(huge.firstWaitMs, 0);
+  assert.equal(huge.maxWaitMs, 0);
+  assert.deepEqual(resolveConfig({ attempts: NaN }), {
+    attempts: 3,
+    firstWaitMs: 3000,
+    maxWaitMs: 30000
+  });
+}
+
 async function testReadRetryDoesNotRetryThrownErrors() {
   let calls = 0;
   const client = {
@@ -2615,6 +2637,7 @@ async function run() {
   await testFcaAttachmentDownloadsAndStreamsAreBounded();
   await testNativeMediaCallbacksAreAwaitedAndInvokedOnce();
   await testReadRetryDoesNotRetryThrownErrors();
+  await testReadRetryConfigurationIsHardBounded();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingStopSuppressesLateAuthConfirmation();
@@ -2678,7 +2701,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 84 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 85 regression tests passed\n");
 }
 
 run().catch((error) => {
