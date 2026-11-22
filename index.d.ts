@@ -126,7 +126,7 @@ export interface ReplyContext {
 }
 
 export interface IncomingEvent {
-  type: "message";
+  type: "message" | "message_reply" | "event";
   threadID: string;
   senderID: string | null;
   messageID: string;
@@ -136,6 +136,12 @@ export interface IncomingEvent {
   repliedToItemId: string | null;
   /** Present when the message is a reply (resolved from IGDThreadDetailQuery). */
   repliedToMessage: ReplyContext | null;
+  /** FCA-shaped quoted-message context, present when type is message_reply. */
+  messageReply?: ReplyContext;
+  senderName?: string;
+  userID?: string;
+  participantIDs?: string[];
+  mentions?: Record<string, string>;
   /** offline_threading_id of the quoted message (informational). */
   offlineThreadingId: string | null;
   timestamp: number;
