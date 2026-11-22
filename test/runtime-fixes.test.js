@@ -317,7 +317,10 @@ async function testNativeMediaUploadsHaveBufferAndSizeBounds() {
 async function testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets() {
   const { createPublicLookup, isPublicAddress } = require("../src/utils/publicUrlLookup");
   assert.equal(isPublicAddress("93.184.216.34", 4), true);
+  assert.equal(isPublicAddress("8.8.8.8", 4), true);
   assert.equal(isPublicAddress("127.0.0.1", 4), false);
+  assert.equal(isPublicAddress("255.255.255.255", 4), false);
+  assert.equal(isPublicAddress("999.1.1.1", 4), false);
   assert.equal(isPublicAddress("169.254.169.254", 4), false);
   assert.equal(isPublicAddress("::1", 6), false);
   assert.equal(isPublicAddress("fc00::1", 6), false);
