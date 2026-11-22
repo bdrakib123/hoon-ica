@@ -107,7 +107,14 @@ function retryAfterMs(err) {
   const headers = err && err.response && err.response.headers;
   const raw = headers && (headers["retry-after"] || headers["Retry-After"]);
   const seconds = Number(raw);
-  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 30 * 60 * 1000) : 0;
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.min(seconds * 1000, 30 * 60 * 1000);
+  }
+  const date = raw ? Date.parse(raw) : NaN;
+  if (Number.isFinite(date) && date > Date.now()) {
+    return Math.min(date - Date.now(), 30 * 60 * 1000);
+  }
+  return 0;
 }
 
 module.exports = { classify, inspectBody, toIgError, retryAfterMs };
