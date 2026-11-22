@@ -362,6 +362,37 @@ async function testRealtimeConnectFailureClosesTransport() {
 }
 
 
+async function testRealtimeConnectCanBeCancelled() {
+  let releaseConnect;
+  let connectPackets = 0;
+  let disconnects = 0;
+  const transport = {
+    reset() {},
+    connect: () => new Promise(resolve => { releaseConnect = resolve; }),
+    async send(packet) {
+      if (packet[0] === 0x10) connectPackets += 1;
+    },
+    async recvPacket() { throw new Error("recvPacket must not run after cancellation"); },
+    disconnect() { disconnects += 1; }
+  };
+  const client = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport });
+
+  const connecting = client.connect();
+  await Promise.resolve();
+  client.disconnect();
+  releaseConnect();
+  await assert.rejects(connecting, /connection cancelled/);
+  assert.equal(connectPackets, 0);
+  assert.equal(client.connected, false);
+  assert.equal(client._stopRequested, true);
+  assert.equal(disconnects, 2);
+}
+
+
 async function testRealtimePacketIdentifierWraps() {
   const { RealtimeClient } = require("../src/realtime/client");
   const { decodePacket } = require("../src/realtime/mqttot");
@@ -970,6 +1001,7 @@ async function run() {
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
   await testRealtimePacketIdentifierWraps();
+  await testRealtimeConnectCanBeCancelled();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
@@ -991,7 +1023,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 38 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 39 regression tests passed\n");
 }
 
 run().catch((error) => {
