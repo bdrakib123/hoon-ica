@@ -135,7 +135,10 @@ class InboxMethods {
     // If a caller supplies a cursor before this instance has learned the
     // mailbox id, use the bootstrap response only to resolve that id and then
     // fetch the requested page rather than silently returning page one.
-    if (cursor && this._mailboxId) {
+    if (cursor) {
+      if (!this._mailboxId) {
+        throw new Error("getInbox: mailbox id unavailable; cannot use the supplied pagination cursor");
+      }
       const page = await this.http.postGraphQL(
         "IGDThreadListOffMsysPaginationQuery",
         DOC_ID.INBOX_PAGINATION,
