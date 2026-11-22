@@ -2399,6 +2399,14 @@ async function testPostFormOmitsNullishFields() {
 }
 
 
+async function testErrorClassificationNormalizesStringStatusCodes() {
+  const { classify } = require("../src/utils/errors");
+  assert.equal(classify({ status: "429", message: "request failed" }).kind, "rate_limited");
+  assert.equal(classify({ response: { status: "401", data: {} } }).kind, "auth");
+  assert.equal(classify({ response: { status: "503", data: {} } }).kind, "transient");
+  assert.equal(classify({ status: "not-a-status" }).kind, "unknown");
+}
+
 async function testRetryAfterSupportsHttpDate() {
   const { retryAfterMs } = require("../src/utils/errors");
   assert.equal(retryAfterMs({ response: { headers: { "retry-after": "120" } } }), 120000);
@@ -2562,6 +2570,7 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testExplicitFailureEnvelopeWithoutMessageIsRejected();
+  await testErrorClassificationNormalizesStringStatusCodes();
   await testRetryAfterSupportsHttpDate();
   await testPostFormOmitsNullishFields();
   await testConcurrentTokenBootstrapIsDeduplicated();
@@ -2580,7 +2589,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 81 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 82 regression tests passed\n");
 }
 
 run().catch((error) => {
