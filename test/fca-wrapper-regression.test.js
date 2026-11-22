@@ -230,6 +230,37 @@ async function testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow() {
 }
 
 
+async function testMultiAttachmentFailureReportsPartialProgress() {
+  const attachments = [
+    { url: "https://cdn.example/one.jpg" },
+    { url: "https://cdn.example/two.jpg" },
+    { url: "https://cdn.example/three.jpg" }
+  ];
+  let attempts = 0;
+  const sendMessage = createSendMessage({
+    _normalizeForm: () => ({ body: "caption", attachments }),
+    _sendAttachment: async () => {
+      attempts += 1;
+      if (attempts === 2) throw new Error("second attachment failed");
+      return { message_id: "sent-first" };
+    },
+    _msgThread: new Map()
+  });
+  await assert.rejects(
+    () => sendMessage("ignored", "thread-1"),
+    error => {
+      assert.deepEqual(error.partialSend, {
+        sentCount: 1,
+        totalAttachments: 3,
+        messageIDs: ["sent-first"]
+      });
+      return true;
+    }
+  );
+  assert.equal(attempts, 2);
+}
+
+
 async function testSendMessageHandlesDeepAndCircularAttachmentArrays() {
   const first = { url: "https://cdn.example/one.jpg" };
   const second = { url: "https://cdn.example/two.jpg" };
@@ -339,12 +370,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testSuccessCallbackThrowsOnlyOnce();
   await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
   await testSendMessageHandlesDeepAndCircularAttachmentArrays();
+  await testMultiAttachmentFailureReportsPartialProgress();
   await testUserInfoCacheRemainsBounded();
   await testShareContactReportsUnsupportedAdapter();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 12 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 13 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
