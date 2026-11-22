@@ -306,7 +306,7 @@ class InboxMethods {
         });
       }
 
-      if (nodes[0]) setBounded(this._seen, threadID, nodes[0].id, 5000);
+      if (latestSeenID != null) setBounded(this._seen, threadID, latestSeenID, 5000);
     }
     return events;
   }
