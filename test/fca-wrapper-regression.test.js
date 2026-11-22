@@ -523,6 +523,12 @@ async function testFriendshipStatusPreservesUnknownFields() {
   assert.equal(status.follows, null);
   assert.equal(status.incomingRequest, null);
   assert.equal(status.outgoingRequest, null);
+
+  const fallback = await createGetUserFriendship({
+    api: { _learnedUser: () => ({ id: " ", pk: "friend-pk", friendship_status: {} }) }
+  })("friend-pk");
+  assert.equal(fallback.id, "friend-pk");
+  assert.equal(fallback.userID, "friend-pk");
 }
 
 async function testUnknownFriendshipReturnsNull() {
