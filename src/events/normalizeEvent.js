@@ -86,8 +86,13 @@ class EventNormalizer {
   _replyHasContent(reply) {
     if (!reply || typeof reply !== "object") return false;
     const body = reply.body || reply.text || "";
-    if (String(body).trim() !== "") return true;
-    return Array.isArray(reply.attachments) && reply.attachments.length > 0;
+    const attachments = Array.isArray(reply.attachments) ? reply.attachments : [];
+    if (attachments.length > 0) return true;
+    const type = String(reply.itemType || reply.content_type || "").toLowerCase();
+    const textOnly = !type || ["text", "1", "text_content", "message"].includes(type);
+    // A caption is not proof that a media reply is complete: the push can carry
+    // the caption/type while omitting the actual attachment nodes.
+    return textOnly && String(body).trim() !== "";
   }
 
   // Prefer the fields the caller already had (the push's ids/sender) and take the
