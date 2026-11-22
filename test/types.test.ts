@@ -38,3 +38,6 @@ if (incomingEvent.type === "message_reply") {
 if (incomingEvent.type === "event") {
   void incomingEvent.logMessageType;
 }
+
+void fcaClient.lastShareContactError;
+void fcaClient.lastEditError;
