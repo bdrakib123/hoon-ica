@@ -48,8 +48,9 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 25 | Compressed MQTT payload expansion | **Fixed on branch:** zlib publish payloads now have a 32 MiB decompressed-output cap, preventing a small compressed broker frame from expanding without bound. Oversized/malformed payloads retain the existing best-effort behavior and are returned unchanged. | normal decompression and 33 MiB expansion-cap regression test passed in user's latest local run |
 | 26 | Thrift decoder malformed-size handling | **Fixed on branch:** Thrift varints are limited to 10 bytes / 64 bits and reject truncation; binary reads cannot exceed remaining input; list/map sizes are capped (default 100,000), and nested structs are capped (default depth 64). | regression tests cover truncated varint, oversized list, truncated binary and valid list; passed in user's latest local run |
 | 27 | Truncated Thrift struct termination | **Fixed on branch:** `readStruct()` now requires the protocol STOP marker and rejects EOF after a partial/complete field sequence instead of silently returning a partial object. | missing-STOP regression passed in the user's latest local run |
-| 28 | Realtime disconnect fallback | **Fixed on branch:** if the MQTT connection drops after the iris subscription was acknowledged, `listen()` now starts the polling safety net instead of only reporting an error and leaving message delivery stopped. Fallback remains single-start guarded. | established-subscription disconnect regression added; pending user local run |
-| 29 | Failed MQTT handshake cleanup | **Fixed on branch:** if TLS connect, CONNECT write, CONNACK decode, or a rejected CONNACK fails, `RealtimeClient.connect()` now clears ping state, resets connection flags, and disconnects the transport before rethrowing. This prevents a failed startup from leaving a socket alive while the caller falls back or retries. | rejected-CONNACK cleanup regression added; pending user local run |
+| 28 | Realtime disconnect fallback | **Fixed on branch:** if the MQTT connection drops after the iris subscription was acknowledged, `listen()` now starts the polling safety net instead of only reporting an error and leaving message delivery stopped. Fallback remains single-start guarded. | established-subscription disconnect regression passed in the user's local Node 20 run |
+| 30 | Realtime receive-loop cleanup | **Fixed on branch:** if MQTT packet decoding / receiving fails after a successful handshake, the client now clears its ping timer and disconnects the transport before emitting the final disconnect event. This prevents malformed broker data from leaving an idle TLS socket open while polling fallback takes over. | truncated MQTT header regression added; pending user local run |
+| 29 | Failed MQTT handshake cleanup | **Fixed on branch:** if TLS connect, CONNECT write, CONNACK decode, or a rejected CONNACK fails, `RealtimeClient.connect()` now clears ping state, resets connection flags, and disconnects the transport before rethrowing. This prevents a failed startup from leaving a socket alive while the caller falls back or retries. | rejected-CONNACK cleanup regression passed in the user's local Node 20 run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -57,7 +58,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 26 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed the full suite after commit 89fead4: all 26 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. #27 was added after that run and remains pending.
 
-**Execution status:** #20–#28 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including #25 decompression-output, #26 Thrift decoder bounds, #27 required STOP marker, and #28 established-realtime-disconnect fallback. #29 failed-handshake cleanup requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, including #25 decompression-output, #26 Thrift decoder bounds, #27 required STOP marker, #28 established-realtime-disconnect fallback, and #29 failed-handshake cleanup. #30 receive-loop cleanup requires a fresh local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -76,7 +77,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #29 failed-handshake cleanup change.
+1. Re-run the full Node 20 validation suite after the #30 realtime receive-loop cleanup change.
 2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
