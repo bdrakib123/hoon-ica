@@ -35,6 +35,37 @@ async function testNestedPacingConfiguration() {
   }
 }
 
+async function testTypingStopsOnRateLimitButFallsBackOnUnknown() {
+  const TypingMethods = require("../src/methods/typing");
+  let rateLimitedCalls = 0;
+  const rateLimited = new TypingMethods({
+    postForm: async () => {
+      rateLimitedCalls += 1;
+      const error = new Error("too many requests");
+      error.response = { status: 429 };
+      throw error;
+    }
+  });
+  assert.equal(await rateLimited.start("thread-1"), false);
+  assert.equal(rateLimitedCalls, 1);
+
+  let fallbackCalls = 0;
+  const fallback = new TypingMethods({
+    postForm: async () => {
+      fallbackCalls += 1;
+      if (fallbackCalls === 1) {
+        const error = new Error("endpoint not found");
+        error.response = { status: 404 };
+        throw error;
+      }
+      return { status: "ok" };
+    }
+  });
+  assert.equal(await fallback.start("thread-1"), true);
+  assert.equal(fallbackCalls, 2);
+}
+
+
 async function testSendLinkUsesPacer() {
   const original = globalAntiSuspension.waitForTurn;
   let calls = 0;
@@ -812,6 +843,7 @@ async function testBoundedSessionCache() {
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
+  await testTypingStopsOnRateLimitButFallsBackOnUnknown();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
@@ -843,7 +875,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 34 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 35 regression tests passed\n");
 }
 
 run().catch((error) => {
