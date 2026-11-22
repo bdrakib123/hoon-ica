@@ -444,6 +444,12 @@ async function testMqttTransportRejectsOversizedAndMalformedFrames() {
     maxBufferedBytes: 9
   });
 
+  // A TCP data event may end in the middle of a valid MQTT length varint.
+  transport._buffer = Buffer.from([0x30, 0x80]);
+  assert.equal(transport._tryRead(), null);
+  transport._buffer = Buffer.concat([transport._buffer, Buffer.from([0x00])]);
+  assert.deepEqual(transport._tryRead(), Buffer.from([0x30, 0x80, 0x00]));
+
   transport._buffer = Buffer.from([0x30, 0x05]);
   assert.throws(() => transport._tryRead(), /exceeds configured limit/);
 
