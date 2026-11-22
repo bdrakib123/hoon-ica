@@ -20,11 +20,15 @@ module.exports = function (client) {
       const learned = client.api && typeof client.api._learnedUser === "function"
         ? client.api._learnedUser(key)
         : null;
-      const fs = learned && learned.friendship_status;
+      if (!learned) {
+        if (cb) cb(null, null);
+        return null;
+      }
+      const fs = learned.friendship_status;
       const out = {
-        id: learned ? String(learned.id || learned.pk || key) : null,
-        userID: learned ? String(learned.id || learned.pk || key) : null,
-        username: learned ? learned.username || null : null,
+        id: String(learned.id || learned.pk || key),
+        userID: String(learned.id || learned.pk || key),
+        username: learned.username || null,
         blocking: fs ? fs.blocking === true : null,
         isRestricted: fs ? fs.is_restricted === true : null,
         isFollowedBy: fs ? fs.is_followed_by === true : null,
