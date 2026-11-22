@@ -2559,6 +2559,25 @@ async function testMissingProfileCountsRemainUnknown() {
   assert.equal(missing.followerCount, null);
   assert.equal(missing.followingCount, null);
   assert.equal(missing.mediaCount, null);
+  assert.equal(missing.isVerified, null);
+  assert.equal(missing.isPrivate, null);
+  assert.equal(missing.isBusinessAccount, null);
+  assert.equal(missing.isProfessionalAccount, null);
+  assert.equal(missing.hasProfilePic, null);
+
+  const explicitFlags = normalizeWebProfileInfo({
+    id: "user-3",
+    is_verified: false,
+    is_private: true,
+    is_business_account: false,
+    is_professional_account: true,
+    has_profile_pic: false
+  });
+  assert.equal(explicitFlags.isVerified, false);
+  assert.equal(explicitFlags.isPrivate, true);
+  assert.equal(explicitFlags.isBusinessAccount, false);
+  assert.equal(explicitFlags.isProfessionalAccount, true);
+  assert.equal(explicitFlags.hasProfilePic, false);
 
   const present = normalizeWebProfileInfo({
     id: "user-2",
