@@ -1048,6 +1048,14 @@ async function testMalformedNestedThreadEdgesAreSkipped() {
   const mapped = new ThreadMethods({})._mapHistoryEdges(malformed, {});
   assert.equal(mapped.length, 1);
   assert.equal(mapped[0].messageID, "valid-message");
+  const itemIdOnly = inbox._threadMessages({
+    slide_messages: { edges: [{ node: { item_id: "item-id-only", content_type: "TEXT" } }] }
+  });
+  assert.equal(itemIdOnly[0].id, "item-id-only");
+  const mappedItemIdOnly = new ThreadMethods({})._mapHistoryEdges([
+    { node: { item_id: "item-id-only", content_type: "TEXT" } }
+  ], {});
+  assert.equal(mappedItemIdOnly[0].messageID, "item-id-only");
   assert.deepEqual(threadFbidMap({ users: [null, {}, { id: "u-1", interop_messaging_user_fbid: "fb-1" }] }), {
     "fb-1": "u-1"
   });
