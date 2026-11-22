@@ -425,6 +425,18 @@ async function testBoundedSessionCache() {
   assert.equal(cache.get("a"), 3);
   assert.equal(cache.get("c"), 4);
   assert.throws(() => setBounded({}, "x", 1, 2), /expects a Map/);
+
+  const inbox = new InboxMethods({}, () => "self-1");
+  const threads = Array.from({ length: 2001 }, (_, i) => ({
+    id: `thread-${i}`,
+    thread_id: `internal-${i}`,
+    users: []
+  }));
+  inbox._rememberInboxThreads(threads);
+  assert.equal(inbox._members.size, 2000);
+  assert.equal(inbox._threadIdMap.size, 2000);
+  assert.equal(inbox._members.has("thread-0"), false);
+  assert.equal(inbox._threadIdMap.has("internal-0"), false);
 }
 
 async function run() {
