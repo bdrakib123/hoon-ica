@@ -305,18 +305,26 @@ async function testUserInfoCacheRemainsBounded() {
 }
 
 
-async function testShareContactReportsUnsupportedAdapter() {
-  const client = { api: {} };
+async function testShareContactSendsProfileLink() {
+  const sent = [];
+  const client = {
+    api: { getUserInfo: async () => ({ username: "friend_account", full_name: "Friend Person" }) },
+    sendMessage: async (form, threadID) => {
+      sent.push({ form, threadID });
+      return { messageID: "contact-message", threadID };
+    }
+  };
   const shareContact = createShareContact(client);
   let callbackArgs;
   const result = await shareContact("user-1", "contact-1", "thread-1", (...args) => {
     callbackArgs = args;
   });
-  assert.equal(result, null);
-  assert.equal(client.lastShareContactError.code, "IG_METHOD_UNSUPPORTED");
-  assert.match(client.lastShareContactError.message, /not implemented/);
-  assert.equal(callbackArgs[0], client.lastShareContactError);
-  assert.equal(callbackArgs[1], null);
+  assert.equal(result.messageID, "contact-message");
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].threadID, "thread-1");
+  assert.match(sent[0].form.body, /https:\/\/instagram\.com\/friend_account/);
+  assert.match(sent[0].form.body, /user-1/);
+  assert.deepEqual(callbackArgs, [null, result]);
 }
 
 
@@ -372,7 +380,7 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testSendMessageHandlesDeepAndCircularAttachmentArrays();
   await testMultiAttachmentFailureReportsPartialProgress();
   await testUserInfoCacheRemainsBounded();
-  await testShareContactReportsUnsupportedAdapter();
+  await testShareContactSendsProfileLink();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
