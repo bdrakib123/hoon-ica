@@ -372,6 +372,22 @@ async function testFcaHistoryTimestampIsForwarded() {
   assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
 }
 
+async function testMediaUploadDoesNotRetryPermanentAuthFailure() {
+  let calls = 0;
+  const media = new MediaMethods({
+    postRupload: async () => {
+      calls += 1;
+      const error = new Error("AuthorizationFailedError");
+      error.response = { status: 401 };
+      throw error;
+    }
+  }, {});
+  await assert.rejects(media._upload("thread-1", {
+    buffer: Buffer.from("test"), filename: "test.jpg", contentType: "image/jpeg"
+  }), /AuthorizationFailedError/);
+  assert.equal(calls, 1);
+}
+
 async function testInboxSkipsMalformedRelayThreads() {
   const InboxMethods = require("../src/methods/inbox");
   const http = {
@@ -460,7 +476,8 @@ async function run() {
   await testInboxCursorPagination();
   await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
-  process.stdout.write("runtime-fixes.test.js: 20 regression tests passed\n");
+  await testMediaUploadDoesNotRetryPermanentAuthFailure();
+  process.stdout.write("runtime-fixes.test.js: 21 regression tests passed\n");
 }
 
 run().catch((error) => {
