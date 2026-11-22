@@ -2108,7 +2108,7 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
   const fs = require("node:fs");
   const os = require("node:os");
   const path = require("node:path");
-  const { install } = require("../src/utils/sessionGuard");
+  const { install, loadSaved } = require("../src/utils/sessionGuard");
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "hoonica-session-"));
   const filePath = path.join(directory, "appstate.json");
   const client = {
@@ -2130,6 +2130,15 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
     client.saveSession();
     assert.equal(fs.statSync(filePath).mode & 0o777, 0o600);
     assert.equal(fs.statSync(backup).mode & 0o777, 0o600);
+
+    // A valid JSON file with too few cookies must not prevent recovery from
+    // the complete backup written by the previous save.
+    fs.writeFileSync(filePath, JSON.stringify([
+      { key: "sessionid", value: "session-secret" },
+      { key: "csrftoken", value: "partial" }
+    ]));
+    const recovered = loadSaved(filePath, { sessionid: "session-secret", ds_user_id: "12345" });
+    assert.equal(recovered.csrftoken, "csrf-secret");
 
     const { loadOrCreate } = require("../src/deviceIdentity");
     const deviceFile = path.join(directory, "device.json");
