@@ -58,14 +58,18 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 35 | FCA thread-history overload/limit | **Fixed on branch:** `getThreadHistory(threadID, amount, callback)` and callback-only overloads are normalized, and requested positive integer amounts are no longer silently raised to 20. | wrapper regressions added; pending batch local run |
 | 36 | MQTT packet identifier wraparound | **Fixed on branch:** outbound QoS-1 packet IDs now wrap from 65,535 to 1 instead of overflowing to invalid packet ID 0. | packet-id boundary regression added; pending batch local run |
 | 37 | Missing profile metrics | **Fixed on branch:** explicit null count edges remain `null` instead of being coerced to numeric zero, so an unknown follower/following/media count is not reported as zero. | null-versus-zero profile parsing regression added; pending batch local run |
+| 38 | Typing fallback request amplification | **Fixed on branch:** typing indicator fallback now stops immediately for auth, challenge, rate-limit, and transport failures; it tries alternate legacy routes only for endpoint-specific/unknown rejections. | rate-limit stop and 404 fallback regression added; pending batch local run |
+| 39 | Malformed nested thread edges | **Fixed on branch:** inbox message extraction, thread history mapping, reply lookup, actor lookup, FBID mapping, and FCA participant mapping now skip null or malformed nested Relay nodes instead of throwing. | malformed nested message/user regression added; pending batch local run |
+| 40 | Malformed Relay edge collection shape | **Fixed on branch:** inbox pagination and thread-detail consumers now verify `edges` is an array before iterating; malformed collection values are treated as empty rather than crashing the listener. | malformed collection regression added; pending batch local run |
+| 41 | FCA thread-history TypeScript overloads | **Fixed on branch:** declaration types now include callback-only, amount-plus-callback, and amount/timestamp/callback forms; realtime ping interval documentation now matches the 25-second runtime default. | TypeScript overload examples added to type test; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 34 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds six runtime regression checks and two wrapper regression checks; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 37 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds nine runtime regression checks, two wrapper regression checks, and TypeScript overload examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#37 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#41 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -84,7 +88,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#37 batch.
+1. Run the full Node 20 validation suite once after the current #30–#41 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
