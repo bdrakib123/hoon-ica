@@ -60,12 +60,16 @@ module.exports = function (client) {
           : String(replyToMessage);
     }
     const cb = createCallback(callback);
+    // These are read by the catch block to report partial completion. Keep them
+    // in the enclosing function scope so failures during normalization or an
+    // attachment send never mask the original error with a ReferenceError.
+    const sentMessageIDs = [];
+    let attachmentCount = 0;
 
     try {
       const { body, attachment, attachments, maxDownloadBytes, downloadTimeoutMs } = client._normalizeForm(form);
       const mediaList = toAttachmentList(attachment, attachments);
-      const sentMessageIDs = [];
-      const attachmentCount = mediaList.length;
+      attachmentCount = mediaList.length;
       let result;
 
       if (mediaList.length) {
