@@ -294,6 +294,29 @@ async function testRealtimeAcknowledgementAndReady() {
   listener.stop();
 }
 
+async function testRealtimeListenerStopDuringClientLookup() {
+  const { EventEmitter } = require("node:events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  let releaseClient;
+  let disconnects = 0;
+  const clientPromise = new Promise(resolve => { releaseClient = resolve; });
+  const listener = new RealtimeListener({}, { getClient: () => clientPromise });
+  const starting = listener.start(() => {});
+  listener.stop();
+
+  const sharedClient = new EventEmitter();
+  sharedClient.connected = true;
+  sharedClient.disconnect = () => { disconnects += 1; };
+  releaseClient(sharedClient);
+  await starting;
+  assert.equal(sharedClient.listenerCount("message"), 0);
+  assert.equal(sharedClient.listenerCount("error"), 0);
+  assert.equal(sharedClient.listenerCount("disconnected"), 0);
+  assert.equal(disconnects, 0);
+  assert.equal(listener.connected, false);
+}
+
+
 async function testRealtimeMissingAcknowledgementFails() {
   const { EventEmitter } = require("node:events");
   const { RealtimeListener } = require("../src/realtime/listener");
@@ -997,6 +1020,7 @@ async function run() {
   await testPollingStopSuppressesInflightResults();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
+  await testRealtimeListenerStopDuringClientLookup();
   await testRealtimeFallbackStartsOnlyOnce();
   await testRealtimeFallbackAfterEstablishedDisconnect();
   await testRealtimeConnectFailureClosesTransport();
@@ -1023,7 +1047,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 39 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 40 regression tests passed\n");
 }
 
 run().catch((error) => {
