@@ -246,6 +246,7 @@ class MediaMethods {
   }
 
   async _downloadFromUrl(url, options = {}) {
+    options = options && typeof options === "object" ? options : {};
     let parsed;
     try {
       parsed = new URL(String(url));
@@ -268,7 +269,12 @@ class MediaMethods {
       timeout,
       maxContentLength: maxDownloadBytes,
       maxBodyLength: maxDownloadBytes,
-      maxRedirects: 3
+      maxRedirects: 3,
+      beforeRedirect: (requestOptions) => {
+        if (parsed.protocol === "https:" && requestOptions.protocol !== "https:") {
+          throw new Error("Media URL redirect cannot downgrade HTTPS to HTTP");
+        }
+      }
     });
     const buffer = Buffer.from(res.data);
     if (buffer.length > maxDownloadBytes) {
