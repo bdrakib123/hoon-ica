@@ -530,6 +530,44 @@ async function testPollingDeliversAllMessagesSinceLastSeen() {
 }
 
 
+async function testThreadHistoryPaginatesWithoutTimestamp() {
+  const ThreadMethods = require("../src/methods/thread");
+  const thread = new ThreadMethods({});
+  const first = Array.from({ length: 20 }, (_value, index) => ({
+    id: `message-${index}`,
+    sender_fbid: "friend-1",
+    content_type: "TEXT",
+    text_body: `body ${index}`,
+    timestamp_ms: 1700000000000 - index
+  }));
+  const older = Array.from({ length: 10 }, (_value, index) => ({
+    id: `older-${index}`,
+    sender_fbid: "friend-1",
+    content_type: "TEXT",
+    text_body: `older ${index}`,
+    timestamp_ms: 1699999990000 - index
+  }));
+  thread.fetchDetail = async () => ({
+    id: "thread-fbid",
+    users: [],
+    slide_messages: {
+      edges: first.map(node => ({ node })),
+      page_info: { has_next_page: true, end_cursor: "cursor-1" }
+    }
+  });
+  const calls = [];
+  thread.fetchOlderMessages = async (...args) => {
+    calls.push(args);
+    return { edges: older.map(node => ({ node })), page_info: { has_next_page: false } };
+  };
+  const history = await thread.getHistory("thread-1", 50);
+  assert.equal(history.length, 30);
+  assert.equal(history[0].messageID, "message-0");
+  assert.equal(history[29].messageID, "older-9");
+  assert.deepEqual(calls, [["thread-fbid", "cursor-1", 30]]);
+}
+
+
 async function testPollingPaginatesUntilLastSeenMessageFound() {
   const old = { id: "last-seen", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
   const newMessages = Array.from({ length: 25 }, (_value, index) => ({
@@ -1889,6 +1927,7 @@ async function run() {
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingPaginatesUntilLastSeenMessageFound();
+  await testThreadHistoryPaginatesWithoutTimestamp();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
   await testListenReplacesPreviousPollingListener();
@@ -1937,7 +1976,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 64 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 65 regression tests passed\n");
 }
 
 run().catch((error) => {
