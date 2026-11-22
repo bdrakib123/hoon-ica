@@ -381,8 +381,9 @@ class InstaAPI {
   // connection with the same id silently takes the stream away from the first —
   // the "connects but receives nothing" deafness. Every internal consumer
   // (listen(), the reaction push) shares this client instead of dialing its own.
-  // Rebuilt only when the previous one is gone or dropped. Concurrent callers
-  // (the listener and the watcher start together) share one connect().
+  // Reuse the session client across socket drops; its transport resets on
+  // reconnect, preserving event handlers. Concurrent callers (the listener and
+  // watcher starting together) share one connect().
   async sharedRealtimeClient(options = {}) {
     if (this._realtime && this._realtime.connected) return this._realtime;
     if (this._realtimeConnecting) return this._realtimeConnecting;
