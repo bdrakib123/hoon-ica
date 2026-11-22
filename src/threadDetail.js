@@ -34,8 +34,10 @@ function threadFbidMap(thread) {
       map[String(u.interop_messaging_user_fbid)] = String(u.id || u.pk);
     }
   }
-  const viewerFbid = thread?.viewer?.interop_messaging_user_fbid;
-  if (viewerFbid) map[String(viewerFbid)] = String(thread.viewer_id);
+  const viewer = thread?.viewer;
+  const viewerFbid = viewer?.interop_messaging_user_fbid;
+  const viewerId = viewer?.id || viewer?.pk || thread?.viewer_id;
+  if (viewerFbid && viewerId != null) map[String(viewerFbid)] = String(viewerId);
   return map;
 }
 
