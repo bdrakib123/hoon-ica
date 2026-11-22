@@ -35,13 +35,13 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 12 | Thread history | **Fixed on branch:** FCA timestamp is forwarded; older pages are fetched with the Relay message-list query using the opaque `end_cursor`, and results are filtered strictly before the timestamp boundary. | regression tests added; execution pending |
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
-| 15 | Inbox pagination | **Unconfirmed candidate:** the native method currently ignores a cursor, but the documented public API only promises `getInbox()` → `{ threads }`; no cursor-pagination contract has been established. Keep as a compatibility question, not a confirmed defect. | cursor argument currently ignored; contract unverified |
+| 15 | Inbox pagination | **Implemented on branch:** `getInbox(cursor)` uses `IGDThreadListOffMsysPaginationQuery` with the mailbox id, Relay cursor, count, required `INBOX` folder, timestamp bound and Relay provider flags. Returns `nextCursor` and `hasNextPage` while preserving `threads`. | mock regression added; local execution pending |
 | 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |
 | 17 | Thrift integer precision | **Mitigated:** `ThriftReader` supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default and can still round large values. | regression test added |
 
 ## Runtime fix progress (2026-11-22)
 
-**16 of the 17 original diagnostic cases are addressed on this branch:** 15 source fixes (#1–#14 and #16) and one compatibility mitigation (#17). #12 now forwards the FCA timestamp and uses the documented Relay message-list cursor flow to fetch older pages; new multi-page mock regression cases have been authored, but they still need execution in Node and live-session validation before release. #15 (inbox cursor) remains an unconfirmed candidate because no public cursor-pagination behavior is documented.
+**17 of the 17 original diagnostic cases now have a branch-level response:** source fixes and compatibility mitigations are covered by regression checks. #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. The new inbox pagination regression test still needs execution in Node, and neither feature has been validated against a live Instagram session.
 
 New test file: `test/runtime-fixes.test.js` (17 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
@@ -65,7 +65,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 1. Run `npm test`, `npm run test:types`, `npm run release:check`, and `npm run audit:repro` on Node 20.
 2. Fix any test failures before considering a release candidate.
-3. Keep #15 as an API-contract question unless a documented caller requirement emerges; #12 implementation is now in place and needs local test execution.
+3. #15 now implements the documented Relay inbox pagination flow; verify its mock test and then validate against a live session before release.
 4. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 5. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
@@ -81,7 +81,7 @@ Severity reflects likely impact from source behavior, not confirmed production i
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
 - **Implemented on branch, execution pending:** #12 history timestamp. The wrapper forwards the FCA millisecond timestamp; the thread method walks `slide_messages.page_info.end_cursor` via `IGDMessageListOffMsysQuery` and returns messages strictly older than the boundary. The timestamp is never used as the Relay cursor.
-- **Unconfirmed candidate:** #15 inbox cursor. The current public docs describe `getInbox()` with no cursor argument; retain only as an API-contract question unless a supported caller contract is identified.
+- **Implemented on branch, execution pending:** #15 inbox cursor pagination. Uses mailbox id + opaque Relay cursor; returns `nextCursor` and `hasNextPage`.
 
 ### Required before release
 - Run all four validation commands listed above on Node 20 and inspect their complete outputs.
