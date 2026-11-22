@@ -27,18 +27,24 @@ async function fetchThreadDetail(http, threadID, limit = 20, afterCursor = null)
 
 // Builds an fbid -> instagram-id lookup from a thread-detail payload, including
 // the viewer so the bot's own messages map too.
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 function threadFbidMap(thread) {
   const map = {};
   for (const u of (Array.isArray(thread?.users) ? thread.users : [])) {
     if (!u || typeof u !== "object") continue;
-    if (u.interop_messaging_user_fbid && (u.id != null || u.pk != null)) {
-      map[String(u.interop_messaging_user_fbid)] = String(u.id || u.pk);
+    const id = firstUsableId(u.id, u.pk);
+    if (u.interop_messaging_user_fbid && id) {
+      map[String(u.interop_messaging_user_fbid)] = id;
     }
   }
   const viewer = thread?.viewer;
   const viewerFbid = viewer?.interop_messaging_user_fbid;
-  const viewerId = viewer?.id || viewer?.pk || thread?.viewer_id;
-  if (viewerFbid && viewerId != null) map[String(viewerFbid)] = String(viewerId);
+  const viewerId = firstUsableId(viewer?.id, viewer?.pk, thread?.viewer_id);
+  if (viewerFbid && viewerId) map[String(viewerFbid)] = viewerId;
   return map;
 }
 
