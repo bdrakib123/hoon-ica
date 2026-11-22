@@ -1887,6 +1887,13 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
     fs.chmodSync(deviceFile, 0o644);
     loadOrCreate(deviceFile, "12345678-1234-1234-1234-123456789abc");
     assert.equal(fs.statSync(deviceFile).mode & 0o777, 0o600);
+
+    const InstaAPI = require("../src/api");
+    const paramsFile = path.join(directory, "session-params.json");
+    fs.writeFileSync(paramsFile, JSON.stringify({ fb_dtsg: "token-secret", __dyn: "session-dyn" }), { mode: 0o644 });
+    fs.chmodSync(paramsFile, 0o644);
+    assert.equal(InstaAPI.prototype._loadSessionParams.call({}, paramsFile).fb_dtsg, "token-secret");
+    assert.equal(fs.statSync(paramsFile).mode & 0o777, 0o600);
   } finally {
     guard.stop();
     fs.rmSync(directory, { recursive: true, force: true });
