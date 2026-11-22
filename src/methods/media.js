@@ -273,6 +273,7 @@ class MediaMethods {
       maxBodyLength: maxDownloadBytes,
       maxRedirects: 3,
       lookup: createPublicLookup(),
+      proxy: false,
       beforeRedirect: (requestOptions) => {
         const nextProtocol = requestOptions.protocol;
         if (nextProtocol !== "http:" && nextProtocol !== "https:") {
