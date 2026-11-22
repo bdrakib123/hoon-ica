@@ -46,14 +46,17 @@ function isUsableMessage(message) {
   );
 }
 
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 function normalizeMessageId(message) {
   if (!isUsableMessage(message)) return null;
-  const id = [message.id, message.item_id, message.message_id].find(
-    (value) => value != null && String(value).trim() !== ""
-  );
+  const id = firstUsableId(message.id, message.item_id, message.message_id);
   return message.id != null && String(message.id).trim() !== ""
     ? message
-    : { ...message, id: String(id) };
+    : { ...message, id };
 }
 
 class InboxMethods {
@@ -179,11 +182,11 @@ class InboxMethods {
       const tid = String(t.id || t.thread_id);
       if (tid) {
         const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
-        const memberIDs = users.map((u) => String(u.id || u.pk || "")).filter(Boolean);
+        const memberIDs = [...new Set(users.map((u) => firstUsableId(u.id, u.pk)).filter(Boolean))];
         // Thread snapshots may list only other participants and put the logged-in
         // account in a separate viewer object. FCA participantIDs must include it.
-        const viewerID = t.viewer && (t.viewer.id || t.viewer.pk);
-        if (viewerID != null && !memberIDs.includes(String(viewerID))) memberIDs.push(String(viewerID));
+        const viewerID = t.viewer && firstUsableId(t.viewer.id, t.viewer.pk);
+        if (viewerID && !memberIDs.includes(viewerID)) memberIDs.push(viewerID);
         setBounded(this._members, tid, memberIDs, 2000);
       }
     }
@@ -394,13 +397,13 @@ class InboxMethods {
   _snapshot(thread) {
     const users = (Array.isArray(thread.users) ? thread.users : []).filter((u) => u && typeof u === "object");
     const viewer = thread.viewer && typeof thread.viewer === "object" ? thread.viewer : null;
-    if (viewer && !users.some((u) => String(u.id || u.pk) === String(viewer.id || viewer.pk))) users.push(viewer);
+    const viewerID = viewer ? firstUsableId(viewer.id, viewer.pk) : null;
+    if (viewerID && !users.some((u) => firstUsableId(u.id, u.pk) === viewerID)) users.push(viewer);
     const members = new Set();
     const names = {};
     for (const u of users) {
-      const rawId = u.id || u.pk;
-      if (rawId == null || String(rawId).trim() === "") continue;
-      const id = String(rawId);
+      const id = firstUsableId(u.id, u.pk);
+      if (!id) continue;
       members.add(id);
       names[id] = u.full_name || u.username || id;
     }
