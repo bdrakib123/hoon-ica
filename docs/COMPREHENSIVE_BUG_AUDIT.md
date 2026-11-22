@@ -2,7 +2,7 @@
 
 Branch: `audit/comprehensive-bug-hunt`  
 Baseline: `audit/fca-wrapper-regression`  
-Scope: source inspection and diagnostic reproduction cases only.
+Scope: source inspection, isolated runtime fixes, and local regression-test preparation.
 
 ## Validation status (2026-11-22)
 
@@ -22,7 +22,7 @@ Scope: source inspection and diagnostic reproduction cases only.
 | # | Area | Source-level finding | Diagnostic case |
 |---:|---|---|---|
 | 1 | Cookie normalization | **Fixed:** documented object and browser cookie-array inputs are normalized before string parsing. | regression test added |
-| 2 | UID parsing | URL parsing captures the first path segment, so `/reel/...` and `/p/...` are returned as usernames. | getUID treats a reel route as a username |
+| 2 | UID parsing | **Fixed:** known Instagram content routes such as `/reel/...` and `/p/...` no longer resolve to fake usernames; valid profile paths remain supported. | regression test added |
 | 3 | Thread list | **Fixed:** reads preview text and timestamp from Relay `slide_messages`, with legacy `items` fallback. | regression test added |
 | 4 | Anti-suspension config | **Fixed:** `cooldownMs` and `strikesToActivate` update the nested cooldown state consumed by activation. | regression test added |
 | 5 | Thread classification | **Fixed:** fallback group classification now requires more than two participants after viewer normalization. | regression test added |
@@ -40,9 +40,9 @@ Scope: source inspection and diagnostic reproduction cases only.
 
 ## Runtime fix progress (2026-11-22)
 
-**13 of the 17 original diagnostic cases now have source fixes and regression assertions** on this branch: #1, #3–#11, #13, #14, and #16. The other four (#2 UID URL parsing, #12 history timestamp, #15 inbox cursor, and #17 Thrift INT64 precision) remain open pending contract/consumer review.
+**14 of the 17 original diagnostic cases now have source fixes and regression assertions** on this branch: #1–#11, #13, #14, and #16. The other three (#12 history timestamp, #15 inbox cursor, and #17 Thrift INT64 precision) remain open pending contract/consumer review.
 
-New test file: `test/runtime-fixes.test.js` (13 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
+New test file: `test/runtime-fixes.test.js` (14 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
 **Execution status:** these new tests and the full normal test suite have not yet been run in Node after the source edits. Do not treat source review or successful GitHub commits as test passes.
 
@@ -50,7 +50,7 @@ New test file: `test/runtime-fixes.test.js` (13 focused regression checks). It h
 
 These require more focused fixtures, payload captures, or runtime validation before being treated as defects:
 
-- `getThreadList(limit, timestamp, tags, callback)` accepts timestamp and tags but currently ignores both.
+- `getThreadList(limit, timestamp, tags, callback)` still accepts timestamp and tags but currently ignores both; confirm how the Relay inbox query supports folder and cursor filtering before implementing.
 - The fallback group-count rules in thread-list and thread-detail wrappers are not consistent; validate against captured inbox and thread-detail payloads before changing either.
 - Verify whether inbox/realtime participant lists consistently include the viewer/self ID for every event type.
 - Exercise cache/map growth under long-running multi-thread load; source inspection alone cannot establish a practical memory leak.
@@ -62,11 +62,11 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run `npm run audit:repro` on Node 20 and capture the complete output.
-2. Separate test-harness failures from reproduced source signatures.
-3. Add fixtures for the additional candidates only after verifying their actual payload contracts.
-4. For each accepted defect, invert its diagnostic assertion into a correct-behavior regression test before proposing a runtime fix.
-5. Obtain explicit approval before changing runtime source, merging, publishing, or testing against a live Instagram account.
+1. Run `npm test`, `npm run test:types`, `npm run release:check`, and `npm run audit:repro` on Node 20.
+2. Fix any test failures before considering a release candidate.
+3. Investigate #12 and #15 against the documented FCA and Instagram Relay pagination contracts.
+4. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
+5. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
 
 ## Initial severity triage (provisional)
@@ -79,10 +79,9 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
-- **Still open:** #12 history timestamp and #15 inbox cursor (confirm public API semantics first), plus #2 UID URL parsing (confirm whether post/reel routes should be rejected or handled specially).
+- **Still open:** #12 history timestamp and #15 inbox cursor (confirm public API semantics and pagination contracts first).
 
-### Required before runtime changes
-- Convert each accepted reproduction into a regression test that asserts the intended correct behavior.
-- Add payload fixtures for supported Instagram response shapes.
+### Required before release
+- Run all four validation commands listed above on Node 20 and inspect their complete outputs.
 - For INT64, inspect all consumers before changing Number to BigInt or string; either can be a public API compatibility break.
 - Do not run live account actions as part of ordinary regression tests.
