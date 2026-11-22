@@ -2347,6 +2347,8 @@ async function testMalformedRelayEdgeCollectionsAreIgnored() {
 
 
 async function testMalformedNestedThreadEdgesAreSkipped() {
+  const { normalizeRepliedMessage } = require("../src/messageContent");
+  assert.equal(normalizeRepliedMessage({ id: " ", message_id: "mid.valid" }).messageID, "mid.valid");
   const ThreadMethods = require("../src/methods/thread");
   const { threadFbidMap } = require("../src/threadDetail");
   const inbox = new InboxMethods({}, () => "self-1");
