@@ -190,7 +190,10 @@ class RealtimeClient extends EventEmitter {
   _startPing(generation = this._connectionGeneration) {
     // Ping comfortably inside the keep-alive the CONNECT advertised, so the
     // broker never times the connection out between pings.
-    const keepAliveMs = this.options.keepAliveMs || PING_INTERVAL_MS;
+    const requestedKeepAliveMs = Number(this.options.keepAliveMs);
+    const keepAliveMs = Number.isFinite(requestedKeepAliveMs) && requestedKeepAliveMs > 0
+      ? Math.min(Math.max(Math.floor(requestedKeepAliveMs), 1000), KEEP_ALIVE_SECONDS * 800)
+      : PING_INTERVAL_MS;
     this._pingTimer = setInterval(() => {
       if (this.connected && generation === this._connectionGeneration) {
         this.transport.send(writePingreqPacket()).catch(() => {});
