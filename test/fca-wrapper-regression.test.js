@@ -51,7 +51,7 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 3 tests passed\\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 3 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
