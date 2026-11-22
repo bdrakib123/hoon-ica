@@ -259,6 +259,57 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets() {
+  const { createPublicLookup, isPublicAddress } = require("../src/utils/publicUrlLookup");
+  assert.equal(isPublicAddress("93.184.216.34", 4), true);
+  assert.equal(isPublicAddress("127.0.0.1", 4), false);
+  assert.equal(isPublicAddress("169.254.169.254", 4), false);
+  assert.equal(isPublicAddress("::1", 6), false);
+  assert.equal(isPublicAddress("fc00::1", 6), false);
+  assert.equal(isPublicAddress("2606:4700:4700::1111", 6), true);
+
+  const publicLookup = createPublicLookup((_host, _options, callback) => {
+    callback(null, [{ address: "93.184.216.34", family: 4 }]);
+  });
+  const publicResult = await new Promise((resolve, reject) => {
+    publicLookup("cdn.example", {}, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.deepEqual(publicResult, { address: "93.184.216.34", family: 4 });
+
+  const privateLookup = createPublicLookup((_host, _options, callback) => {
+    callback(null, [{ address: "127.0.0.1", family: 4 }]);
+  });
+  await assert.rejects(
+    () => new Promise((resolve, reject) => {
+      privateLookup("localhost", {}, (error, address, family) => {
+        if (error) reject(error);
+        else resolve({ address, family });
+      });
+    }),
+    /non-public IP/
+  );
+
+  const mixedLookup = createPublicLookup((_host, _options, callback) => {
+    callback(null, [
+      { address: "93.184.216.34", family: 4 },
+      { address: "10.0.0.8", family: 4 }
+    ]);
+  });
+  await assert.rejects(
+    () => new Promise((resolve, reject) => {
+      mixedLookup("rebind.example", {}, (error, address, family) => {
+        if (error) reject(error);
+        else resolve({ address, family });
+      });
+    }),
+    /non-public IP/
+  );
+}
+
+
 async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
   const axios = require("axios");
   const originalGet = axios.get;
@@ -2386,6 +2437,7 @@ async function run() {
   await testLegacyTextFallbackUsesOfflineThreadingId();
   await testPartialGraphqlDataPreventsLegacyFallback();
   await testCaptionedMediaWaitsForBothCommitOutcomes();
+  await testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets();
   await testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds();
   await testFcaAttachmentDownloadsAndStreamsAreBounded();
   await testNativeMediaCallbacksAreAwaitedAndInvokedOnce();
@@ -2449,7 +2501,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 78 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 79 regression tests passed\n");
 }
 
 run().catch((error) => {
