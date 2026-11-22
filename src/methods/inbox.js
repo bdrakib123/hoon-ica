@@ -12,6 +12,7 @@ const ThreadMethods = require("./thread");
 const { classify, toIgError, retryAfterMs } = require("../utils/errors");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
 const { setBounded } = require("../utils/boundedMap");
+const { normalizeSequenceId } = require("../utils/sequenceId");
 
 // Reads the DM inbox through the same Relay query the web client uses
 // (PolarisDirectInboxQuery). The old /api/v1/direct_v2/inbox/ endpoint is dead
@@ -649,9 +650,9 @@ class InboxMethods {
         "https://www.instagram.com/direct/inbox/"
       );
       const box = res?.data?.get_slide_mailbox_for_iris_subscription || {};
-      const seqId = box.iris_inactive_subscription_uq_seq_id;
+      const seqId = normalizeSequenceId(box.iris_inactive_subscription_uq_seq_id);
       if (seqId == null) return null;
-      return { seqId: Number(seqId), snapshotAtMs: Date.now() };
+      return { seqId, snapshotAtMs: Date.now() };
     } catch (_) {
       return null;
     }
