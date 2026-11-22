@@ -51,7 +51,7 @@ function isPublicIPv4(address) {
   const parts = String(address).split(".");
   if (parts.length !== 4) return false;
   const octets = parts.map((part) => {
-    if (!/^(0|[1-9]\\d{0,2})$/.test(part)) return NaN;
+    if (!/^(0|[1-9]\d{0,2})$/.test(part)) return NaN;
     const value = Number(part);
     return value <= 255 ? value : NaN;
   });
