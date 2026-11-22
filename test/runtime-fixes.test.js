@@ -973,6 +973,49 @@ async function testMalformedNestedThreadEdgesAreSkipped() {
 }
 
 
+async function testNormalizedReplyRetainsMetadata() {
+  const EventNormalizer = require("../src/events/normalizeEvent");
+  const { rawEventFromMessageSync } = require("../src/realtime/bridge");
+  const raw = rawEventFromMessageSync({
+    message: {
+      path: "/direct_v2/threads/thread-1/items/item-2",
+      op: "add",
+      item_type: 1,
+      user_id: "sender-1",
+      message_id: "mid.message",
+      text: "replying",
+      replied_to_message: {
+        item_id: "target-item",
+        message_id: "mid.target",
+        user_id: "sender-2",
+        content_type: "TEXT",
+        text: "quoted text",
+        client_context: "client-context-1",
+        offline_threading_id: "123456",
+        timestamp_ms: 1700000000000
+      }
+    }
+  }, "self-1", {});
+  assert.equal(raw.repliedToMessage.clientContext, "client-context-1");
+  assert.equal(raw.repliedToMessage.offlineThreadingId, "123456");
+  assert.equal(raw.repliedToMessage.itemType, "text");
+
+  const normalizer = new EventNormalizer({
+    api: { getUserInfo: async () => ({ full_name: "Reply Sender" }) },
+    getUserByUsername: () => null,
+    getThreadParticipantIDs: () => ["self-1", "sender-1", "sender-2"],
+    rememberThread() {}
+  });
+  const event = await normalizer.normalize(raw);
+  assert.equal(event.type, "message_reply");
+  assert.equal(event.messageReply.messageID, "mid.target");
+  assert.equal(event.messageReply.itemType, "text");
+  assert.equal(event.messageReply.clientContext, "client-context-1");
+  assert.equal(event.messageReply.offlineThreadingId, "123456");
+  assert.equal(event.messageReply.timestamp, 1700000000000);
+}
+
+
 async function testMissingProfileCountsRemainUnknown() {
   const { normalizeWebProfileInfo } = require("../src/profileParse");
   const missing = normalizeWebProfileInfo({
@@ -1073,6 +1116,7 @@ async function run() {
   await testBoundedSessionCache();
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
+  await testNormalizedReplyRetainsMetadata();
   await testMalformedNestedThreadEdgesAreSkipped();
   await testMalformedRelayEdgeCollectionsAreIgnored();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
@@ -1081,7 +1125,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 40 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 41 regression tests passed\n");
 }
 
 run().catch((error) => {
