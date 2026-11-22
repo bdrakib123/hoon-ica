@@ -58,7 +58,12 @@ class MediaMethods {
         break;
       } catch (error) {
         const status = error.response?.status;
-        const retriable = status === 412 || /AuthorizationFailedError|temporary failure/i.test(error.message || "");
+        const kind = error.igKind || classify(error).kind;
+        // AuthorizationFailedError is also used for real auth failures (401/403).
+        // Only the observed 412 upload response or an explicitly transient
+        // temporary failure should be retried.
+        const retriable = status === 412 ||
+          (kind === "transient" && /temporary failure/i.test(error.message || ""));
         if (!retriable || attempt >= 2) throw error;
         await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       }
