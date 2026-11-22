@@ -608,6 +608,51 @@ async function testMqttTransportCancelsPendingTlsSockets() {
 }
 
 
+async function testOldRealtimeLoopCannotCloseNewConnection() {
+  let recvCalls = 0;
+  let rejectOldReceive;
+  let rejectNewReceive;
+  const connack = Buffer.from([0x20, 0x02, 0x00, 0x00]);
+  const transport = {
+    reset() {},
+    async connect() {},
+    async send() {},
+    recvPacket() {
+      recvCalls += 1;
+      if (recvCalls === 1 || recvCalls === 3) return Promise.resolve(connack);
+      if (recvCalls === 2) return new Promise((_resolve, reject) => { rejectOldReceive = reject; });
+      if (recvCalls === 4) return new Promise((_resolve, reject) => { rejectNewReceive = reject; });
+      throw new Error("unexpected receive call");
+    },
+    disconnect() {}
+  };
+  const client = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport, keepAliveMs: 60000 });
+  client.on("error", () => {});
+  let disconnected = 0;
+  client.on("disconnected", () => { disconnected += 1; });
+
+  await client.connect();
+  const oldLoop = client._loop;
+  client.disconnect();
+  await client.connect();
+  const newLoop = client._loop;
+  rejectOldReceive(new Error("old socket closed"));
+  await oldLoop;
+  assert.equal(client.connected, true);
+  assert.equal(disconnected, 0);
+
+  client.disconnect();
+  rejectNewReceive(new Error("new socket closed"));
+  await newLoop;
+  assert.equal(client.connected, false);
+  assert.equal(disconnected, 1);
+}
+
+
 async function testRealtimeConnectCanBeCancelled() {
   let releaseConnect;
   let connectPackets = 0;
@@ -1452,6 +1497,7 @@ async function run() {
   await testRealtimeConnectFailureClosesTransport();
   await testRealtimePacketIdentifierWraps();
   await testRealtimeConnectCanBeCancelled();
+  await testOldRealtimeLoopCannotCloseNewConnection();
   await testMqttTransportCancelsPendingTlsSockets();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
@@ -1478,7 +1524,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 50 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 51 regression tests passed\n");
 }
 
 run().catch((error) => {
