@@ -53,7 +53,7 @@ module.exports = function (client) {
         adminIDs,
         members: userInfo,
         nicknames: thread?.nicknames || {},
-        isGroup: typeof thread?.is_group === "boolean" ? thread.is_group : users.length > 1,
+        isGroup: typeof thread?.is_group === "boolean" ? thread.is_group : users.length > 2,
         messageCount: thread?.slide_messages?.edges?.length ?? thread?.items?.length ?? 0,
         emoji: null,
         color: null
