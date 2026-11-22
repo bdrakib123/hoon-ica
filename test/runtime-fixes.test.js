@@ -785,6 +785,38 @@ async function testMqttTransportCancelsPendingTlsSockets() {
 }
 
 
+async function testRealtimePingIntervalIsClamped() {
+  const { RealtimeClient } = require("../src/realtime/client");
+  const originalSetInterval = global.setInterval;
+  const delays = [];
+  try {
+    global.setInterval = (_fn, delay) => {
+      delays.push(delay);
+      return { unref() {} };
+    };
+    const client = new RealtimeClient({
+      sessionid: "session",
+      deviceId: "device-123",
+      userId: 123456789
+    }, { transport: {}, keepAliveMs: 120000 });
+    client.connected = true;
+    client._startPing();
+    assert.equal(delays[0], 48000);
+
+    const invalid = new RealtimeClient({
+      sessionid: "session",
+      deviceId: "device-123",
+      userId: 123456789
+    }, { transport: {}, keepAliveMs: -1 });
+    invalid.connected = true;
+    invalid._startPing();
+    assert.equal(delays[1], 30000);
+  } finally {
+    global.setInterval = originalSetInterval;
+  }
+}
+
+
 async function testOldRealtimeLoopCannotCloseNewConnection() {
   let recvCalls = 0;
   let rejectOldReceive;
@@ -1804,6 +1836,7 @@ async function run() {
   await testDecodePacketRejectsMalformedFrames();
   await testRealtimeConnectCanBeCancelled();
   await testOldRealtimeLoopCannotCloseNewConnection();
+  await testRealtimePingIntervalIsClamped();
   await testMqttTransportCancelsPendingTlsSockets();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
@@ -1834,7 +1867,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 62 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 63 regression tests passed\n");
 }
 
 run().catch((error) => {
