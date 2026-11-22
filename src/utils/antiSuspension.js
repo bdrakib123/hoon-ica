@@ -141,7 +141,15 @@ class SendPacer extends EventEmitter {
     for (const key of Object.keys(DEFAULTS)) {
       if (key === "enabled") continue;
       const value = Number(options[key]);
-      if (Number.isFinite(value) && value >= 0) this[key] = value;
+      if (Number.isFinite(value) && value >= 0) {
+        this[key] = value;
+        if (key === "cooldownMs") {
+          this.baseCooldownMs = value;
+          this.cooldown.durationMs = value;
+        } else if (key === "strikesToActivate") {
+          this.cooldown.strikesToActivate = value;
+        }
+      }
     }
     if (Object.prototype.hasOwnProperty.call(options, "enabled")) {
       this.enabled = options.enabled !== false;
