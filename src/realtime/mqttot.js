@@ -454,10 +454,22 @@ function writeDisconnectPacket() {
 }
 
 function decodePacket(packet) {
+  if (!Buffer.isBuffer(packet) || packet.length < 2) {
+    throw new Error("Malformed MQTT packet: missing fixed header");
+  }
   const packetTypeId = packet[0] >> 4;
   const flags = packet[0] & 0x0f;
   const { value: remainingLength, offset } = decodeRemainingLength(packet, 1);
+  if (offset + remainingLength !== packet.length) {
+    throw new Error("Malformed MQTT packet: remaining length does not match frame size");
+  }
   const body = packet.slice(offset, offset + remainingLength);
+  if (packetTypeId === 2 && remainingLength !== 2) {
+    throw new Error("Malformed MQTT CONNACK: expected a two-byte body");
+  }
+  if ([12, 13, 14].includes(packetTypeId) && remainingLength !== 0) {
+    throw new Error("Malformed MQTT control packet: expected an empty body");
+  }
   if (packetTypeId === 1) {
     const { value: protocolName, offset: pos } = readUtf8(body, 0);
     return {
@@ -475,6 +487,7 @@ function decodePacket(packet) {
   if (packetTypeId === 3) {
     const { value: topic, offset: pos } = readUtf8(body, 0);
     const qos = (flags >> 1) & 0x03;
+    if (qos === 3) throw new Error("Malformed MQTT PUBLISH: reserved QoS value");
     let packetId = null;
     let at = pos;
     if (qos) {
@@ -505,8 +518,14 @@ function writeUtf8(value) {
 }
 
 function readUtf8(data, offset) {
+  if (!Buffer.isBuffer(data) || offset < 0 || offset + 2 > data.length) {
+    throw new Error("Malformed MQTT packet: truncated UTF-8 length");
+  }
   const size = data.readUInt16BE(offset);
   offset += 2;
+  if (size > data.length - offset) {
+    throw new Error("Malformed MQTT packet: truncated UTF-8 value");
+  }
   return { value: data.slice(offset, offset + size).toString("utf8"), offset: offset + size };
 }
 
