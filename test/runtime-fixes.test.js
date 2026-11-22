@@ -916,6 +916,33 @@ async function testRealtimeMissingAcknowledgementFails() {
   listener.stop();
 }
 
+async function testRealtimeDisconnectRejectsPendingSubscription() {
+  const { EventEmitter } = require("node:events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  class FakeClient extends EventEmitter {
+    constructor() { super(); this.connected = true; }
+    async connect() {}
+    async irisSubscribe() {}
+    disconnect() {}
+  }
+  const client = new FakeClient();
+  const listener = new RealtimeListener({}, {
+    getClient: async () => client,
+    seqId: 1,
+    snapshotAtMs: 1700000000000,
+    subscriptionTimeoutMs: 5000
+  });
+  const starting = listener.start(() => {});
+  await new Promise(resolve => setImmediate(resolve));
+  client.emit("disconnected");
+  await assert.rejects(starting, /connection closed/);
+  assert.equal(client.listenerCount("iris_sub_response"), 0);
+  assert.equal(client.listenerCount("message"), 0);
+  assert.equal(client.listenerCount("error"), 0);
+  assert.equal(client.listenerCount("disconnected"), 0);
+}
+
+
 async function testRealtimeFallbackStartsOnlyOnce() {
   const { EventEmitter } = require("node:events");
   const InboxMethods = require("../src/methods/inbox");
@@ -2106,6 +2133,7 @@ async function run() {
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
+  await testRealtimeDisconnectRejectsPendingSubscription();
   await testRealtimeListenerStopDuringClientLookup();
   await testRealtimeFallbackStartsOnlyOnce();
   await testRealtimeFallbackAfterEstablishedDisconnect();
@@ -2147,7 +2175,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 71 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 72 regression tests passed\n");
 }
 
 run().catch((error) => {
