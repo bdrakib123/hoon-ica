@@ -568,6 +568,34 @@ async function testThreadHistoryPaginatesWithoutTimestamp() {
 }
 
 
+async function testNewlyDiscoveredThreadDoesNotReplayHistory() {
+  const messages = ["old-3", "old-2", "old-1", "newest"].map(id => ({
+    id,
+    sender_fbid: "friend-1",
+    content_type: "TEXT",
+    text_body: id
+  }));
+  const inbox = new InboxMethods({
+    postGraphQL: async () => ({
+      data: { get_slide_thread_nullable: { as_ig_direct_thread: {
+        id: "thread-new",
+        users: [],
+        slide_messages: { edges: messages.map(node => ({ node })) }
+      } } }
+    })
+  }, () => "self-1");
+  inbox._statePrimed = true;
+  inbox._threadState.set("existing-thread", { threadID: "existing-thread" });
+  const events = await inbox._extractEvents([{
+    id: "thread-new",
+    users: [],
+    slide_messages: { edges: messages.map(node => ({ node })) }
+  }]);
+  assert.deepEqual(events.map(event => event.messageID), ["newest"]);
+  assert.equal(inbox._seen.get("thread-new"), "newest");
+}
+
+
 async function testPollingPaginatesUntilLastSeenMessageFound() {
   const old = { id: "last-seen", sender_fbid: "friend-1", content_type: "TEXT", text_body: "old" };
   const newMessages = Array.from({ length: 25 }, (_value, index) => ({
@@ -1927,6 +1955,7 @@ async function run() {
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
   await testPollingPaginatesUntilLastSeenMessageFound();
+  await testNewlyDiscoveredThreadDoesNotReplayHistory();
   await testThreadHistoryPaginatesWithoutTimestamp();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
@@ -1976,7 +2005,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 65 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 66 regression tests passed\n");
 }
 
 run().catch((error) => {
