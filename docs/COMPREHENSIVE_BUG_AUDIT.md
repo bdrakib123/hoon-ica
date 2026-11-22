@@ -139,6 +139,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 116 | Malformed thread participant records create an `undefined` participant ID | **Fixed on branch:** `getThreadInfo` now drops participant entries without a nonblank `id` or `pk` before viewer merging and FCA shaping. | pk-only viewer regression fixture now includes null, empty and ID-less user entries and asserts only valid participant IDs remain; pending batch local run |
 | 117 | Refreshing a dedupe key does not refresh its FIFO eviction position | **Fixed on branch:** `MessageDeduper.add()` now removes and reinserts existing keys so recently refreshed message IDs are retained ahead of older entries when the cache is full. | regression fills a two-key cache, refreshes the older key, adds a third, and asserts the refreshed key survives; pending batch local run |
 | 118 | Scheduler accepts one-shot delays that Node timers silently clamp to 1 ms | **Fixed on branch:** `scheduleOnce()` now rejects delays above Node's maximum supported timeout instead of unexpectedly firing a long-delay task almost immediately. | regression passes a delay one millisecond above the timer ceiling and asserts no task is registered; pending batch local run |
+| 119 | Invalid thread-history timestamps silently disable the before filter | **Fixed on branch:** `getHistory()` now validates the timestamp before making a GraphQL request; invalid/non-integer values throw instead of returning the newest messages as if no filter were supplied. | existing timestamp-pagination regression now asserts invalid input rejects without issuing another request; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -146,7 +147,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 86 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-eight runtime regression checks, eleven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#118 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 86 runtime regression tests and 17 FCA wrapper regression tests (103 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#119 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 86 runtime regression tests and 17 FCA wrapper regression tests (103 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -164,7 +165,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#118 batch.
+1. Run the full Node 20 validation suite once after the current #30–#119 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
