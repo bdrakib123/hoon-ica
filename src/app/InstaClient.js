@@ -378,7 +378,6 @@ class InstaClient {
           if (typeof src.destroy === "function") src.destroy(timeoutError);
           reject(timeoutError);
         }, timeout);
-        if (timeoutHandle.unref) timeoutHandle.unref();
       });
       const consume = async () => {
         for await (const chunk of src) {
