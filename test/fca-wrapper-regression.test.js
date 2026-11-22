@@ -230,6 +230,29 @@ async function testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow() {
 }
 
 
+async function testSendMessageHandlesDeepAndCircularAttachmentArrays() {
+  const first = { url: "https://cdn.example/one.jpg" };
+  const second = { url: "https://cdn.example/two.jpg" };
+  const circular = [first, [second]];
+  circular.push(circular);
+  let sent = [];
+  const sendMessage = createSendMessage({
+    _normalizeForm: () => ({ body: "caption", attachment: circular }),
+    _sendAttachment: async (_threadID, attachment, caption) => {
+      sent.push({ attachment, caption });
+      return { message_id: `m-${sent.length}` };
+    },
+    _msgThread: new Map()
+  });
+  const result = await sendMessage("ignored", "thread-1");
+  assert.deepEqual(sent, [
+    { attachment: first, caption: "caption" },
+    { attachment: second, caption: "" }
+  ]);
+  assert.equal(result.messageID, "m-2");
+}
+
+
 async function testUserInfoCacheRemainsBounded() {
   const cache = new Map();
   const getUserInfo = createGetUserInfo({
@@ -315,12 +338,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
   await testSuccessCallbackThrowsOnlyOnce();
   await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
+  await testSendMessageHandlesDeepAndCircularAttachmentArrays();
   await testUserInfoCacheRemainsBounded();
   await testShareContactReportsUnsupportedAdapter();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 11 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 12 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
