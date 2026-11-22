@@ -18,11 +18,11 @@ module.exports = function (client) {
     try {
       const tid = client._resolveThread(messageID, threadID);
       const ok = await client.api.unsendMessage(tid, String(messageID));
-      if (cb) cb(null, ok);
+      if (cb) await cb(null, ok);
       return ok;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return false;
     }
   };
