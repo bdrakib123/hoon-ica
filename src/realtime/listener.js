@@ -124,8 +124,11 @@ class RealtimeListener {
       const error = new Error("Realtime MQTT connection closed");
       // Reject a pending subscription immediately; otherwise startup waits for
       // the full acknowledgement timeout after the transport is already gone.
-      if (this._subscriptionReject) this._subscriptionReject(error);
-      if (!this._stopped) this._emitError(error);
+      if (this._subscriptionReject) {
+        this._subscriptionReject(error);
+      } else if (!this._stopped) {
+        this._emitError(error);
+      }
     };
     this._client.on("message", this._onMessage);
     this._client.on("error", this._onError);
