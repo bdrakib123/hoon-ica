@@ -8,6 +8,9 @@
 const axios = require("axios");
 const { UPLOAD, DOC_ID, EP } = require("../constants");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
+const { classify } = require("../utils/errors");
+
+const NO_CAPTION_FALLBACK_KINDS = new Set(["rate_limited", "challenge", "blocked", "suspended", "auth"]);
 
 // Instagram's web DM client uploads a file to /ajax/mercury/upload.php and then
 // commits the send with the IGDirectMediaSendMutation Relay operation. This is
@@ -178,7 +181,9 @@ class MediaMethods {
         this._threadReferer(threadID),
         { throwOnError: true }
       );
-    } catch (_) {
+    } catch (error) {
+      const kind = error.igKind || classify(error).kind;
+      if (NO_CAPTION_FALLBACK_KINDS.has(kind)) throw error;
       await this.http.postForm(EP.BROADCAST_TEXT, {
         action: "send_item",
         thread_ids: JSON.stringify([String(threadID)]),
