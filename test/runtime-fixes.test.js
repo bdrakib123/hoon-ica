@@ -1042,7 +1042,7 @@ async function testInboxParticipantSnapshotsIncludeViewer() {
 
 
 async function testNewlyDiscoveredThreadDoesNotReplayHistory() {
-  const messages = ["old-3", "old-2", "old-1", "newest"].map(id => ({
+  const messages = ["newest", "old-1", "old-2", "old-3"].map(id => ({
     id,
     sender_fbid: "friend-1",
     content_type: "TEXT",
