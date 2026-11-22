@@ -238,6 +238,49 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
+  const axios = require("axios");
+  const originalGet = axios.get;
+  const media = new MediaMethods({}, {});
+  let request;
+  let received;
+  axios.get = async (url, options) => {
+    request = { url, options };
+    return { data: Buffer.from("image") };
+  };
+  media.sendPhotoBuffer = async (_threadID, buffer, options) => {
+    received = { buffer, options };
+    return true;
+  };
+  try {
+    assert.equal(await media.sendPhotoFromUrl(
+      "thread-1",
+      "https://cdn.example/photo.jpg",
+      { maxDownloadBytes: 5, downloadTimeoutMs: 4000, filename: "photo.jpg" }
+    ), true);
+    assert.equal(request.url, "https://cdn.example/photo.jpg");
+    assert.equal(request.options.maxContentLength, 5);
+    assert.equal(request.options.maxBodyLength, 5);
+    assert.equal(request.options.timeout, 4000);
+    assert.equal(request.options.maxRedirects, 3);
+    assert.equal(received.buffer.toString(), "image");
+    assert.equal(received.options.filename, "photo.jpg");
+
+    await assert.rejects(
+      () => media._downloadFromUrl("file:///etc/passwd"),
+      /HTTP or HTTPS/
+    );
+    axios.get = async () => ({ data: Buffer.from("too-large") });
+    await assert.rejects(
+      () => media._downloadFromUrl("https://cdn.example/large.bin", { maxDownloadBytes: 4 }),
+      /exceeds the 4-byte limit/
+    );
+  } finally {
+    axios.get = originalGet;
+  }
+}
+
+
 async function testCaptionedMediaWaitsForBothCommitOutcomes() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -1993,6 +2036,7 @@ async function run() {
   await testLegacyTextFallbackUsesOfflineThreadingId();
   await testPartialGraphqlDataPreventsLegacyFallback();
   await testCaptionedMediaWaitsForBothCommitOutcomes();
+  await testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -2047,7 +2091,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 68 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 69 regression tests passed\n");
 }
 
 run().catch((error) => {
