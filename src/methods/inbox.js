@@ -507,6 +507,9 @@ class InboxMethods {
   // the broker is unreachable and options.realtime.fallback !== false. Realtime
   // is push (sub-second); the poller is the always-works safety net.
   listen(callback, intervalMs) {
+    // Keep one active listener/poller per InboxMethods instance; a second
+    // listen() replaces the first instead of leaking an unreachable stream.
+    if (typeof this._stopListen === "function") this.stopListening();
     callback = this._safeCallback(callback);
     const rtOpts = this.realtimeOptions;
     if (rtOpts && rtOpts.enabled) {
