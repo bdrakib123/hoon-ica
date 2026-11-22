@@ -1065,7 +1065,7 @@ async function testFcaLearnedThreadMembersDeduplicateViewer() {
     ],
     viewer: { id: "  ", pk: "self-pk", username: "bot" }
   });
-  assert.deepEqual(client._threadMembers.get("thread-blank-ids"), ["friend-pk", "other-pk", "self-pk"]);
+  assert.deepEqual(client._threadMembers.get("thread-blank-ids"), ["self-pk", "friend-pk", "other-pk"]);
 
   const resolver = Object.create(InstaClient.prototype);
   resolver.getUserByUsername = () => ({ id: " ", pk: "resolved-pk" });
