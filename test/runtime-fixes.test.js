@@ -35,6 +35,38 @@ async function testNestedPacingConfiguration() {
   }
 }
 
+async function testLegacyLoginPreservesCookieMaps() {
+  const apiPath = require.resolve("../src/api");
+  const loginPath = require.resolve("../module/login");
+  const cachedApi = require.cache[apiPath];
+  const cachedLogin = require.cache[loginPath];
+  const received = [];
+  class FakeInstaAPI {
+    constructor(cookie) { received.push(cookie); }
+    async init() {}
+  }
+  try {
+    require.cache[apiPath] = {
+      id: apiPath,
+      filename: apiPath,
+      loaded: true,
+      exports: FakeInstaAPI
+    };
+    delete require.cache[loginPath];
+    const legacyLogin = require("../module/login");
+    await legacyLogin({ sessionid: "s1", csrftoken: "c1", ds_user_id: "1" });
+    await legacyLogin({ cookie: { sessionid: "s2", csrftoken: "c2" } });
+    assert.deepEqual(received[0], { sessionid: "s1", csrftoken: "c1", ds_user_id: "1" });
+    assert.deepEqual(received[1], { sessionid: "s2", csrftoken: "c2" });
+  } finally {
+    if (cachedApi) require.cache[apiPath] = cachedApi;
+    else delete require.cache[apiPath];
+    if (cachedLogin) require.cache[loginPath] = cachedLogin;
+    else delete require.cache[loginPath];
+  }
+}
+
+
 async function testTypingStopsOnRateLimitButFallsBackOnUnknown() {
   const TypingMethods = require("../src/methods/typing");
   let rateLimitedCalls = 0;
@@ -925,6 +957,7 @@ async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
   await testTypingStopsOnRateLimitButFallsBackOnUnknown();
+  await testLegacyLoginPreservesCookieMaps();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
@@ -958,7 +991,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 37 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 38 regression tests passed\n");
 }
 
 run().catch((error) => {
