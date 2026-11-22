@@ -748,6 +748,21 @@ async function testMqttTransportCancelsPendingTlsSockets() {
     }
   }
 
+  const invalidLimits = new SocketMQTToTTransport("mqtt.example", 0, {
+    timeout: -1,
+    maxPacketSize: -5,
+    maxBufferedBytes: -9
+  });
+  assert.equal(invalidLimits.port, 443);
+  assert.equal(invalidLimits.timeout, 30000);
+  assert.equal(invalidLimits.maxPacketSize, 16 * 1024 * 1024);
+  assert.equal(invalidLimits.maxBufferedBytes, 32 * 1024 * 1024);
+  const adjustedLimits = new SocketMQTToTTransport("mqtt.example", 443, {
+    maxPacketSize: 100,
+    maxBufferedBytes: 10
+  });
+  assert.equal(adjustedLimits.maxBufferedBytes, 105);
+
   try {
     const sockets = [];
     tls.connect = () => {
