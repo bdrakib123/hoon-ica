@@ -44,8 +44,12 @@ function isUsableMessage(message) {
 
 function normalizeMessageId(message) {
   if (!isUsableMessage(message)) return null;
-  const id = message.id ?? message.item_id ?? message.message_id;
-  return message.id != null ? message : { ...message, id: String(id) };
+  const id = [message.id, message.item_id, message.message_id].find(
+    (value) => value != null && String(value).trim() !== ""
+  );
+  return message.id != null && String(message.id).trim() !== ""
+    ? message
+    : { ...message, id: String(id) };
 }
 
 class InboxMethods {
