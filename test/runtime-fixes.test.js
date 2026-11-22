@@ -2175,6 +2175,26 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
     fs.chmodSync(paramsFile, 0o644);
     assert.equal(InstaAPI.prototype._loadSessionParams.call({}, paramsFile).fb_dtsg, "token-secret");
     assert.equal(fs.statSync(paramsFile).mode & 0o777, 0o600);
+
+    // If chmod fails, never read an existing cookie file while it may remain
+    // accessible to other local users.
+    fs.writeFileSync(filePath, JSON.stringify(client.getAppState()), { mode: 0o644 });
+    fs.writeFileSync(backup, JSON.stringify(client.getAppState()), { mode: 0o644 });
+    const originalChmodSync = fs.chmodSync;
+    const originalReadFileSync = fs.readFileSync;
+    const attemptedReads = [];
+    fs.chmodSync = () => { throw new Error("permission update denied"); };
+    fs.readFileSync = (target, ...args) => {
+      attemptedReads.push(String(target));
+      return originalReadFileSync(target, ...args);
+    };
+    try {
+      assert.equal(loadSaved(filePath, { sessionid: "session-secret" }), null);
+      assert.deepEqual(attemptedReads, []);
+    } finally {
+      fs.chmodSync = originalChmodSync;
+      fs.readFileSync = originalReadFileSync;
+    }
   } finally {
     guard.stop();
     fs.rmSync(directory, { recursive: true, force: true });
