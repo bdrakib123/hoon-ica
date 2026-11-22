@@ -234,17 +234,29 @@ class InboxMethods {
 
       const nodes = this._threadMessages(thread); // newest-first
       const lastSeenID = this._seen.get(threadID);
-      const fresh = [];
-      for (const node of nodes) {
-        if (lastSeenID && String(node.id) === String(lastSeenID)) break;
-        fresh.push(node);
-      }
+      const collectFresh = (items) => {
+        const freshItems = [];
+        for (const node of items) {
+          if (lastSeenID && String(node.id) === String(lastSeenID)) break;
+          freshItems.push(node);
+        }
+        return freshItems;
+      };
+      let fresh = collectFresh(nodes);
 
-      // The inbox query does not project reply linkage; the thread-detail query
-      // does. Fetch it once and index by message id so reply targets resolve.
+      // The inbox preview may contain only the newest message even when several
+      // arrived between poll cycles. The thread-detail read already fetches a
+      // bounded history page for reply metadata, so reuse its full message list
+      // to deliver every message newer than the last-seen id when that cursor is
+      // present in the page.
       let replyById = null;
       if (fresh.length) {
         replyById = await this.fetchReplies(threadID, fbidToIgid).catch(() => null);
+        const detailedNodes = replyById && replyById._messages;
+        if (lastSeenID && Array.isArray(detailedNodes)) {
+          const seenAt = detailedNodes.findIndex((node) => String(node.id) === String(lastSeenID));
+          if (seenAt >= 0) fresh = detailedNodes.slice(0, seenAt);
+        }
       }
 
       for (const node of fresh.reverse()) {
@@ -298,10 +310,12 @@ class InboxMethods {
   async fetchReplies(threadID, fbidToIgid = {}) {
     const thread = await fetchThreadDetail(this.http, threadID, 20);
     const out = {};
-    for (const e of (Array.isArray(thread?.slide_messages?.edges) ? thread.slide_messages.edges : [])) {
-      const n = e?.node || e;
-      if (!isUsableMessage(n)) continue;
-      out[String(n.id || n.item_id || n.message_id)] = {
+    const messages = (Array.isArray(thread?.slide_messages?.edges) ? thread.slide_messages.edges : [])
+      .map((edge) => normalizeMessageId(edge?.node || edge))
+      .filter(Boolean);
+    Object.defineProperty(out, "_messages", { value: messages, enumerable: false });
+    for (const n of messages) {
+      out[String(n.id)] = {
         repliedToItemId: n.replied_to_message_id || null,
         repliedToMessage: normalizeRepliedMessage(n.replied_to_message, fbidToIgid),
         offlineThreadingId: n.offline_threading_id != null ? String(n.offline_threading_id) : null
