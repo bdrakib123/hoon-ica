@@ -28,11 +28,11 @@ module.exports = function (client) {
     let list = [];
 
     try {
-      if (!Number.isInteger(limit) || limit <= 0) {
-        throw new TypeError("getThreadList: limit must be a positive integer");
+      if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 5000) {
+        throw new TypeError("getThreadList: limit must be a positive safe integer no greater than 5000");
       }
-      if (timestamp != null && (!Number.isFinite(Number(timestamp)) || !Number.isInteger(Number(timestamp)))) {
-        throw new TypeError("getThreadList: timestamp must be an integer or null");
+      if (timestamp != null && (!Number.isSafeInteger(Number(timestamp)) || Number(timestamp) < 0)) {
+        throw new TypeError("getThreadList: timestamp must be a non-negative safe integer or null");
       }
 
       const requestedTags = tags == null ? [] : typeof tags === "string" ? [tags] : tags;
