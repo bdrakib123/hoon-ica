@@ -190,11 +190,13 @@ class RealtimeClient extends EventEmitter {
 
   _startLoop() {
     this._loop = (async () => {
+      let receiveError = null;
       while (this.connected) {
         let packet;
         try {
           packet = decodePacket(await this.transport.recvPacket());
         } catch (err) {
+          receiveError = err;
           if (!this._stopRequested) this.emit("error", err);
           break;
         }
@@ -205,6 +207,19 @@ class RealtimeClient extends EventEmitter {
         }
       }
       this.connected = false;
+      if (this._pingTimer) clearInterval(this._pingTimer);
+      this._pingTimer = null;
+      // A malformed packet can terminate the receive loop while the TLS socket
+      // is still open. Close it before announcing disconnection so polling
+      // fallback/reconnect cannot leave an idle broker connection behind.
+      if (receiveError && !this._stopRequested) {
+        this._stopRequested = true;
+        try {
+          if (this.transport && typeof this.transport.disconnect === "function") {
+            this.transport.disconnect();
+          }
+        } catch (_) {}
+      }
       this.emit("disconnected", {});
     })();
   }
