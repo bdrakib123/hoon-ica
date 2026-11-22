@@ -86,6 +86,8 @@ Facebook-Chat-API shape. Its methods live one-per-file under
 | Group | Methods |
 |-------|---------|
 | messaging | `sendMessage(form, threadID, cb?, replyToMessage?)`, `sendMessageSync`, `editMessage(text, messageID)`, `unsendMessage(messageID, cb?, threadID?)`, `setMessageReaction(emoji, messageID, cb?, threadID?)`, `sendTypingIndicator`, `markAsRead`, `shareContact`, `resolvePhotoUrl` |
+
+**Contact-card sharing:** `shareContact` is currently unsupported by the Instagram web adapter because no verified web mutation is implemented. It returns `null` and stores the reason in `client.lastShareContactError` (code `IG_METHOD_UNSUPPORTED`); it does not silently invoke a missing method.
 | threads | `getThreadInfo`, `getThreadList`, `getThreadHistory` |
 | users | `getUserInfo`, `getUserInfoV2`, `getUserProfile`, `getProfilePictureV2`, `getProfileBio`, `getUserFriendship`, `getUserID`, `getUID`, `getProfilePictureUrl` |
 | account | `getCurrentUserID`, `getSelfInfo`, `getAppState`, `getCookies`, `setOptions` |
