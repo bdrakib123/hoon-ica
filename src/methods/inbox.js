@@ -480,10 +480,34 @@ class InboxMethods {
     return out;
   }
 
+  _safeCallback(callback) {
+    if (typeof callback !== "function") return () => {};
+    const report = (error) => {
+      try {
+        if (this._emitter && typeof this._emitter.emit === "function") {
+          this._emitter.emit("callbackError", error);
+        }
+      } catch (_) {}
+    };
+    return (...args) => {
+      try {
+        const result = callback(...args);
+        if (result && typeof result.then === "function") {
+          return result.catch(report);
+        }
+        return result;
+      } catch (error) {
+        report(error);
+        return undefined;
+      }
+    };
+  }
+
   // Starts the realtime (MQTT) listener, falling back to the inbox poller when
   // the broker is unreachable and options.realtime.fallback !== false. Realtime
   // is push (sub-second); the poller is the always-works safety net.
   listen(callback, intervalMs) {
+    callback = this._safeCallback(callback);
     const rtOpts = this.realtimeOptions;
     if (rtOpts && rtOpts.enabled) {
       const { RealtimeListener } = require("../realtime/listener");
