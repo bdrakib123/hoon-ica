@@ -88,14 +88,17 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 65 | Partial GraphQL mutation data can trigger duplicate fallback | **Fixed on branch:** GraphQL errors now retain response/partial data; text and media-caption fallbacks are suppressed whenever any mutation data was returned, avoiding a second send after a possible partial commit. | partial-data no-fallback regression covers text and media caption; pending batch local run |
 | 66 | Concurrent CSRF token bootstrap duplication | **Fixed on branch:** simultaneous GraphQL requests now share one in-flight homepage token bootstrap instead of issuing duplicate page loads; failed bootstrap attempts clear the shared promise for retry. | concurrent bootstrap regression added; pending batch local run |
 | 67 | Persisted session/device files use permissive modes | **Fixed on branch:** appstate cookie files, backups, and device identity files are now created/restricted to owner-only `0600` permissions, including pre-existing files. | temp-directory permission regression added; pending batch local run |
+| 68 | Application callback exceptions terminate inbox delivery | **Fixed on branch:** inbox callbacks are wrapped so synchronous throws and rejected callback promises are reported through `callbackError` without escaping the polling/realtime delivery loop. | sync/async callback failure regression added; pending batch local run |
+| 69 | Repeated `listen()` leaks previous poller/listener | **Fixed on branch:** a new `listen()` call stops the previous active listener/poller before creating another; old stop handles cannot stop the new stream. | repeated-listen replacement regression added; pending batch local run |
+| 70 | Startup error delivered after listener was stopped | **Fixed on branch:** the asynchronous `listener.start()` rejection handler now exits silently when that listener lifetime has already been stopped, instead of calling the application callback after stop. | stop-during-pending-start regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 59 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds thirty-one runtime regression checks, three wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 62 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds thirty-four runtime regression checks, three wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#67 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#70 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -114,7 +117,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#67 batch.
+1. Run the full Node 20 validation suite once after the current #30–#70 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
