@@ -90,19 +90,21 @@ class ThreadMethods {
   // Relay pagination itself is cursor-based, so walk page_info.end_cursor
   // until enough older messages have been collected.
   async getHistory(threadID, limit = 20, beforeTimestamp = null) {
+    let boundary = null;
+    if (beforeTimestamp != null && beforeTimestamp !== "") {
+      boundary = Number(beforeTimestamp);
+      if (!Number.isSafeInteger(boundary) || boundary < 0) {
+        throw new TypeError("getThreadHistory: beforeTimestamp must be a non-negative integer or null");
+      }
+      // FCA callers normally pass milliseconds; accept Unix seconds as well.
+      if (boundary > 0 && boundary < 1e12) boundary *= 1000;
+    }
+
     const thread = await this.fetchDetail(threadID, limit);
     if (!thread) return [];
 
     const fbidToIgid = threadFbidMap(thread);
     const firstConnection = thread.slide_messages || {};
-    let boundary = null;
-    if (beforeTimestamp != null && beforeTimestamp !== "") {
-      boundary = Number(beforeTimestamp);
-      if (!Number.isFinite(boundary) || boundary <= 0) boundary = null;
-      // FCA callers normally pass milliseconds; accept Unix seconds as well.
-      else if (boundary < 1e12) boundary *= 1000;
-    }
-
     const wanted = Math.max(1, Number(limit) || 20);
     const threadFBID = thread.thread_fbid || thread.id || String(threadID);
     const results = [];
