@@ -6,6 +6,12 @@ const createGetUserFriendship = require("../src/api/users/getUserFriendship");
 const createGetUserInfo = require("../src/api/users/getUserInfo");
 const createGetThreadList = require("../src/api/threads/getThreadList");
 const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
+const createSetMessageReaction = require("../src/api/messaging/setMessageReaction");
+const createUnsendMessage = require("../src/api/messaging/unsendMessage");
+const createEditMessage = require("../src/api/messaging/editMessage");
+const createSendMessage = require("../src/api/messaging/sendMessage");
+const createGetUserProfile = require("../src/api/users/getUserProfile");
+const createGetUserInfoV2 = require("../src/api/users/getUserInfoV2");
 const createShareContact = require("../src/api/messaging/shareContact");
 
 async function testThreadListPaginatesAndHonorsTimestamp() {
@@ -144,6 +150,86 @@ async function testSuccessCallbackThrowsOnlyOnce() {
 }
 
 
+async function testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow() {
+  const invoke = async (operation, label) => {
+    let calls = 0;
+    await assert.rejects(
+      () => operation(() => {
+        calls += 1;
+        throw new Error(label);
+      }),
+      new RegExp(label)
+    );
+    assert.equal(calls, 1, label);
+  };
+
+  await invoke(
+    cb => createGetThreadInfo({
+      api: { getThreadInfo: async () => ({ id: "thread-1", users: [] }) },
+      _learnThreads() {}
+    })("thread-1", cb),
+    "thread info callback"
+  );
+  await invoke(
+    cb => createGetUserFriendship({ api: { _learnedUser: () => ({ id: "u-1", friendship_status: {} }) } })("u-1", cb),
+    "friendship callback"
+  );
+  await invoke(
+    cb => createGetUserInfo({
+      getUserByUsername: () => ({ id: "u-1", username: "user", full_name: "User Name" }),
+      _picCache: new Map(),
+      api: {}
+    })("u-1", cb),
+    "user info callback"
+  );
+  await invoke(
+    cb => createGetUserInfoV2({ getProfile: async () => ({ id: "u-1", fullName: "User" }) })("u-1", cb),
+    "user info v2 callback"
+  );
+  await invoke(
+    cb => createGetUserProfile({ getProfile: async () => ({ id: "u-1" }) })("u-1", cb),
+    "profile callback"
+  );
+  await invoke(
+    cb => createShareContact({
+      api: { getUserInfo: async () => null },
+      sendMessage: async () => ({ messageID: "m-1" })
+    })("u-1", "u-1", "thread-1", cb),
+    "share contact callback"
+  );
+  await invoke(
+    cb => createSendMessage({
+      _normalizeForm: () => ({ body: "hello" }),
+      convert: value => value,
+      api: { sendMessage: async () => ({ message_id: "m-1" }) },
+      _msgThread: new Map()
+    })("hello", "thread-1", cb),
+    "send message callback"
+  );
+  await invoke(
+    cb => createEditMessage({
+      _resolveThread: () => "thread-1",
+      api: { editMessage: async () => true }
+    })("edited", "m-1", cb),
+    "edit callback"
+  );
+  await invoke(
+    cb => createUnsendMessage({
+      _resolveThread: () => "thread-1",
+      api: { unsendMessage: async () => true }
+    })("m-1", cb),
+    "unsend callback"
+  );
+  await invoke(
+    cb => createSetMessageReaction({
+      _resolveThread: () => "thread-1",
+      api: { sendReaction: async () => true }
+    })("❤️", "m-1", cb),
+    "reaction callback"
+  );
+}
+
+
 async function testUserInfoCacheRemainsBounded() {
   const cache = new Map();
   const getUserInfo = createGetUserInfo({
@@ -228,12 +314,13 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadListSkipsMalformedEntries();
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
   await testSuccessCallbackThrowsOnlyOnce();
+  await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
   await testUserInfoCacheRemainsBounded();
   await testShareContactReportsUnsupportedAdapter();
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 10 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 11 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
