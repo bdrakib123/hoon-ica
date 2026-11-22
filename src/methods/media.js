@@ -9,6 +9,7 @@ const axios = require("axios");
 const { UPLOAD, DOC_ID, EP } = require("../constants");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
 const { classify, hasGraphQLPartialData } = require("../utils/errors");
+const { createPublicLookup } = require("../utils/publicUrlLookup");
 
 const NO_CAPTION_FALLBACK_KINDS = new Set(["rate_limited", "challenge", "blocked", "suspended", "auth"]);
 
@@ -271,6 +272,7 @@ class MediaMethods {
       maxContentLength: maxDownloadBytes,
       maxBodyLength: maxDownloadBytes,
       maxRedirects: 3,
+      lookup: createPublicLookup(),
       beforeRedirect: (requestOptions) => {
         const nextProtocol = requestOptions.protocol;
         if (nextProtocol !== "http:" && nextProtocol !== "https:") {
