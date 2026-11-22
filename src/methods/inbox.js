@@ -513,7 +513,7 @@ class InboxMethods {
     const map = threadFbidMap(thread);
     const byId = {};
     for (const u of (Array.isArray(thread.users) ? thread.users : []).filter((entry) => entry && typeof entry === "object")) {
-      const id = String(u.id || u.pk || "");
+      const id = firstUsableId(u.id, u.pk);
       if (id) byId[id] = u;
     }
     const nodes = (Array.isArray(thread.slide_messages?.edges) ? thread.slide_messages.edges : [])
