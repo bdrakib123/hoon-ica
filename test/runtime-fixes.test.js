@@ -454,6 +454,10 @@ async function testThriftReaderRejectsMalformedAndOversizedValues() {
     new ThriftReader(Buffer.from([0x19, 0x13, 0x7f, 0x00])).readStruct([]),
     {}
   );
+  assert.throws(
+    () => new ThriftReader(Buffer.from([0x19, 0x13, 0x7f])).readStruct([]),
+    /Thrift struct is missing STOP marker/
+  );
 }
 
 async function testMqttDecompressionOutputIsBounded() {
