@@ -135,6 +135,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 112 | Read-retry options can configure effectively unbounded retries or delays | **Fixed on branch:** retry attempts are capped at 10 and both first/max wait durations are capped at five minutes; invalid values fall back to safe defaults. | regression covers Infinity, extremely large attempts/delays, zero waits and invalid attempts; pending batch local run |
 | 113 | Missing profile boolean fields are misreported as explicit false | **Fixed on branch:** normalized verification, privacy, business/professional and profile-picture flags now remain `null` when the source omits them, while explicit booleans are preserved. | regression covers absent flags and explicit true/false values alongside unknown profile counts; pending batch local run |
 | 114 | Partial friendship payloads misreport missing status fields as false | **Fixed on branch:** blocking, restriction, follow and request flags now preserve `null` when the inbox/thread payload omits an individual field, while explicit booleans remain unchanged. | wrapper regression covers mixed explicit false/true values and omitted friendship fields; pending batch local run |
+| 115 | TypeScript realtime cursor options reject exact large sequence strings | **Fixed on branch:** `RealtimeOptions.seqId` and `getRealtimeState()` now accept `number | string`; docs direct callers to use decimal strings above `Number.MAX_SAFE_INTEGER`. | TypeScript fixture now compiles a 64-bit decimal string cursor; pending local type check |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -142,7 +143,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 85 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-seven runtime regression checks, eleven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#114 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 85 runtime regression tests and 17 FCA wrapper regression tests (102 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#115 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 85 runtime regression tests and 17 FCA wrapper regression tests (102 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -160,7 +161,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#114 batch.
+1. Run the full Node 20 validation suite once after the current #30–#115 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
