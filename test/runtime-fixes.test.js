@@ -595,6 +595,13 @@ async function testMqttTransportCancelsPendingTlsSockets() {
     assert.equal(transport.socket, null);
     assert.equal(transport._closed, true);
     assert.equal(sockets[1].destroyed, true);
+
+    const pendingTransport = new SocketMQTToTTransport("mqtt.example", 443);
+    const pendingConnect = pendingTransport.connect();
+    const pendingRejected = assert.rejects(pendingConnect, /MQTT transport closed/);
+    pendingTransport.disconnect();
+    await pendingRejected;
+    assert.equal(sockets[2].destroyed, true);
   } finally {
     tls.connect = originalConnect;
   }
