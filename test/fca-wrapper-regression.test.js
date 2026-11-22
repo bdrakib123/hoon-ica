@@ -55,7 +55,7 @@ async function testThreadListUnreadFilterAndCallbackOverload() {
   };
   const getThreadList = createGetThreadList(client);
   let callbackArgs;
-  const list = await getThreadList(10, ["INBOX", "unread"], (...args) => { callbackArgs = args; });
+  const list = await getThreadList(10, null, ["INBOX", "unread"], (...args) => { callbackArgs = args; });
   assert.deepEqual(list.map((item) => item.threadID), ["unread"]);
   assert.equal(callbackArgs[0], null);
   assert.deepEqual(callbackArgs[1], list);
