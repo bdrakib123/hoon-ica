@@ -187,6 +187,7 @@ async function main() {
 
     const scheduled = [];
     const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
     let stop;
     let received = 0;
     try {
@@ -195,6 +196,7 @@ async function main() {
         scheduled.push(timer);
         return timer;
       };
+      global.clearTimeout = () => {};
       stop = inbox._startPolling(() => { received += 1; }, 2000);
       await new Promise((resolve) => setImmediate(resolve));
       assert.equal(scheduled.length, 1);
@@ -209,6 +211,7 @@ async function main() {
     } finally {
       if (stop) stop();
       global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
     }
   });
 
