@@ -20,8 +20,8 @@ module.exports = function (client) {
       if (cb) await cb(null, info);
       return info;
     } catch (error) {
-      client.lastShareContactError = error;
       if (cb?.called) throw error;
+      client.lastShareContactError = error;
       if (cb) await cb(error, null);
       return null;
     }
