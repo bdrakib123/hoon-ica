@@ -498,7 +498,7 @@ async function testDirectThreadNameDoesNotUseViewer() {
     },
     _learnThreads() {}
   })("thread-3");
-  assert.deepEqual(whitespaceFallback.participantIDs, ["friend-3", "self-3"]);
+  assert.deepEqual(whitespaceFallback.participantIDs, ["self-3", "friend-3"]);
   assert.equal(whitespaceFallback.threadName, "friend_three");
   assert.equal(whitespaceFallback.isGroup, false);
 }
