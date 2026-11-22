@@ -1,4 +1,5 @@
 /*!
+const createCallback = require("../../utils/createCallback");
  * insta-chat - Unofficial Instagram Chat API
  * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
  * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
@@ -10,7 +11,7 @@
 // ignored and the thread the message was seen in is used instead.
 module.exports = function (client) {
   return async function setMessageReaction(emoji, messageID, callback, threadID) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     try {
       const tid = client._resolveThread(messageID, threadID);
       await client.api.sendReaction(tid, String(messageID), emoji);
@@ -18,6 +19,7 @@ module.exports = function (client) {
       if (cb) cb(null, info);
       return info;
     } catch (error) {
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       return null;
     }
