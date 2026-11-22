@@ -11,7 +11,7 @@ module.exports = function (client) {
     const cb = typeof callback === "function" ? callback : null;
     try {
       const limit = Math.max(Number(_amount) || 0, 20);
-      const items = await client.api.getThreadHistory(String(threadID), limit);
+      const items = await client.api.getThreadHistory(String(threadID), limit, _timestamp);
       if (cb) cb(null, items);
       return items;
     } catch (error) {
