@@ -238,6 +238,31 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testCaptionedMediaWaitsForBothCommitOutcomes() {
+  const originalWait = globalAntiSuspension.waitForTurn;
+  globalAntiSuspension.waitForTurn = async () => {};
+  try {
+    const media = new MediaMethods({}, {});
+    media._upload = async () => ({ fbid: "media-1" });
+    media._sendCaption = async () => { throw new Error("caption rejected"); };
+    media._commitMedia = async () => {
+      await new Promise(resolve => setImmediate(resolve));
+      return { data: { media_id: "media-1" } };
+    };
+    await assert.rejects(
+      () => media._send("thread-1", {}, { text: "caption" }),
+      error => {
+        assert.equal(error.message, "caption rejected");
+        assert.deepEqual(error.partialSend, { captionSent: false, mediaSent: true });
+        return true;
+      }
+    );
+  } finally {
+    globalAntiSuspension.waitForTurn = originalWait;
+  }
+}
+
+
 async function testPartialGraphqlDataPreventsLegacyFallback() {
   const originalWait = globalAntiSuspension.waitForTurn;
   globalAntiSuspension.waitForTurn = async () => {};
@@ -1967,6 +1992,7 @@ async function run() {
   await testAmbiguousGraphqlSendDoesNotFallback();
   await testLegacyTextFallbackUsesOfflineThreadingId();
   await testPartialGraphqlDataPreventsLegacyFallback();
+  await testCaptionedMediaWaitsForBothCommitOutcomes();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -2021,7 +2047,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 67 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 68 regression tests passed\n");
 }
 
 run().catch((error) => {
