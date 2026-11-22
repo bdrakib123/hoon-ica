@@ -14,8 +14,15 @@ const SAVE_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_COOKIES = 3;
 const KEEP_FROM_SEED = new Set(["sessionid", "ds_user_id"]);
 
+function secureFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) fs.chmodSync(filePath, 0o600);
+  } catch (_) {}
+}
+
 function readCookieFile(filePath) {
   try {
+    secureFile(filePath);
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
     return Array.isArray(parsed) ? parsed : null;
   } catch (_) {
@@ -39,8 +46,10 @@ function loadSaved(filePath, seed) {
 
 function writeAtomic(filePath, content) {
   const tmp = `${filePath}.tmp`;
-  fs.writeFileSync(tmp, content, "utf8");
+  fs.writeFileSync(tmp, content, { encoding: "utf8", mode: 0o600 });
+  fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, filePath);
+  secureFile(filePath);
 }
 
 function install(client, appStatePath) {
@@ -59,6 +68,8 @@ function install(client, appStatePath) {
     const state = getState();
     if (!Array.isArray(state) || state.length < MIN_COOKIES) return false;
     try {
+      secureFile(filePath);
+      secureFile(`${filePath}.bak`);
       if (fs.existsSync(filePath)) {
         try {
           const existing = JSON.parse(fs.readFileSync(filePath, "utf8"));
