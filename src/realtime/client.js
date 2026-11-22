@@ -148,11 +148,15 @@ class RealtimeClient extends EventEmitter {
     // accumulate one per attempt.
     if (this._pingTimer) clearInterval(this._pingTimer);
     this._pingTimer = null;
+    this._stopRequested = false;
     if (this.transport && typeof this.transport.reset === "function") this.transport.reset();
     try {
       await this.transport.connect();
+      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       await this.transport.send(writeConnectPacket(this.buildConnection(), KEEP_ALIVE_SECONDS));
+      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       const packet = decodePacket(await this.transport.recvPacket());
+      if (this._stopRequested) throw new Error("Realtime MQTT connection cancelled");
       if (packet.packetType !== "connack" || packet.returnCode !== 0) {
         throw new Error(`Realtime MQTT connect failed (return code ${packet.returnCode})`);
       }
