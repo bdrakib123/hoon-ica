@@ -60,10 +60,11 @@ class ThreadMethods {
         [node.id, node.item_id, node.message_id].some((value) => value != null && String(value).trim() !== "")
       )
       .map((n) => {
+      const messageID = String(n.id ?? n.item_id ?? n.message_id);
       const senderFbid = n.sender_fbid != null ? String(n.sender_fbid) : null;
       return {
-        messageID: n.id,
-        item_id: n.id,
+        messageID,
+        item_id: messageID,
         senderID: senderFbid && fbidToIgid[senderFbid] ? fbidToIgid[senderFbid] : senderFbid,
         user_id: senderFbid,
         sender_fbid: senderFbid,
