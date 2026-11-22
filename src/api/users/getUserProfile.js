@@ -1,10 +1,11 @@
 /*!
-const createCallback = require("../../utils/createCallback");
  * insta-chat - Unofficial Instagram Chat API
  * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
  * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
  * Original author credit must be retained in all copies and derivatives.
  */
+
+const createCallback = require("../../utils/createCallback");
 
 // fca.getUserProfile(idOrUsername, callback) -> the full normalized profile
 // object (see src/profileParse.js): id, username, fullName, biography, counts,
