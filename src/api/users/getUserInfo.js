@@ -25,7 +25,7 @@ module.exports = function (client) {
         const fullName = u?.full_name || u?.username || cachedName || String(id);
         out[key] = {
           name: fullName,
-          firstName: fullName.trim().split(/\\s+/)[0] || "",
+          firstName: fullName.trim().split(/\s+/)[0] || "",
           username: u?.username || cachedName || null,
           profileUrl: u?.profile_pic_url || cachedPic || null,
           thumbSrc: u?.profile_pic_url || cachedPic || null,
