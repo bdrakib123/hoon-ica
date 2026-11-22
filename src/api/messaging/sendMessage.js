@@ -17,6 +17,7 @@
 // first entry so the text renders above the images; the callback reports the last
 // message.
 const { extractMessageId } = require("../../utils/format");
+const createCallback = require("../../utils/createCallback");
 const { setBounded } = require("../../utils/boundedMap");
 
 // Normalises `attachment` / `attachments` into a flat, non-null list. A nested
@@ -51,7 +52,7 @@ module.exports = function (client) {
           ? replyToMessage.messageID || replyToMessage.id || null
           : String(replyToMessage);
     }
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
 
     try {
       const { body, attachment, attachments } = client._normalizeForm(form);
@@ -81,6 +82,7 @@ module.exports = function (client) {
       if (cb) cb(null, info);
       return info;
     } catch (error) {
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       throw error;
     }
