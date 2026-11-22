@@ -18,6 +18,7 @@ const axios = require("axios");
 const { AUDIO_EXT, VIDEO_EXT, extOf } = require("../utils/format");
 const { convert } = require("../utils/messageStyle");
 const loadApiMethods = require("./loadApiMethods");
+const { setBounded } = require("../utils/boundedMap");
 
 class InstaClient {
   constructor(instaApi, options = {}) {
@@ -133,7 +134,7 @@ class InstaClient {
       const url = u?.profile_pic_url_hd || u?.profile_pic_url || u?.profileUrl || null;
       if (url) {
         for (const id of [u?.id, u?.pk, u?.interop_messaging_user_fbid, key]) {
-          if (id) this._picCache.set(String(id), url);
+          if (id) setBounded(this._picCache, String(id), url, 5000);
         }
         if (u?.username) this._picCache.set(u.username, url);
       }
@@ -164,7 +165,7 @@ class InstaClient {
       if (t.viewer) users.unshift(t.viewer);
       for (const u of users) this._rememberUser(u);
       const threadID = t.id != null ? String(t.id) : t.thread_id != null ? String(t.thread_id) : null;
-      if (threadID) this._threadMembers.set(threadID, users.map((u) => String(u.id || u.pk)).filter(Boolean));
+      if (threadID) setBounded(this._threadMembers, threadID, users.map((u) => String(u.id || u.pk)).filter(Boolean), 2000);
     }
   }
 
@@ -207,13 +208,13 @@ class InstaClient {
     const id = u.id || u.pk || null;
     const username = u.username || null;
     for (const key of [id, u.pk, u.interop_messaging_user_fbid, username]) {
-      if (key) this._userIndex.set(String(key).toLowerCase(), u);
+      if (key) setBounded(this._userIndex, String(key).toLowerCase(), u, 5000);
     }
     for (const k of [id, u.pk, u.interop_messaging_user_fbid]) {
-      if (k && username) this._picCache.set(`name:${k}`, username);
-      if (k && url) this._picCache.set(String(k), url);
+      if (k && username) setBounded(this._picCache, `name:${k}`, username, 5000);
+      if (k && url) setBounded(this._picCache, String(k), url, 5000);
     }
-    if (username && url) this._picCache.set(username, url);
+    if (username && url) setBounded(this._picCache, username, url, 5000);
   }
 
   // Returns the user record for an @handle (or numeric id / interop fbid) from
@@ -366,8 +367,8 @@ class InstaClient {
     const url = profile.profilePicUrlHd || profile.profilePicUrl;
     for (const key of [profile.id, profile.pk, profile.username, profile.fbid]) {
       if (!key) continue;
-      if (url) this._picCache.set(String(key), url);
-      if (profile.username) this._picCache.set(`name:${String(key)}`, profile.username);
+      if (url) setBounded(this._picCache, String(key), url, 5000);
+      if (profile.username) setBounded(this._picCache, `name:${String(key)}`, profile.username, 5000);
     }
   }
 
@@ -381,7 +382,7 @@ class InstaClient {
 
   // ------------------------------------------------------------- reactions
   rememberThread(messageID, threadID) {
-    if (messageID && threadID) this._msgThread.set(String(messageID), String(threadID));
+    if (messageID && threadID) setBounded(this._msgThread, String(messageID), String(threadID), 5000);
   }
 
   _resolveThread(messageID, threadID) {
