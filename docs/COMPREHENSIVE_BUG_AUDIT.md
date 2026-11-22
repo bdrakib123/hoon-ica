@@ -45,6 +45,9 @@ These require more focused fixtures, payload captures, or runtime validation bef
 - Verify media upload and commit error classification against real response shapes, especially transient 412 and authentication/challenge responses.
 - Determine which decoded INT64 fields require exact integer fidelity. The diagnostic fixture now demonstrates precision loss above `Number.MAX_SAFE_INTEGER`; audit consumers before choosing a BigInt/string-compatible public representation.
 
+
+- Long-lived inbox instances retain `_seen`, `_threadIdMap`, `_members`, and `_threadState` entries for threads that disappear from later inbox snapshots. This is a potential unbounded-growth/stale-state issue; validate expected thread churn and whether these maps need TTL/LRU pruning before classifying it as a confirmed defect.
+
 ## Recommended next validation sequence
 
 1. Run `npm run audit:repro` on Node 20 and capture the complete output.
