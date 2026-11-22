@@ -167,7 +167,12 @@ class InboxMethods {
       const tid = String(t.id || t.thread_id);
       if (tid) {
         const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
-        setBounded(this._members, tid, users.map((u) => String(u.id || u.pk || "")).filter(Boolean), 2000);
+        const memberIDs = users.map((u) => String(u.id || u.pk || "")).filter(Boolean);
+        // Thread snapshots may list only other participants and put the logged-in
+        // account in a separate viewer object. FCA participantIDs must include it.
+        const viewerID = t.viewer && (t.viewer.id || t.viewer.pk);
+        if (viewerID != null && !memberIDs.includes(String(viewerID))) memberIDs.push(String(viewerID));
+        setBounded(this._members, tid, memberIDs, 2000);
       }
     }
     this._learnThreadIds(threads);
@@ -376,6 +381,8 @@ class InboxMethods {
   // diffs consecutive snapshots instead.
   _snapshot(thread) {
     const users = (Array.isArray(thread.users) ? thread.users : []).filter((u) => u && typeof u === "object");
+    const viewer = thread.viewer && typeof thread.viewer === "object" ? thread.viewer : null;
+    if (viewer && !users.some((u) => String(u.id || u.pk) === String(viewer.id || viewer.pk))) users.push(viewer);
     const members = new Set();
     const names = {};
     for (const u of users) {
