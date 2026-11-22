@@ -144,6 +144,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 121 | Realtime receive-loop regression fixture redeclares its receive counter | **Fixed on branch:** the throwing-error-handler scenario now uses its own `throwingReceives` counter, avoiding a duplicate lexical declaration that prevented the runtime regression suite from parsing. | user Node 20 run identified the SyntaxError; corrected fixture is included in the branch; pending rerun |
 | 122 | GraphQL partial-data helper imported by message/media methods was not exported | **Fixed on branch:** `hasGraphQLPartialData` is now included in `src/utils/errors.js` exports; a regression test verifies the public internal import and true/false partial-data cases. | user Node 20 run exposed a TypeError during legacy text fallback; source export and regression coverage added; pending rerun |
 | 123 | IPv4 public-address validation rejected a known public address in Node 20 | **Fixed on branch:** IPv4 validation now uses explicit strict address parsing and CIDR range comparisons rather than `net.BlockList.check`; regression coverage includes public addresses, loopback, broadcast, and malformed octets. | user Node 20 run failed the first public IPv4 assertion; deterministic IPv4 range validation replaces the failing path; pending rerun |
+| 124 | Media URL regression fixture referenced FCA client/context without declaring them | **Fixed on branch:** the protocol/size/timeout regression now imports `InstaClient` locally and provides the minimal picture-URL resolver context required by `_attachmentToBuffer`. | user Node 20 run exposed a ReferenceError at the FCA redirect-guard assertion; fixture setup corrected; pending rerun |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -151,7 +152,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 87 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-nine runtime regression checks, eleven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#123 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 88 runtime regression tests and 17 FCA wrapper regression tests (105 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#124 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 88 runtime regression tests and 17 FCA wrapper regression tests (105 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -169,7 +170,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#123 batch.
+1. Run the full Node 20 validation suite once after the current #30–#124 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
