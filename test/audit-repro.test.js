@@ -265,7 +265,7 @@ async function main() {
     assert.equal(legacyCalls, 1);
   });
 
-  process.stdout.write("\nAudit reproductions: " + reproduced.length + " confirmed\n");
+  process.stdout.write("\nAudit reproductions: " + reproduced.length + " reproduced\n");
   process.stdout.write("These checks reproduce current defects; they are not passing regression assertions.\n");
 }
 
