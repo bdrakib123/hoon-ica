@@ -41,12 +41,26 @@ class MediaMethods {
     return { consumer: "messenger_file", typeHeader: "file_type" };
   }
 
-  async _upload(threadID, { buffer, filename, contentType, maxUploadBytes }) {
-    if (!Buffer.isBuffer(buffer)) throw new TypeError("Media upload requires a Buffer");
-    const requestedLimit = Number(maxUploadBytes);
-    const uploadLimit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+  _uploadLimit(options = {}) {
+    const requestedLimit = Number(options.maxUploadBytes);
+    return Number.isSafeInteger(requestedLimit) && requestedLimit > 0
       ? Math.min(requestedLimit, 512 * 1024 * 1024)
       : 100 * 1024 * 1024;
+  }
+
+  _readFileBuffer(filePath, options = {}) {
+    const fs = require("fs");
+    const limit = this._uploadLimit(options);
+    const stat = fs.statSync(filePath);
+    if (stat.size > limit) throw new RangeError(`Media upload exceeds the ${limit}-byte limit`);
+    const buffer = fs.readFileSync(filePath);
+    if (buffer.length > limit) throw new RangeError(`Media upload exceeds the ${limit}-byte limit`);
+    return buffer;
+  }
+
+  async _upload(threadID, { buffer, filename, contentType, maxUploadBytes }) {
+    if (!Buffer.isBuffer(buffer)) throw new TypeError("Media upload requires a Buffer");
+    const uploadLimit = this._uploadLimit({ maxUploadBytes });
     if (buffer.length > uploadLimit) {
       throw new RangeError(`Media upload exceeds the ${uploadLimit}-byte limit`);
     }
@@ -251,8 +265,7 @@ class MediaMethods {
   }
 
   async sendPhoto(threadID, filePath, options = {}) {
-    const fs = require("fs");
-    return this.sendPhotoBuffer(threadID, fs.readFileSync(filePath), options);
+    return this.sendPhotoBuffer(threadID, this._readFileBuffer(filePath, options), options);
   }
 
   async _downloadFromUrl(url, options = {}) {
@@ -315,8 +328,7 @@ class MediaMethods {
   }
 
   async sendVideo(threadID, filePath, options = {}) {
-    const fs = require("fs");
-    return this.sendVideoBuffer(threadID, fs.readFileSync(filePath), options);
+    return this.sendVideoBuffer(threadID, this._readFileBuffer(filePath, options), options);
   }
 
   async sendVideoFromUrl(threadID, url, options = {}) {
@@ -334,8 +346,7 @@ class MediaMethods {
   }
 
   async sendVoice(threadID, filePath, options = {}) {
-    const fs = require("fs");
-    return this.sendVoiceBuffer(threadID, fs.readFileSync(filePath), options);
+    return this.sendVoiceBuffer(threadID, this._readFileBuffer(filePath, options), options);
   }
 
   async sendVoiceFromUrl(threadID, url, options = {}) {
