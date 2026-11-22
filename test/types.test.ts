@@ -5,6 +5,8 @@ import login, {
   Scheduler,
   InstaClient,
   IncomingEvent,
+  SendOptions,
+  PartialSendError,
   utilities
 } from "../index";
 
@@ -41,3 +43,14 @@ if (incomingEvent.type === "event") {
 
 void fcaClient.lastShareContactError;
 void fcaClient.lastEditError;
+
+const mediaOptions: SendOptions = {
+  maxDownloadBytes: 20 * 1024 * 1024,
+  downloadTimeoutMs: 45000
+};
+void fcaClient.sendPhotoFromUrl("thread-1", "https://cdn.example/photo.jpg", mediaOptions);
+
+const partialSendError: PartialSendError = Object.assign(new Error("partial"), {
+  partialSend: { captionSent: true, mediaSent: false }
+});
+void partialSendError.partialSend;
