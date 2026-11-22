@@ -476,9 +476,11 @@ class InboxMethods {
           getClient: rtOpts.getClient || (this.getSharedClient ? () => this.getSharedClient() : undefined),
           onReady: rtOpts.onReady,
           onError: (err) => {
-            // Before the subscription is confirmed a failure means realtime is
-            // not usable; degrade to polling so the bot still gets events.
-            if (!listener._subscribed && allowFallback && !stopped) {
+            // The current realtime client does not reconnect itself. Any
+            // socket error/disconnect therefore makes push delivery unavailable,
+            // even if the initial subscription was acknowledged. Keep polling as
+            // the safety net for the rest of this listen() lifetime.
+            if (allowFallback && !stopped) {
               startFallback();
             } else {
               callback(err, null);
