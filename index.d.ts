@@ -83,7 +83,7 @@ export interface RealtimeOptions {
   fallback?: boolean;
   /** Broker host. Defaults to edge-mqtt.facebook.com */
   host?: string;
-  /** Keepalive ping interval (ms). Defaults to 30000. */
+  /** Keepalive ping interval (ms). Defaults to 25000. */
   keepAliveMs?: number;
   /** Pre-known iris subscription cursor; otherwise read from the inbox query. */
   seqId?: number;
@@ -247,7 +247,9 @@ export declare class InstaClient {
   // threads
   getThreadInfo(threadID: string, callback?: (err: any, info: any) => void): Promise<any>;
   getThreadList(limit?: number, timestamp?: any, tags?: any, callback?: (err: any, list: ThreadListItem[]) => void): Promise<ThreadListItem[]>;
-  getThreadHistory(threadID: string, amount?: number, timestamp?: any, callback?: (err: any, items: any[]) => void): Promise<any[]>;
+  getThreadHistory(threadID: string, callback?: (err: any, items: any[]) => void): Promise<any[]>;
+  getThreadHistory(threadID: string, amount: number, callback?: (err: any, items: any[]) => void): Promise<any[]>;
+  getThreadHistory(threadID: string, amount: number, timestamp?: any, callback?: (err: any, items: any[]) => void): Promise<any[]>;
 
   // users
   getUserInfo(ids: string | string[], callback?: (err: any, info: any) => void): Promise<Record<string, any>>;
