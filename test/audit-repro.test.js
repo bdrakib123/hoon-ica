@@ -291,19 +291,32 @@ async function main() {
     }
   });
 
-  await checkCase("getInbox cursor argument is ignored; public pagination contract remains unverified", async () => {
-    let variables;
+  await checkCase("getInbox forwards Relay cursor with mailbox id, count and INBOX folder", async () => {
+    const calls = [];
     const inbox = new InboxMethods({
       session: { __hsi: "device-1" },
       uuid: () => "device-1",
-      postGraphQL: async (_name, _docId, vars) => {
-        variables = vars;
-        return { data: { get_slide_mailbox_for_iris_subscription: { threads_by_folder: { edges: [] } } } };
+      postGraphQL: async (name, docId, vars) => {
+        calls.push({ name, docId, vars });
+        if (name === "PolarisDirectInboxQuery") {
+          return { data: { get_slide_mailbox_for_iris_subscription: {
+            id: "mailbox-1",
+            threads_by_folder: { edges: [], page_info: { has_next_page: true, end_cursor: "cursor-1" } }
+          } } };
+        }
+        return { data: { fetch__SlideMailbox: { threads_by_folder: {
+          edges: [], page_info: { has_next_page: false, end_cursor: null }
+        } } } };
       }
     }, () => "self-1");
-    await inbox.getInbox("next-page-cursor");
-    assert.equal(Object.prototype.hasOwnProperty.call(variables, "cursor"), false);
-    assert.equal(Object.prototype.hasOwnProperty.call(variables, "before"), false);
+    const first = await inbox.getInbox();
+    assert.equal(first.nextCursor, "cursor-1");
+    const next = await inbox.getInbox(first.nextCursor);
+    assert.equal(next.hasNextPage, false);
+    assert.equal(calls[1].name, "IGDThreadListOffMsysPaginationQuery");
+    assert.deepEqual(calls[1].vars, {
+      id: "mailbox-1", cursor: "cursor-1", count: 15, folder: "INBOX"
+    });
   });
 
   await checkCase("media caption does not fallback to legacy send after an auth error", async () => {
