@@ -4,14 +4,17 @@ Branch: `audit/comprehensive-bug-hunt`
 Baseline: `audit/fca-wrapper-regression`  
 Scope: source inspection and diagnostic reproduction cases only.
 
-## Important validation status
+## Validation status (2026-11-22)
 
-- The cases below are **source-derived reproductions**, not dynamically confirmed runtime failures.
-- `npm run audit:repro` has **not** been executed in Node.js in this audit session.
+- The user ran the diagnostic suite locally in UserLAnd on **Node.js v20.20.2** and **npm 10.8.2**.
+- `npm install` completed successfully and reported **0 vulnerabilities**.
+- `npm run audit:repro` completed with exit code 0 and reported **17 reproduced / 17 diagnostic cases**.
+- `git status --short` was empty after the run.
+- These are controlled local runtime reproductions of the current source behavior, **not live Instagram validation**.
 - No live Instagram login, DM, MQTT subscription, media upload, or account action was performed.
 - No runtime source file was modified by this audit.
 - The normal `npm test` command and published `@cexi/hoonica@1.0.0` release remain untouched.
-- The diagnostic suite is intentionally separate from the normal test gate. A `REPRODUCED` result means the current source exhibits the asserted defect signature; it is not a passing regression test.
+- The diagnostic suite is intentionally separate from the normal test gate. A `REPRODUCED` result means the current source exhibited the asserted defect signature in the local test fixture; it is not a passing regression test.
 
 ## Diagnostic reproduction inventory
 
@@ -55,3 +58,26 @@ These require more focused fixtures, payload captures, or runtime validation bef
 3. Add fixtures for the additional candidates only after verifying their actual payload contracts.
 4. For each accepted defect, invert its diagnostic assertion into a correct-behavior regression test before proposing a runtime fix.
 5. Obtain explicit approval before changing runtime source, merging, publishing, or testing against a live Instagram account.
+
+
+## Initial severity triage (provisional)
+
+Severity reflects likely impact from source behavior, not confirmed production incidence. Validate against supported payloads and account-safe fixtures before fixing.
+
+### P1 — address before a production release
+- **#1 Cookie normalization:** documented cookie object/array inputs throw; this can prevent supported login initialization paths.
+- **#10–11 Realtime fallback/subscription state:** duplicate polling fallback and treating an unacknowledged subscription as active can create unreliable or misleading realtime state.
+- **#13 First inbox message skipped:** can silently miss the first incoming DM after an empty initial poll.
+- **#16 Media auth fallback:** an authentication failure can trigger a second legacy send path; avoid retrying authentication/challenge failures.
+- **#14 sendLink pacing:** outbound link sends bypass the configured pacing guard.
+- **#17 Thrift INT64 precision:** exact large identifiers/values may be corrupted; inspect consumers and wire schema before choosing a compatible representation.
+
+### P2 — fix after P1, with contract fixtures
+- **#3 Thread-list preview**, **#5 DM/group classification**, **#6 XMA attachment URL**, **#7 viewer FBID mapping**, **#8 read retry policy**, **#9 realtime readiness callback**, **#12 history timestamp**, **#15 inbox cursor**.
+- **#4 Anti-suspension configuration** and **#2 UID URL parsing** should also be addressed after confirming expected public API semantics.
+
+### Required before runtime changes
+- Convert each accepted reproduction into a regression test that asserts the intended correct behavior.
+- Add payload fixtures for supported Instagram response shapes.
+- For INT64, inspect all consumers before changing Number to BigInt or string; either can be a public API compatibility break.
+- Do not run live account actions as part of ordinary regression tests.
