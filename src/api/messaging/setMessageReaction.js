@@ -17,11 +17,11 @@ module.exports = function (client) {
       const tid = client._resolveThread(messageID, threadID);
       await client.api.sendReaction(tid, String(messageID), emoji);
       const info = { messageID, threadID: tid };
-      if (cb) cb(null, info);
+      if (cb) await cb(null, info);
       return info;
     } catch (error) {
       if (cb?.called) throw error;
-      if (cb) cb(error, null);
+      if (cb) await cb(error, null);
       return null;
     }
   };
