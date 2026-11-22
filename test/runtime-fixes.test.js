@@ -1404,6 +1404,17 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testRetryAfterSupportsHttpDate() {
+  const { retryAfterMs } = require("../src/utils/errors");
+  assert.equal(retryAfterMs({ response: { headers: { "retry-after": "120" } } }), 120000);
+  const target = Date.now() + 120000;
+  const headerDate = new Date(target).toUTCString();
+  const wait = retryAfterMs({ response: { headers: { "Retry-After": headerDate } } });
+  assert.ok(wait > 0 && wait <= 120000);
+  assert.equal(retryAfterMs({ response: { headers: { "retry-after": "not-a-date" } } }), 0);
+}
+
+
 async function testExplicitFailureEnvelopeWithoutMessageIsRejected() {
   const HttpClient = require("../src/http");
   const { inspectBody } = require("../src/utils/errors");
@@ -1533,6 +1544,7 @@ async function run() {
   await testProfileCacheIsBounded();
   await testMissingProfileCountsRemainUnknown();
   await testExplicitFailureEnvelopeWithoutMessageIsRejected();
+  await testRetryAfterSupportsHttpDate();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
@@ -1544,7 +1556,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 52 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 53 regression tests passed\n");
 }
 
 run().catch((error) => {
