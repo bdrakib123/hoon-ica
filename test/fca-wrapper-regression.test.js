@@ -114,6 +114,17 @@ async function testThreadListGroupFallbackIncludesSeparateViewer() {
             id: "viewer-already-listed",
             users: [{ id: "self-1" }, { id: "friend-2" }],
             viewer: { id: "self-1" }
+          },
+          {
+            id: "blank-primary-ids",
+            users: [
+              { id: " ", pk: "member-1" },
+              { id: "", pk: "member-2" },
+              { id: "member-2" },
+              null,
+              {}
+            ],
+            viewer: { id: "  ", pk: "self-1" }
           }
         ],
         nextCursor: null
@@ -124,6 +135,7 @@ async function testThreadListGroupFallbackIncludesSeparateViewer() {
   assert.equal(list.find(item => item.threadID === "group-thread").isGroup, true);
   assert.equal(list.find(item => item.threadID === "direct-thread").isGroup, false);
   assert.equal(list.find(item => item.threadID === "viewer-already-listed").isGroup, false);
+  assert.equal(list.find(item => item.threadID === "blank-primary-ids").isGroup, true);
 }
 
 async function testThreadHistoryPreservesAmountAndCallbackOverloads() {
