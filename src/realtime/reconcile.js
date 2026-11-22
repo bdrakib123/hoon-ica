@@ -77,8 +77,9 @@ function buildKeys(msg = {}) {
   // second, and without it a push that carries no mid could never be matched to
   // its poller copy.
   const body = msg.body == null ? "" : String(msg.body);
-  if (threadID && senderID && body) {
-    const bucket = Math.floor(toMillis(msg.timestamp) / 1000);
+  const timestampMs = toMillis(msg.timestamp);
+  if (threadID && senderID && body && timestampMs > 0) {
+    const bucket = Math.floor(timestampMs / 1000);
     keys.add(`fp:${sha1(`${threadID}|${senderID}|${body}|${bucket}`)}`);
   }
   return keys;
