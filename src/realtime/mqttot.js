@@ -580,7 +580,25 @@ class SocketMQTToTTransport {
 
   _tryRead() {
     if (this._buffer.length < 2) return null;
-    const { value: size, offset } = decodeRemainingLength(this._buffer, 1);
+    let multiplier = 1;
+    let size = 0;
+    let offset = 1;
+    let completeLength = false;
+    for (let count = 0; count < 4; count++) {
+      // TCP may split the MQTT fixed header across data events. An incomplete
+      // but otherwise valid varint must wait for the next chunk, not fail.
+      if (offset >= this._buffer.length) return null;
+      const byte = this._buffer[offset++];
+      size += (byte & 0x7f) * multiplier;
+      if ((byte & 0x80) === 0) {
+        completeLength = true;
+        break;
+      }
+      multiplier *= 128;
+    }
+    if (!completeLength) {
+      throw new Error("Malformed MQTT packet: remaining length exceeds four bytes");
+    }
     if (size > this.maxPacketSize) {
       throw new Error(`MQTT packet exceeds configured limit (${this.maxPacketSize} bytes)`);
     }
