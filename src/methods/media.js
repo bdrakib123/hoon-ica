@@ -264,6 +264,7 @@ class MediaMethods {
     const timeout = Number.isSafeInteger(requestedTimeout) && requestedTimeout > 0
       ? Math.min(requestedTimeout, 120000)
       : 30000;
+    let previousProtocol = parsed.protocol;
     const res = await axios.get(parsed.href, {
       responseType: "arraybuffer",
       timeout,
@@ -271,9 +272,14 @@ class MediaMethods {
       maxBodyLength: maxDownloadBytes,
       maxRedirects: 3,
       beforeRedirect: (requestOptions) => {
-        if (parsed.protocol === "https:" && requestOptions.protocol !== "https:") {
+        const nextProtocol = requestOptions.protocol;
+        if (nextProtocol !== "http:" && nextProtocol !== "https:") {
+          throw new Error("Media URL redirect must use HTTP or HTTPS");
+        }
+        if (previousProtocol === "https:" && nextProtocol !== "https:") {
           throw new Error("Media URL redirect cannot downgrade HTTPS to HTTP");
         }
+        previousProtocol = nextProtocol;
       }
     });
     const buffer = Buffer.from(res.data);
