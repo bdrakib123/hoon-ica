@@ -912,7 +912,7 @@ async function testRealtimeMissingAcknowledgementFails() {
   assert.equal(client.listenerCount("message"), 0);
   assert.equal(client.listenerCount("error"), 0);
   assert.equal(client.listenerCount("disconnected"), 0);
-  assert.equal(disconnects, 1);
+  assert.equal(disconnects, 0, "failed shared-listener startup must not disconnect the session client");
   listener.stop();
 }
 
