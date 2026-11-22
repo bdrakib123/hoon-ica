@@ -81,7 +81,7 @@ async function main() {
     }
   });
 
-  await checkCase("getThreadInfo marks a one-to-one DM as a group when is_group is absent", async () => {
+  await checkCase("getThreadInfo classifies a one-to-one DM as direct when is_group is absent", async () => {
     const getThreadInfo = createGetThreadInfo({
       api: {
         getThreadInfo: async () => ({
