@@ -309,18 +309,19 @@ async function testSendMessageHandlesDeepAndCircularAttachmentArrays() {
   const circular = [first, [second]];
   circular.push(circular);
   let sent = [];
+  const sendOptions = { maxDownloadBytes: 12345, downloadTimeoutMs: 9000 };
   const sendMessage = createSendMessage({
-    _normalizeForm: () => ({ body: "caption", attachment: circular }),
-    _sendAttachment: async (_threadID, attachment, caption) => {
-      sent.push({ attachment, caption });
+    _normalizeForm: () => ({ body: "caption", attachment: circular, ...sendOptions }),
+    _sendAttachment: async (_threadID, attachment, caption, options) => {
+      sent.push({ attachment, caption, options });
       return { message_id: `m-${sent.length}` };
     },
     _msgThread: new Map()
   });
   const result = await sendMessage("ignored", "thread-1");
   assert.deepEqual(sent, [
-    { attachment: first, caption: "caption" },
-    { attachment: second, caption: "" }
+    { attachment: first, caption: "caption", options: sendOptions },
+    { attachment: second, caption: "", options: sendOptions }
   ]);
   assert.equal(result.messageID, "m-2");
 }
