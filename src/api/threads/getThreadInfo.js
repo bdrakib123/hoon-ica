@@ -7,7 +7,7 @@
 
 // fca.getThreadInfo(threadID, callback) - Instagram thread detail reshaped into
 // the fca thread-info object commands expect. Commands iterate `userInfo` and
-// `.some()`/`.find()` `adminIDs`, so both are arrays here (GoatBot-Pro shape:
+// `.some()`/ `.find()` `adminIDs`, so both are arrays here (GoatBot-Pro shape:
 // userInfo [{ id, name, firstName, gender }], adminIDs [{ id }]).
 module.exports = function (client) {
   return async function getThreadInfo(threadID, callback) {
@@ -30,7 +30,7 @@ module.exports = function (client) {
       const userInfo = users.map((u) => ({
         id: String(u.pk || u.id),
         name: u.full_name || u.username || String(u.pk || u.id),
-        firstName: (u.full_name || u.username || "").split(" ")[0] || "",
+        firstName: (u.full_name || u.username || "").trim().split(/\\s+/)[0] || "",
         username: u.username || null,
         gender: u.gender === undefined ? 0 : u.gender,
         type: "User",
@@ -42,9 +42,12 @@ module.exports = function (client) {
         .map(String)
         .filter((id) => userIds.has(id))
         .map((id) => ({ id }));
+      const otherParticipant = users.find((u) =>
+        !viewer || String(u.id || u.pk) !== String(viewer.id)
+      );
       const info = {
         threadID: String(threadID),
-        threadName: thread?.thread_title || (users[0]?.username ?? null),
+        threadName: thread?.thread_title || otherParticipant?.username || users[0]?.username || null,
         participantIDs: userInfo.map((u) => u.id),
         userInfo,
         adminIDs,
