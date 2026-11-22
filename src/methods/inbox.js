@@ -57,9 +57,35 @@ class InboxMethods {
     this._statePrimed = false;
   }
 
-  async getInbox() {
-    // device_id_for_iris_subscription is required by the query; the web client
-    // sends the same value it uses as __hsi.
+  async getInbox(cursor = null) {
+    let data;
+    let pageInfo;
+
+    // A pagination cursor is scoped to the mailbox. If this client has not
+    // fetched the inbox yet (for example after a process restart), bootstrap
+    // once to recover the mailbox id before requesting the requested page.
+    if (cursor && this._mailboxId) {
+      const res = await this.http.postGraphQL(
+        "IGDThreadListOffMsysPaginationQuery",
+        DOC_ID.INBOX_PAGINATION,
+        { id: this._mailboxId, cursor, count: 15, folder: "INBOX" },
+        "https://www.instagram.com/direct/inbox/"
+      );
+      data = this._unwrap(res);
+      const connection = data?.fetch__SlideMailbox?.threads_by_folder;
+      pageInfo = connection?.page_info || null;
+      const edges = connection?.edges || [];
+      const threads = edges.map((e) => e.node?.as_ig_direct_thread || {}).filter(Boolean);
+      this._rememberInboxThreads(threads);
+      return {
+        threads,
+        nextCursor: pageInfo?.has_next_page ? (pageInfo.end_cursor || null) : null,
+        hasNextPage: pageInfo?.has_next_page === true
+      };
+    }
+
+    // device_id_for_iris_subscription is required by the first-page query;
+    // the web client sends the same value it uses as __hsi.
     const deviceID = this.http.session?.__hsi || this.http.uuid();
     const res = await this.http.postGraphQL(
       "PolarisDirectInboxQuery",
@@ -67,10 +93,42 @@ class InboxMethods {
       { ...INBOX_VARIABLES, device_id_for_iris_subscription: deviceID },
       "https://www.instagram.com/direct/inbox/"
     );
-    const data = this._unwrap(res);
-    const edges =
-      data?.get_slide_mailbox_for_iris_subscription?.threads_by_folder?.edges || [];
-    const threads = edges.map((e) => e.node?.as_ig_direct_thread || {}).filter(Boolean);
+    data = this._unwrap(res);
+    const mailbox = data?.get_slide_mailbox_for_iris_subscription;
+    this._mailboxId = mailbox?.id != null ? String(mailbox.id) : null;
+    const connection = mailbox?.threads_by_folder;
+    pageInfo = connection?.page_info || null;
+    let threads = (connection?.edges || [])
+      .map((e) => e.node?.as_ig_direct_thread || {})
+      .filter(Boolean);
+
+    // If a caller supplies a cursor before this instance has learned the
+    // mailbox id, use the bootstrap response only to resolve that id and then
+    // fetch the requested page rather than silently returning page one.
+    if (cursor && this._mailboxId) {
+      const page = await this.http.postGraphQL(
+        "IGDThreadListOffMsysPaginationQuery",
+        DOC_ID.INBOX_PAGINATION,
+        { id: this._mailboxId, cursor, count: 15, folder: "INBOX" },
+        "https://www.instagram.com/direct/inbox/"
+      );
+      data = this._unwrap(page);
+      const pagedConnection = data?.fetch__SlideMailbox?.threads_by_folder;
+      pageInfo = pagedConnection?.page_info || null;
+      threads = (pagedConnection?.edges || [])
+        .map((e) => e.node?.as_ig_direct_thread || {})
+        .filter(Boolean);
+    }
+
+    this._rememberInboxThreads(threads);
+    return {
+      threads,
+      nextCursor: pageInfo?.has_next_page ? (pageInfo.end_cursor || null) : null,
+      hasNextPage: pageInfo?.has_next_page === true
+    };
+  }
+
+  _rememberInboxThreads(threads) {
     for (const t of threads) {
       const fbid = t.viewer?.interop_messaging_user_fbid;
       if (fbid && !this._selfFbid) this._selfFbid = String(fbid);
@@ -80,7 +138,6 @@ class InboxMethods {
       if (tid) this._members.set(tid, (t.users || []).map((u) => String(u.id || u.pk)).filter(Boolean));
     }
     this._learnThreadIds(threads);
-    return { threads };
   }
 
   // The realtime push names a thread by its internal `thread_id` (e.g.
