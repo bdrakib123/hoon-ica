@@ -169,6 +169,50 @@ async function main() {
     assert.deepEqual(received, ["thread-1", 20]);
   });
 
+  await reproduce("first DM is skipped if the initial inbox poll is empty", async () => {
+    const inbox = new InboxMethods({}, () => "self-1");
+    let polls = 0;
+    inbox.getInbox = async () => {
+      polls += 1;
+      if (polls === 1) return { threads: [] };
+      return {
+        threads: [{
+          id: "thread-1",
+          users: [{ id: "friend-1" }],
+          slide_messages: {
+            edges: [{ node: { id: "message-1", content_type: "TEXT", text_body: "first DM", timestamp_ms: 1700000000000 } }]
+          }
+        }]
+      };
+    };
+
+    const scheduled = [];
+    const originalSetTimeout = global.setTimeout;
+    let stop;
+    let received = 0;
+    try {
+      global.setTimeout = (fn) => {
+        const timer = { fn, unref() {} };
+        scheduled.push(timer);
+        return timer;
+      };
+      stop = inbox._startPolling(() => { received += 1; }, 2000);
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(scheduled.length, 1);
+      scheduled.shift().fn();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(scheduled.length, 1);
+      scheduled.shift().fn();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(polls, 3);
+      assert.equal(received, 0);
+      assert.equal(inbox._seen.get("thread-1"), "message-1");
+    } finally {
+      if (stop) stop();
+      global.setTimeout = originalSetTimeout;
+    }
+  });
+
   await reproduce("getInbox ignores a supplied pagination cursor", async () => {
     let variables;
     const inbox = new InboxMethods({
