@@ -29,9 +29,8 @@ async function reproduce(name, check) {
 }
 
 async function main() {
-  await reproduce("cookie object/array input throws before normalization", async () => {
-    assert.throws(() => normalizeCookie({ sessionid: "session-value", csrftoken: "csrf-value" }), TypeError);
-    assert.throws(() => normalizeCookie([{ key: "sessionid", value: "session-value" }]), TypeError);
+  await reproduce("documented cookie-array input throws before normalization", async () => {
+    assert.throws(() => normalizeCookie([{ name: "sessionid", value: "session-value" }]), TypeError);
   });
 
   await reproduce("getUID treats a reel route as a username", async () => {
