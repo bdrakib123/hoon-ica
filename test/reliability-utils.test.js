@@ -113,6 +113,34 @@ async function run() {
   releaseStaleProbe("probe recovered");
   assert.equal(await activeProbe, "probe recovered");
 
+  const boundedLimiter = new AdaptiveRateLimiter({ maxEndpoints: 2 });
+  boundedLimiter.recommendDelay("https://example.com/a");
+  boundedLimiter.recommendDelay("https://example.com/b");
+  boundedLimiter.recommendDelay("https://example.com/c");
+  assert.equal(boundedLimiter.endpoints.size, 2);
+  assert.equal(boundedLimiter.endpoints.has("https://example.com/a"), false);
+
+  const boundedBreaker = new CircuitBreaker({ maxCircuits: 2 });
+  boundedBreaker.state("one");
+  boundedBreaker.state("two");
+  boundedBreaker.state("three");
+  assert.equal(Object.keys(boundedBreaker.snapshot()).length, 2);
+
+  const boundedIdempotency = new IdempotencyCache({
+    ttlMs: Infinity,
+    maxSize: Infinity,
+    maxInflight: 1
+  });
+  assert.equal(boundedIdempotency.ttlMs, 300000);
+  assert.equal(boundedIdempotency.maxSize, 1000);
+  assert.equal(boundedIdempotency.maxInflight, 1);
+  let releaseInflight;
+  const pending = boundedIdempotency.run("pending", () => new Promise(resolve => { releaseInflight = resolve; }));
+  await Promise.resolve();
+  await assert.rejects(boundedIdempotency.run("second-pending", async () => "blocked"), /in-flight limit/);
+  releaseInflight("done");
+  assert.equal(await pending, "done");
+
   const cache = new IdempotencyCache({ ttlMs: 1000, maxSize: 5 });
   let calls = 0;
   const operation = async () => {
