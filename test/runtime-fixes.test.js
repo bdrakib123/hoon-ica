@@ -2140,6 +2140,16 @@ async function testSessionCookieFilesUseOwnerOnlyPermissions() {
     const recovered = loadSaved(filePath, { sessionid: "session-secret", ds_user_id: "12345" });
     assert.equal(recovered.csrftoken, "csrf-secret");
 
+    // Saving over an incomplete primary must not replace the good backup with
+    // the incomplete contents before the new primary is committed.
+    fs.writeFileSync(filePath, JSON.stringify([
+      { key: "sessionid", value: "session-secret" },
+      { key: "csrftoken", value: "partial" }
+    ]));
+    client.saveSession();
+    assert.equal(JSON.parse(fs.readFileSync(backup, "utf8")).length, 3);
+    assert.equal(JSON.parse(fs.readFileSync(filePath, "utf8")).length, 3);
+
     const { loadOrCreate } = require("../src/deviceIdentity");
     const deviceFile = path.join(directory, "device.json");
     loadOrCreate(deviceFile, "12345678-1234-1234-1234-123456789abc");
