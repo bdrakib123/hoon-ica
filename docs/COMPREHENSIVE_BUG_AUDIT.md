@@ -35,13 +35,13 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 12 | Thread history | FCA wrapper accepts a timestamp argument but does not pass it to the native history method. | timestamp argument ignored |
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
-| 15 | Inbox pagination | Native `getInbox()` takes no cursor argument and sends fixed query variables; a supplied cursor is ignored. | getInbox ignores pagination cursor |
+| 15 | Inbox pagination | **Unconfirmed candidate:** the native method currently ignores a cursor, but the documented public API only promises `getInbox()` → `{ threads }`; no cursor-pagination contract has been established. Keep as a compatibility question, not a confirmed defect. | cursor argument currently ignored; contract unverified |
 | 16 | Media caption fallback | **Fixed:** auth/challenge/blocked/rate-limit errors do not fall back to legacy caption sending. | regression test added |
 | 17 | Thrift integer precision | **Mitigated:** `ThriftReader` supports `{ int64AsBigInt: true }` for exact INT64 decoding; legacy Number behavior remains the default and can still round large values. | regression test added |
 
 ## Runtime fix progress (2026-11-22)
 
-**15 of the 17 original diagnostic cases are addressed on this branch:** 14 source fixes (#1–#11, #13, #14, #16) and one compatibility mitigation (#17). Two issues (#12 history timestamp and #15 inbox cursor) remain open pending contract review.
+**15 of the 17 original diagnostic cases are addressed on this branch:** 14 source fixes (#1–#11, #13, #14, #16) and one compatibility mitigation (#17). #12 (history timestamp) is a confirmed FCA compatibility gap, but needs a verified Instagram older-message pagination implementation. #15 (inbox cursor) is not yet a confirmed defect: the argument is typed but no public cursor-pagination behavior is documented.
 
 New test file: `test/runtime-fixes.test.js` (15 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
@@ -80,7 +80,8 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
-- **Still open:** #12 history timestamp and #15 inbox cursor (confirm public API semantics and pagination contracts first).
+- **Confirmed compatibility gap, implementation pending:** #12 history timestamp. FCA documentation defines the timestamp as the most recent message boundary for loading older history; this package's Relay path needs an opaque message cursor, so do not pass a Unix timestamp directly as a Relay cursor.
+- **Unconfirmed candidate:** #15 inbox cursor. The current public docs describe `getInbox()` with no cursor argument; retain only as an API-contract question unless a supported caller contract is identified.
 
 ### Required before release
 - Run all four validation commands listed above on Node 20 and inspect their complete outputs.
