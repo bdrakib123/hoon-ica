@@ -72,7 +72,6 @@ class RealtimeListener {
         this._client.removeListener("iris_sub_response", onAck);
         reject(new Error("Realtime iris subscription acknowledgement timed out"));
       }, timeoutMs);
-      if (timer && typeof timer.unref === "function") timer.unref();
     });
 
     try {
