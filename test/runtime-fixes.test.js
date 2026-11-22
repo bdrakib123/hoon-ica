@@ -1872,6 +1872,11 @@ async function testThreadHistoryTimestampPagination() {
   assert.equal(calls[1].variables.id, "thread-fbid-1");
   assert.equal(calls[1].variables.first, 2);
   assert.equal(calls[2].variables.after, "cursor-2");
+  await assert.rejects(
+    () => thread.getHistory("thread-key-1", 2, "not-a-timestamp"),
+    /beforeTimestamp must be a non-negative integer/
+  );
+  assert.equal(calls.length, 3, "invalid timestamp must fail before issuing a GraphQL request");
 }
 
 async function testFcaHistoryTimestampIsForwarded() {
