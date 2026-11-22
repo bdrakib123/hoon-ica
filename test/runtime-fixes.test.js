@@ -1392,6 +1392,28 @@ async function testInboxCursorPagination() {
   assert.equal(calls[1].variables.__relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider, true);
 }
 
+async function testInboxCursorRejectsMissingMailboxAfterBootstrap() {
+  let calls = 0;
+  const inbox = new InboxMethods({
+    postGraphQL: async () => {
+      calls += 1;
+      return { data: { get_slide_mailbox_for_iris_subscription: {
+        id: null,
+        threads_by_folder: {
+          edges: [{ node: { as_ig_direct_thread: { id: "thread-1", users: [] } } }],
+          page_info: { has_next_page: true, end_cursor: "server-cursor" }
+        }
+      } } };
+    }
+  }, () => "self-1");
+  await assert.rejects(
+    () => inbox.getInbox("requested-cursor"),
+    /mailbox id unavailable/
+  );
+  assert.equal(calls, 1);
+}
+
+
 async function testThreadHistoryTimestampPagination() {
   const ThreadMethods = require("../src/methods/thread");
   const calls = [];
@@ -2099,6 +2121,7 @@ async function run() {
   await testThreadHistoryTimestampPagination();
   await testFcaHistoryTimestampIsForwarded();
   await testInboxCursorPagination();
+  await testInboxCursorRejectsMissingMailboxAfterBootstrap();
   await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
   await testProfileCacheIsBounded();
@@ -2119,7 +2142,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 70 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 71 regression tests passed\n");
 }
 
 run().catch((error) => {
