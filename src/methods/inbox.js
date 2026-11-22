@@ -562,7 +562,8 @@ class InboxMethods {
       );
       listener.start(callback).catch((err) => {
         listener.stop();
-        if (allowFallback && !stopped) startFallback();
+        if (stopped) return;
+        if (allowFallback) startFallback();
         else callback(err, null);
       });
       const stop = () => {
