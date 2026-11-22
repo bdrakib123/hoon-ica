@@ -247,6 +247,15 @@ async function testViewerFbidUsesViewerId() {
   assert.equal(map["viewer-fbid"], "viewer-ig-id");
 }
 
+
+async function testGetUidRejectsContentRoutes() {
+  const createGetUID = require("../src/api/users/getUID");
+  const getUID = createGetUID({ userID: "self-uid" });
+  assert.equal(getUID("https://www.instagram.com/reel/ABC123/"), "self-uid");
+  assert.equal(getUID("https://www.instagram.com/p/ABC123/"), "self-uid");
+  assert.equal(getUID("https://www.instagram.com/rakib.hasan/"), "rakib.hasan");
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -261,7 +270,8 @@ async function run() {
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
   await testViewerFbidUsesViewerId();
-  process.stdout.write("runtime-fixes.test.js: 13 regression tests passed\\n");
+  await testGetUidRejectsContentRoutes();
+  process.stdout.write("runtime-fixes.test.js: 14 regression tests passed\\n");
 }
 
 run().catch((error) => {
