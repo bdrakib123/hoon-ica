@@ -20,7 +20,7 @@ module.exports = function (client) {
       items = await client.api.getThreadHistory(String(threadID), requested, _timestamp);
     } catch (error) {
       if (cb) {
-        cb(error, null);
+        await cb(error, null);
         return [];
       }
       return [];
@@ -28,7 +28,7 @@ module.exports = function (client) {
 
     // Invoke user code outside the operation try/catch. A callback exception
     // belongs to the caller and must not cause a second callback(error, null).
-    if (cb) cb(null, items);
+    if (cb) await cb(null, items);
     return items;
   };
 };
