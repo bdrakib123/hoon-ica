@@ -164,7 +164,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 90 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current audit batch has expanded the runtime suite to 90 checks and the FCA wrapper suite to 18 checks, with the latest source-review assertions pending the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#139 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 90 runtime regression tests and 18 FCA wrapper regression tests (108 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#140 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 90 runtime regression tests and 18 FCA wrapper regression tests (108 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
