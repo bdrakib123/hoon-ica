@@ -9,6 +9,7 @@ const assert = require("node:assert/strict");
 const { normalizeCookie } = require("../src/cookies");
 const createGetUID = require("../src/api/users/getUID");
 const createGetThreadList = require("../src/api/threads/getThreadList");
+const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
 const createGetThreadInfo = require("../src/api/threads/getThreadInfo");
 const { SendPacer } = require("../src/utils/antiSuspension");
 const { attachmentsFromContent } = require("../src/messageContent");
@@ -16,6 +17,7 @@ const { threadFbidMap } = require("../src/threadDetail");
 const { install: installReadRetry } = require("../src/utils/readRetry");
 const { EventEmitter } = require("node:events");
 const { RealtimeListener } = require("../src/realtime/listener");
+const MediaMethods = require("../src/methods/media");
 
 const reproduced = [];
 
@@ -149,6 +151,39 @@ async function main() {
     assert.deepEqual(fake.subscriptions, [{ seqId: 7, snapshotAtMs: 1700000000000 }]);
     assert.equal(readyCalls, 0);
     listener.stop();
+  });
+
+
+  await reproduce("getThreadHistory ignores its timestamp argument", async () => {
+    let received;
+    const getThreadHistory = createGetThreadHistory({
+      api: {
+        getThreadHistory: async (...args) => {
+          received = args;
+          return [];
+        }
+      }
+    });
+    await getThreadHistory("thread-1", 5, 1700000000000);
+    assert.deepEqual(received, ["thread-1", 20]);
+  });
+
+  await reproduce("media caption falls back to legacy send after an auth error", async () => {
+    let legacyCalls = 0;
+    const media = new MediaMethods({
+      offlineThreadingId: () => "offline-1",
+      postGraphQL: async () => {
+        const error = new Error("login required");
+        error.response = { status: 401, data: { message: "login_required" } };
+        throw error;
+      },
+      postForm: async () => {
+        legacyCalls += 1;
+        return { status: "ok" };
+      }
+    }, {});
+    await media._sendCaption("thread-1", "caption");
+    assert.equal(legacyCalls, 1);
   });
 
   process.stdout.write("\nAudit reproductions: " + reproduced.length + " confirmed\n");
