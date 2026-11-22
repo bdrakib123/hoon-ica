@@ -226,6 +226,36 @@ async function testRealtimeConnectFailureClosesTransport() {
 }
 
 
+async function testRealtimeReceiveFailureClosesTransport() {
+  const { RealtimeClient } = require("../src/realtime/client");
+  let receives = 0;
+  let disconnects = 0;
+  const transport = {
+    reset() {},
+    async connect() {},
+    async send() {},
+    async recvPacket() {
+      receives += 1;
+      if (receives === 1) return Buffer.from([0x20, 0x02, 0x00, 0x00]);
+      return Buffer.from([0x20]); // truncated MQTT remaining-length header
+    },
+    disconnect() { disconnects += 1; }
+  };
+  const client = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport, keepAliveMs: 60000 });
+  client.on("error", () => {});
+  await client.connect();
+  await client._loop;
+  assert.equal(client.connected, false);
+  assert.equal(client._pingTimer, null);
+  assert.equal(client._stopRequested, true);
+  assert.equal(disconnects, 1);
+}
+
+
 async function testRealtimeFallbackAfterEstablishedDisconnect() {
   const { EventEmitter } = require("node:events");
   const InboxMethods = require("../src/methods/inbox");
@@ -651,7 +681,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 28 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 29 regression tests passed\n");
 }
 
 run().catch((error) => {
