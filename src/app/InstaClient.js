@@ -161,11 +161,18 @@ class InstaClient {
     const raw = payload?.threads || payload;
     const threads = Array.isArray(raw) ? raw : raw?.users ? [raw] : [];
     for (const t of threads) {
-      const users = (t.users || []).slice();
-      if (t.viewer) users.unshift(t.viewer);
+      const users = (Array.isArray(t.users) ? t.users : []).filter((u) => u && typeof u === "object");
+      if (t.viewer && typeof t.viewer === "object") users.unshift(t.viewer);
       for (const u of users) this._rememberUser(u);
       const threadID = t.id != null ? String(t.id) : t.thread_id != null ? String(t.thread_id) : null;
-      if (threadID) setBounded(this._threadMembers, threadID, users.map((u) => String(u.id || u.pk)).filter(Boolean), 2000);
+      if (threadID) {
+        setBounded(
+          this._threadMembers,
+          threadID,
+          users.map((u) => String(u.id || u.pk || "")).filter(Boolean),
+          2000
+        );
+      }
     }
   }
 
