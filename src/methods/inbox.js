@@ -42,6 +42,12 @@ function isUsableMessage(message) {
   );
 }
 
+function normalizeMessageId(message) {
+  if (!isUsableMessage(message)) return null;
+  const id = message.id ?? message.item_id ?? message.message_id;
+  return message.id != null ? message : { ...message, id: String(id) };
+}
+
 class InboxMethods {
   constructor(http, getUserID, options = {}) {
     this.http = http;
@@ -192,8 +198,8 @@ class InboxMethods {
   // both shapes are accepted.
   _threadMessages(thread) {
     const sm = thread.slide_messages;
-    if (Array.isArray(sm)) return sm.map((n) => n?.node || n).filter(isUsableMessage);
-    if (sm && Array.isArray(sm.edges)) return sm.edges.map((e) => e?.node).filter(isUsableMessage);
+    if (Array.isArray(sm)) return sm.map((n) => normalizeMessageId(n?.node || n)).filter(Boolean);
+    if (sm && Array.isArray(sm.edges)) return sm.edges.map((e) => normalizeMessageId(e?.node)).filter(Boolean);
     return (Array.isArray(thread.items) ? thread.items : [])
       .filter(isUsableMessage)
       .map((i) => ({
