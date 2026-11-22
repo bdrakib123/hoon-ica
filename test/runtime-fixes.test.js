@@ -23,6 +23,21 @@ async function testCookieInputs() {
   assert.match(toHeader(normalizeCookie({ sessionid: "s1" })), /sessionid=s1/);
 }
 
+async function testPerThreadPacingCacheIsHardBounded() {
+  const pacer = new SendPacer();
+  try {
+    for (let i = 0; i < 750; i++) pacer._rememberThreadSend(`thread-${i}`, Date.now());
+    assert.equal(pacer.perThreadLastSendAt.size, 500);
+    assert.equal(pacer.perThreadLastSendAt.has("thread-0"), false);
+    assert.equal(pacer.perThreadLastSendAt.has("thread-249"), false);
+    assert.equal(pacer.perThreadLastSendAt.has("thread-250"), true);
+    assert.equal(pacer.perThreadLastSendAt.has("thread-749"), true);
+  } finally {
+    pacer.destroy();
+  }
+}
+
+
 async function testNestedPacingConfiguration() {
   const pacer = new SendPacer();
   try {
@@ -1941,6 +1956,7 @@ async function testBoundedSessionCache() {
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
+  await testPerThreadPacingCacheIsHardBounded();
   await testTypingStopsOnRateLimitButFallsBackOnUnknown();
   await testLegacyLoginPreservesCookieMaps();
   await testMentionHydrationRetriesAfterInboxFailure();
@@ -2005,7 +2021,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 66 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 67 regression tests passed\n");
 }
 
 run().catch((error) => {
