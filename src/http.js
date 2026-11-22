@@ -370,6 +370,8 @@ class HttpClient {
       err.name = "InstagramGraphQLError";
       err.friendlyName = friendlyName;
       err.errors = res.data.errors;
+      err.graphQLData = res.data.data;
+      err.response = res;
       throw err;
     }
     return res.data;
