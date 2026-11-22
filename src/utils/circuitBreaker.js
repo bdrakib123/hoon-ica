@@ -30,12 +30,12 @@ class CircuitBreaker {
     if (!entry) {
       if (this.circuits.size >= this.maxCircuits) {
         const evictable = [...this.circuits].find(([, candidate]) =>
-          candidate.state === STATE.CLOSED && !candidate.probeInFlight
+          candidate.state === STATE.CLOSED && !candidate.probeInFlight && candidate.inFlight === 0
         );
         if (!evictable) throw new RangeError("Circuit breaker has reached its configured circuit limit");
         this.circuits.delete(evictable[0]);
       }
-      entry = { state: STATE.CLOSED, failures: 0, successes: 0, openedAt: 0, probeInFlight: false };
+      entry = { state: STATE.CLOSED, failures: 0, successes: 0, openedAt: 0, probeInFlight: false, inFlight: 0 };
       this.circuits.set(id, entry);
     }
     return entry;
@@ -67,6 +67,7 @@ class CircuitBreaker {
       throw error;
     }
     if (probe) entry.probeInFlight = true;
+    entry.inFlight += 1;
 
     try {
       const result = await operation();
@@ -94,6 +95,8 @@ class CircuitBreaker {
         }
       }
       throw error;
+    } finally {
+      entry.inFlight = Math.max(0, entry.inFlight - 1);
     }
   }
 
