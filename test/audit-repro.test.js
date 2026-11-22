@@ -11,7 +11,8 @@ const createGetUID = require("../src/api/users/getUID");
 const createGetThreadList = require("../src/api/threads/getThreadList");
 const createGetThreadHistory = require("../src/api/threads/getThreadHistory");
 const createGetThreadInfo = require("../src/api/threads/getThreadInfo");
-const { SendPacer } = require("../src/utils/antiSuspension");
+const { SendPacer, globalAntiSuspension } = require("../src/utils/antiSuspension");
+const MessageMethods = require("../src/methods/message");
 const { attachmentsFromContent } = require("../src/messageContent");
 const { threadFbidMap } = require("../src/threadDetail");
 const { install: installReadRetry } = require("../src/utils/readRetry");
@@ -212,6 +213,22 @@ async function main() {
       if (stop) stop();
       global.setTimeout = originalSetTimeout;
       global.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  await reproduce("sendLink bypasses the configured outbound send pacer", async () => {
+    const originalWaitForTurn = globalAntiSuspension.waitForTurn;
+    let pacingCalls = 0;
+    globalAntiSuspension.waitForTurn = async () => { pacingCalls += 1; };
+    try {
+      const methods = new MessageMethods({
+        uuid: () => "client-context",
+        postForm: async () => ({ status: "ok" })
+      }, {});
+      await methods.sendLink("thread-1", "https://example.com", "example");
+      assert.equal(pacingCalls, 0);
+    } finally {
+      globalAntiSuspension.waitForTurn = originalWaitForTurn;
     }
   });
 
