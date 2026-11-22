@@ -20,6 +20,7 @@ const { convert } = require("../utils/messageStyle");
 const loadApiMethods = require("./loadApiMethods");
 const { setBounded } = require("../utils/boundedMap");
 const createCallback = require("../utils/createCallback");
+const { createPublicLookup } = require("../utils/publicUrlLookup");
 
 class InstaClient {
   constructor(instaApi, options = {}) {
@@ -331,6 +332,7 @@ class InstaClient {
           maxContentLength: maxDownloadBytes,
           maxBodyLength: maxDownloadBytes,
           maxRedirects: 3,
+          lookup: createPublicLookup(),
           beforeRedirect: (requestOptions) => {
             const nextProtocol = requestOptions.protocol;
             if (nextProtocol !== "http:" && nextProtocol !== "https:") {
