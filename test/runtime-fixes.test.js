@@ -84,13 +84,134 @@ async function testReadRetryDoesNotRetryThrownErrors() {
   assert.equal(calls, 1);
 }
 
+
+async function testFirstMessageAfterEmptyInboxPoll() {
+  const InboxMethods = require("../src/methods/inbox");
+  const inbox = new InboxMethods({}, () => "self-1");
+  let polls = 0;
+  inbox.getInbox = async () => {
+    polls += 1;
+    if (polls === 1) return { threads: [] };
+    return {
+      threads: [{
+        id: "thread-1",
+        users: [{ id: "friend-1" }],
+        slide_messages: { edges: [{ node: {
+          id: "message-1", sender_fbid: "friend-fbid",
+          content_type: "TEXT", text_body: "hello", timestamp_ms: 1700000000000
+        } }] }
+      }]
+    };
+  };
+  inbox.fetchReplies = async () => ({});
+  const scheduled = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let stop;
+  const events = [];
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  try {
+    global.setTimeout = (fn) => {
+      const timer = { fn, unref() {} };
+      scheduled.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling((_err, event) => { if (event) events.push(event); }, 2000);
+    await flush();
+    scheduled.shift().fn();
+    await flush();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].messageID, "message-1");
+    scheduled.shift().fn();
+    await flush();
+    assert.equal(events.length, 1);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
+async function testRealtimeAcknowledgementAndReady() {
+  const { EventEmitter } = require("node:events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  class FakeClient extends EventEmitter {
+    constructor() { super(); this.connected = true; }
+    async connect() {}
+    async irisSubscribe() { this.emit("iris_sub_response", { status: "ok" }); }
+    disconnect() {}
+  }
+  const client = new FakeClient();
+  let ready = 0;
+  const listener = new RealtimeListener({}, {
+    getClient: async () => client,
+    seqId: 1,
+    snapshotAtMs: 1700000000000,
+    onReady: () => { ready += 1; }
+  });
+  await listener.start(() => {});
+  assert.equal(listener._subscribed, true);
+  assert.equal(ready, 1);
+  listener.stop();
+}
+
+async function testRealtimeMissingAcknowledgementFails() {
+  const { EventEmitter } = require("node:events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  class FakeClient extends EventEmitter {
+    constructor() { super(); this.connected = true; }
+    async connect() {}
+    async irisSubscribe() {}
+    disconnect() {}
+  }
+  const client = new FakeClient();
+  const listener = new RealtimeListener({}, {
+    getClient: async () => client,
+    seqId: 1,
+    snapshotAtMs: 1700000000000,
+    subscriptionTimeoutMs: 20
+  });
+  await assert.rejects(listener.start(() => {}), /acknowledgement timed out/);
+  assert.equal(listener._subscribed, false);
+  assert.equal(client.listenerCount("iris_sub_response"), 0);
+  listener.stop();
+}
+
+async function testRealtimeFallbackStartsOnlyOnce() {
+  const { EventEmitter } = require("node:events");
+  const InboxMethods = require("../src/methods/inbox");
+  class FakeClient extends EventEmitter {
+    constructor() { super(); this.connected = true; }
+    async connect() {}
+    disconnect() {}
+  }
+  const fake = new FakeClient();
+  const inbox = new InboxMethods({ getCookie: () => "session-value" }, () => "self-1", {
+    realtime: { enabled: true, fallback: true, getRealtimeState: async () => null },
+    getSharedClient: () => fake
+  });
+  let fallbackStarts = 0;
+  inbox._startPolling = () => { fallbackStarts += 1; return () => {}; };
+  const stop = inbox.listen(() => {});
+  await new Promise(resolve => setImmediate(resolve));
+  fake.emit("error", new Error("socket failure"));
+  fake.emit("disconnected", {});
+  assert.equal(fallbackStarts, 1);
+  stop();
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testReadRetryDoesNotRetryThrownErrors();
-  process.stdout.write("runtime-fixes.test.js: 5 regression tests passed\\n");
+  await testFirstMessageAfterEmptyInboxPoll();
+  await testRealtimeAcknowledgementAndReady();
+  await testRealtimeMissingAcknowledgementFails();
+  await testRealtimeFallbackStartsOnlyOnce();
+  process.stdout.write("runtime-fixes.test.js: 9 regression tests passed\\n");
 }
 
 run().catch((error) => {
