@@ -564,10 +564,19 @@ class SocketMQTToTTransport {
   // recvPacket() with the stale "MQTT socket closed" error and can never come
   // back up — which is what made the realtime client flap.
   reset() {
-    this._buffer = Buffer.alloc(0);
+    const resetError = new Error("MQTT transport reset");
+    const socket = this.socket;
+    this.socket = null;
+    for (const waiter of this._waiters) waiter.reject(resetError);
     this._waiters = [];
+    this._buffer = Buffer.alloc(0);
     this._closed = false;
     this._error = null;
+    // Destroy a stale/connecting socket so a new attempt cannot overwrite it
+    // while its TLS secureConnect event is still pending.
+    if (socket) {
+      try { socket.destroy(); } catch (_) {}
+    }
   }
 
   connect() {
@@ -579,14 +588,47 @@ class SocketMQTToTTransport {
         servername: this.host,
         minVersion: "TLSv1.2"
       });
-      const onError = (err) => { cleanup(); reject(err); };
-      const onConnect = () => { cleanup(); this._attach(socket); resolve(); };
+      this.socket = socket;
+      let settled = false;
       const cleanup = () => {
         socket.removeListener("error", onError);
+        socket.removeListener("close", onClose);
         socket.removeListener("secureConnect", onConnect);
+      };
+      const fail = (err) => {
+        cleanup();
+        const isCurrent = this.socket === socket;
+        if (isCurrent) {
+          this.socket = null;
+          this._fail(err);
+        }
+        if (!settled) {
+          settled = true;
+          reject(isCurrent ? err : (this._error || err));
+        }
+      };
+      const onError = (err) => fail(err);
+      const onClose = () => fail(this._error || new Error("MQTT socket closed during TLS handshake"));
+      const onConnect = () => {
+        cleanup();
+        if (this._closed || this.socket !== socket) {
+          const error = this._error || new Error("MQTT connection cancelled");
+          try { socket.destroy(); } catch (_) {}
+          if (!settled) {
+            settled = true;
+            reject(error);
+          }
+          return;
+        }
+        this._attach(socket);
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
       };
       socket.setTimeout(this.timeout, () => socket.destroy(new Error("MQTT socket timeout")));
       socket.once("error", onError);
+      socket.once("close", onClose);
       socket.once("secureConnect", onConnect);
     });
   }
@@ -594,7 +636,7 @@ class SocketMQTToTTransport {
   _attach(socket) {
     this.socket = socket;
     socket.on("data", (chunk) => {
-      if (this._closed) return;
+      if (this.socket !== socket || this._closed) return;
       if (this._buffer.length + chunk.length > this.maxBufferedBytes) {
         const error = new Error("MQTT receive buffer exceeded its configured limit");
         this._fail(error);
@@ -609,8 +651,12 @@ class SocketMQTToTTransport {
         socket.destroy(error);
       }
     });
-    socket.on("error", (err) => this._fail(err));
-    socket.on("close", () => this._fail(new Error("MQTT socket closed")));
+    socket.on("error", (err) => {
+      if (this.socket === socket) this._fail(err);
+    });
+    socket.on("close", () => {
+      if (this.socket === socket) this._fail(new Error("MQTT socket closed"));
+    });
   }
 
   _drain() {
@@ -660,19 +706,21 @@ class SocketMQTToTTransport {
   }
 
   send(packet) {
-    if (!this.socket) return Promise.reject(new Error("MQTT transport is not connected"));
+    if (!this.socket || this._closed) {
+      return Promise.reject(this._error || new Error("MQTT transport is not connected"));
+    }
     return new Promise((resolve, reject) => {
       this.socket.write(packet, (err) => (err ? reject(err) : resolve()));
     });
   }
 
   disconnect() {
-    if (!this.socket) return;
     const socket = this.socket;
     this.socket = null;
+    this._fail(new Error("MQTT transport closed"));
+    if (!socket) return;
     try { socket.end(); } catch (_) {}
     try { socket.destroy(); } catch (_) {}
-    this._fail(new Error("MQTT transport closed"));
   }
 
   _fail(err) {
