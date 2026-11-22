@@ -219,7 +219,7 @@ into the same raw inbox events the poller produces and normalized identically.
 | Method | Description |
 |--------|-------------|
 | `realtimeClient(options?)` | Build a raw `RealtimeClient` without connecting. |
-| `realtimeConnect(options?)` | Open the MQTT connection. Resolves to the client. Reuses the client only while connected; after a drop it builds a fresh one, so re-attach handlers to whatever it returns. |
+| `realtimeConnect(options?)` | Open the MQTT connection. Resolves to the session's shared client; after a drop it reuses that client and its registered handlers while resetting the stale transport. |
 | `realtimeOn(event, handler)` | Subscribe to `message`, `typing`, `seen`, `presence`, `direct`, `receive`, `error`, `disconnected`. |
 | `realtimeSubscribe()` | Subscribe to the Direct message-sync stream (reads the cursor from the inbox query). |
 | `realtimePing()` | Send a keepalive ping. |
