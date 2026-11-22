@@ -54,6 +54,37 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testAmbiguousGraphqlSendDoesNotFallback() {
+  const originalWait = globalAntiSuspension.waitForTurn;
+  globalAntiSuspension.waitForTurn = async () => {};
+  try {
+    let textFallbacks = 0;
+    const networkError = new Error("socket hang up");
+    networkError.code = "ECONNRESET";
+    const text = new MessageMethods({
+      offlineThreadingId: () => "offline-1",
+      uuid: () => "legacy-context",
+      postGraphQL: async () => { throw networkError; },
+      postForm: async () => { textFallbacks += 1; return { status: "ok" }; }
+    }, {});
+    await assert.rejects(text.send("hello", "thread-1"), /socket hang up/);
+    assert.equal(textFallbacks, 0);
+
+    let captionFallbacks = 0;
+    const media = new MediaMethods({
+      offlineThreadingId: () => "offline-2",
+      uuid: () => "legacy-context",
+      postGraphQL: async () => { throw networkError; },
+      postForm: async () => { captionFallbacks += 1; return { status: "ok" }; }
+    }, {});
+    await assert.rejects(media._sendCaption("thread-1", "caption"), /socket hang up/);
+    assert.equal(captionFallbacks, 0);
+  } finally {
+    globalAntiSuspension.waitForTurn = originalWait;
+  }
+}
+
+
 async function testCaptionAuthFailureDoesNotFallback() {
   let legacyCalls = 0;
   const media = new MediaMethods({
@@ -716,6 +747,7 @@ async function run() {
   await testNestedPacingConfiguration();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
+  await testAmbiguousGraphqlSendDoesNotFallback();
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
@@ -742,7 +774,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 31 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 32 regression tests passed\n");
 }
 
 run().catch((error) => {
