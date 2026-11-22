@@ -138,16 +138,19 @@ class ThriftReader {
     this._depth += 1;
     try {
       const result = {};
+      let stopped = false;
       while (this.pos < this.data.length) {
         const fieldType = this.readField();
         if (fieldType === ThriftTypes.STOP) {
           if (this._fieldStack.length) this._field = this._fieldStack.pop();
+          stopped = true;
           break;
         }
         const descriptor = findDescriptor(descriptors, this._field, fieldType);
         const value = this.readValue(fieldType, descriptor);
         if (descriptor) result[descriptor.name] = value;
       }
+      if (!stopped) throw new RangeError("Thrift struct is missing STOP marker");
       return result;
     } finally {
       this._depth -= 1;
