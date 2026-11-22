@@ -113,6 +113,13 @@ For FCA attachment sends, `form.maxDownloadBytes` (100 MiB default, 512 MiB
 hard cap) and `form.downloadTimeoutMs` (60 s default, 120 s hard cap) bound URL,
 Buffer, local-file, and stream inputs. HTTPS redirects cannot downgrade to HTTP.
 
+Native `sendPhotoBuffer`, `sendVideoBuffer`, `sendVoiceBuffer` and their
+file-path / URL variants enforce `options.maxUploadBytes` (100 MiB default,
+512 MiB hard cap). File-path variants check the file size before reading it.
+URL-based media downloads and FCA attachment URL downloads reject private,
+loopback, link-local and reserved IP destinations, including unsafe DNS answers
+on redirects.
+
 `createFcaClient(client)` returns a namespaced view (`messages.send()`,
 `threads.getInfo()`, `users.getInfo()`, …) if you prefer namespaces over the
 flat surface. `new InstaContext(client, threadID)` binds a thread for
