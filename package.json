@@ -26,7 +26,8 @@
     "test": "node test/edit.test.js && node test/fca-wrapper-regression.test.js && node test/session-check.test.js && node test/no-browser.test.js && node test/reliability-utils.test.js && node test/scheduler.test.js",
     "test:reliability": "node test/reliability-utils.test.js && node test/scheduler.test.js",
     "test:types": "tsc --noEmit --strict --skipLibCheck false --target ES2020 --module commonjs --moduleResolution node index.d.ts test/types.test.ts",
-    "release:check": "sh scripts/release-check.sh"
+    "release:check": "sh scripts/release-check.sh",
+    "audit:repro": "node test/audit-repro.test.js"
   },
   "keywords": [
     "instagram",
