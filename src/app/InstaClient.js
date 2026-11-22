@@ -368,19 +368,36 @@ class InstaClient {
     if (src && typeof src.pipe === "function") {
       // A readable stream may not expose its final size. Enforce the same cap
       // while draining it so an unbounded stream cannot exhaust process memory.
+      // A stalled stream must also respect downloadTimeoutMs, just like HTTP.
       const chunks = [];
       let total = 0;
-      for await (const chunk of src) {
-        const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        total += part.length;
-        if (total > maxDownloadBytes) {
-          if (typeof src.destroy === "function") src.destroy();
-          throw new RangeError(`Stream attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      let timeoutHandle;
+      const timeoutError = new Error(`Attachment stream timed out after ${timeout}ms`);
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          if (typeof src.destroy === "function") src.destroy(timeoutError);
+          reject(timeoutError);
+        }, timeout);
+        if (timeoutHandle.unref) timeoutHandle.unref();
+      });
+      const consume = async () => {
+        for await (const chunk of src) {
+          const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          total += part.length;
+          if (total > maxDownloadBytes) {
+            if (typeof src.destroy === "function") src.destroy();
+            throw new RangeError(`Stream attachment exceeds the ${maxDownloadBytes}-byte limit`);
+          }
+          chunks.push(part);
         }
-        chunks.push(part);
+        const filename = src.path ? path.basename(src.path) : `file_${Date.now()}`;
+        return { buffer: Buffer.concat(chunks, total), filename };
+      };
+      try {
+        return await Promise.race([consume(), timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutHandle);
       }
-      const filename = src.path ? path.basename(src.path) : `file_${Date.now()}`;
-      return { buffer: Buffer.concat(chunks, total), filename };
     }
     return null;
   }
