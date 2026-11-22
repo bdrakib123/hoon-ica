@@ -105,6 +105,8 @@ export interface SendOptions {
   replyToMessageId?: string;
   /** Maximum bytes accepted from URL-based media downloads (default 100 MiB, hard cap 512 MiB). */
   maxDownloadBytes?: number;
+  /** Maximum bytes accepted for a media upload (default 100 MiB, hard cap 512 MiB). */
+  maxUploadBytes?: number;
   /** URL-based media download timeout in milliseconds (default 30 s, hard cap 120 s). */
   downloadTimeoutMs?: number;
 }
