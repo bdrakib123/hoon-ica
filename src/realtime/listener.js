@@ -29,6 +29,9 @@ class RealtimeListener {
     this._callback = null;
     this._stopped = false;
     this._subscribed = false;
+    this._subscriptionTimer = null;
+    this._subscriptionAckHandler = null;
+    this._subscriptionReject = null;
   }
 
   _emitError(err) {
@@ -54,32 +57,42 @@ class RealtimeListener {
   }
 
   async _subscribeWithAck(cursor) {
-    const timeoutMs = Math.max(100, Number(this.options.subscriptionTimeoutMs) || 10000);
+    const timeoutMs = Math.max(1, Number(this.options.subscriptionTimeoutMs) || 10000);
     let timer;
     let onAck;
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (onAck) this._client.removeListener("iris_sub_response", onAck);
+      if (this._subscriptionTimer === timer) this._subscriptionTimer = null;
+      if (this._subscriptionAckHandler === onAck) this._subscriptionAckHandler = null;
+    };
     const acknowledgement = new Promise((resolve, reject) => {
+      this._subscriptionReject = reject;
       onAck = (payload) => {
-        clearTimeout(timer);
-        this._client.removeListener("iris_sub_response", onAck);
-        if (payload && (payload.error || payload.error_type || payload.status === "fail")) {
+        cleanup();
+        this._subscriptionReject = null;
+        if (payload && (payload.error || payload.error_type || payload.status === "fail" || payload.success === false)) {
           reject(new Error("Realtime iris subscription was rejected"));
           return;
         }
         resolve(payload);
       };
+      this._subscriptionAckHandler = onAck;
       this._client.once("iris_sub_response", onAck);
       timer = setTimeout(() => {
-        this._client.removeListener("iris_sub_response", onAck);
+        cleanup();
+        this._subscriptionReject = null;
         reject(new Error("Realtime iris subscription acknowledgement timed out"));
       }, timeoutMs);
+      this._subscriptionTimer = timer;
     });
 
     try {
       await this._client.irisSubscribe(Number(cursor.seqId) || 0, Number(cursor.snapshotAtMs));
       return await acknowledgement;
     } catch (error) {
-      clearTimeout(timer);
-      if (onAck) this._client.removeListener("iris_sub_response", onAck);
+      cleanup();
+      this._subscriptionReject = null;
       throw error;
     }
   }
@@ -127,6 +140,15 @@ class RealtimeListener {
     this._stopped = true;
     this.connected = false;
     if (!this._client) return;
+    if (this._subscriptionTimer) clearTimeout(this._subscriptionTimer);
+    if (this._subscriptionAckHandler && typeof this._client.removeListener === "function") {
+      this._client.removeListener("iris_sub_response", this._subscriptionAckHandler);
+    }
+    const rejectSubscription = this._subscriptionReject;
+    this._subscriptionTimer = null;
+    this._subscriptionAckHandler = null;
+    this._subscriptionReject = null;
+    if (rejectSubscription) rejectSubscription(new Error("Realtime listener stopped before subscription acknowledgement"));
     if (typeof this._client.removeListener === "function") {
       if (this._onMessage) this._client.removeListener("message", this._onMessage);
       if (this._onError) this._client.removeListener("error", this._onError);
