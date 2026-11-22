@@ -27,6 +27,7 @@ const DOC_ID = {
   THREAD_DETAIL: "29619996517588618",
   MESSAGE_LIST: "29380270148264352",
   INBOX: "27909866362025854",
+  INBOX_PAGINATION: "28774058922187457",
   UNSEND_MESSAGE: "26948700068153789",
   // Profile Relay operations. PolarisProfilePageContentQuery is the one the
   // profile page itself issues; PolarisUserRootQuery is its fallback. Both take
