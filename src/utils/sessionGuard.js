@@ -16,13 +16,17 @@ const KEEP_FROM_SEED = new Set(["sessionid", "ds_user_id"]);
 
 function secureFile(filePath) {
   try {
-    if (fs.existsSync(filePath)) fs.chmodSync(filePath, 0o600);
-  } catch (_) {}
+    if (!fs.existsSync(filePath)) return true;
+    fs.chmodSync(filePath, 0o600);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 function readCookieFile(filePath) {
   try {
-    secureFile(filePath);
+    if (!secureFile(filePath)) return null;
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
     return Array.isArray(parsed) ? parsed : null;
   } catch (_) {
@@ -54,7 +58,7 @@ function writeAtomic(filePath, content) {
   fs.writeFileSync(tmp, content, { encoding: "utf8", mode: 0o600 });
   fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, filePath);
-  secureFile(filePath);
+  if (!secureFile(filePath)) throw new Error("Could not secure session file permissions");
 }
 
 function install(client, appStatePath) {
@@ -73,8 +77,7 @@ function install(client, appStatePath) {
     const state = getState();
     if (!Array.isArray(state) || state.length < MIN_COOKIES) return false;
     try {
-      secureFile(filePath);
-      secureFile(`${filePath}.bak`);
+      if (!secureFile(filePath) || !secureFile(`${filePath}.bak`)) return false;
       if (fs.existsSync(filePath)) {
         try {
           const existing = JSON.parse(fs.readFileSync(filePath, "utf8"));
