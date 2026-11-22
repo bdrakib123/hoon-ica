@@ -366,6 +366,29 @@ async function testFcaAttachmentDownloadsAndStreamsAreBounded() {
       ),
       /Stream attachment exceeds the 4-byte limit/
     );
+
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "hoonica-attachment-"));
+    const file = path.join(directory, "large.bin");
+    fs.writeFileSync(file, Buffer.alloc(5));
+    const originalReadFileSync = fs.readFileSync;
+    let fileRead = false;
+    fs.readFileSync = (...args) => {
+      fileRead = true;
+      return originalReadFileSync(...args);
+    };
+    try {
+      await assert.rejects(
+        () => InstaClient.prototype._attachmentToBuffer.call(context, file, { maxDownloadBytes: 4 }),
+        /Attachment exceeds the 4-byte limit/
+      );
+      assert.equal(fileRead, false, "oversized local file should be rejected before readFileSync");
+    } finally {
+      fs.readFileSync = originalReadFileSync;
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   } finally {
     axios.get = originalGet;
   }
