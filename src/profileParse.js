@@ -18,6 +18,11 @@
 // session Instagram 302s it to the login page (which the HTTP layer reads as an
 // expired session) or 429s it.
 
+function firstUsableId(...values) {
+  const value = values.find((entry) => entry != null && String(entry).trim() !== "");
+  return value == null ? null : String(value);
+}
+
 // Walks a JSON object literal starting at the first `{` at/after `from`,
 // honouring strings and escapes, and returns the parsed value (or null).
 function parseJsonAt(text, from) {
@@ -68,7 +73,7 @@ function countOrEdge(v) {
 function normalizeWebProfileInfo(user) {
   if (!user || typeof user !== "object") return null;
   return normalize({
-    id: user.id || user.pk,
+    id: firstUsableId(user.id, user.pk),
     username: user.username,
     fullName: user.full_name,
     biography: user.biography,
@@ -104,7 +109,7 @@ function normalizeGraphqlUser(user) {
   const following = user.following_count ?? user.edge_follow;
   const media = user.media_count ?? user.edge_owner_to_timeline_media;
   return normalize({
-    id: user.id || user.pk || user.strong_id__,
+    id: firstUsableId(user.id, user.pk, user.strong_id__),
     username: user.username,
     fullName: user.full_name,
     biography: user.biography,
@@ -158,7 +163,7 @@ function normalizePolarisViewer(data) {
 function normalizeInboxUser(u) {
   if (!u || typeof u !== "object") return null;
   const username = u.username || null;
-  const id = u.id || u.pk || u.interop_messaging_user_fbid || null;
+  const id = firstUsableId(u.id, u.pk, u.interop_messaging_user_fbid);
   if (!username && !id) return null;
   return normalize({
     id,
@@ -199,7 +204,7 @@ function parseProfilePage(html, expectUsername) {
 // cannot supply stay null, so a caller can tell "unknown" from "false".
 function normalize(p) {
   if (!p) return null;
-  const id = p.id != null ? String(p.id) : null;
+  const id = p.id != null && String(p.id).trim() !== "" ? String(p.id) : null;
   return {
     id,
     pk: id,
