@@ -1471,6 +1471,32 @@ async function testNormalizedReplyRetainsMetadata() {
 }
 
 
+async function testPostFormOmitsNullishFields() {
+  const HttpClient = require("../src/http");
+  const http = new HttpClient({ sessionid: "unit-test-session" });
+  let submitted;
+  http.client.post = async (_url, body) => {
+    submitted = body;
+    return { data: { ok: true } };
+  };
+  await http.postForm("https://www.instagram.com/test/", {
+    keep: "value",
+    missing: undefined,
+    empty: null,
+    zero: 0,
+    disabled: false,
+    structured: { id: "123" }
+  });
+  const params = new URLSearchParams(submitted);
+  assert.equal(params.get("keep"), "value");
+  assert.equal(params.has("missing"), false);
+  assert.equal(params.has("empty"), false);
+  assert.equal(params.get("zero"), "0");
+  assert.equal(params.get("disabled"), "false");
+  assert.equal(params.get("structured"), JSON.stringify({ id: "123" }));
+}
+
+
 async function testRetryAfterSupportsHttpDate() {
   const { retryAfterMs } = require("../src/utils/errors");
   assert.equal(retryAfterMs({ response: { headers: { "retry-after": "120" } } }), 120000);
@@ -1614,6 +1640,7 @@ async function run() {
   await testMissingProfileCountsRemainUnknown();
   await testExplicitFailureEnvelopeWithoutMessageIsRejected();
   await testRetryAfterSupportsHttpDate();
+  await testPostFormOmitsNullishFields();
   await testNormalizedReplyRetainsMetadata();
   await testCaptionedMediaReplyIsEnrichedFromHistory();
   await testEventNormalizerSkipsMalformedAttachmentsAndMentionIds();
@@ -1625,7 +1652,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 55 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 56 regression tests passed\n");
 }
 
 run().catch((error) => {
