@@ -66,8 +66,9 @@ A throttled read (`getThreadInfo`, `getUserInfo`, `getUserInfoV2`) resolves
 `null`/`undefined` result up to `attempts` times — the first wait is
 `firstWaitMs`, doubling each attempt up to `maxWaitMs` — so a caller that
 destructures the result answers normally instead of crashing on a transient
-HTTP 429. A callback-style call is never retried, an exception on the final
-attempt is thrown, and `readRetry: false` turns the behaviour off.
+HTTP 429. A callback-style call is never retried, thrown errors surface
+immediately, and `readRetry: false` turns the behaviour off. Only
+`null`/`undefined` results are retried.
 
 Every outbound send is paced by the anti-suspension pacer so a personal account
 does not look scripted. That pacing is serialized across sends, and once the
