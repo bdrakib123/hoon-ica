@@ -70,14 +70,16 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 47 | Mention-cache hydration retry | **Fixed on branch:** failed initial inbox hydration no longer permanently marks the mention index as loaded; concurrent message events share one in-flight hydration request and later events retry after failure. | transient inbox failure/retry regression added; pending batch local run |
 | 48 | Shared realtime reconnect race | **Fixed on branch:** explicit realtime disconnect detaches the pending connect promise immediately, and an older cancelled attempt can no longer clear a newer reconnect promise in its `finally` handler. | cancel-and-reconnect race regression added; pending batch local run |
 | 49 | Malformed mention and attachment fields | **Fixed on branch:** mention maps omit users without usable IDs, participant lists must be arrays, and malformed/null attachment entries are filtered during event normalization. | malformed event payload regression added; pending batch local run |
+| 50 | Polling misses messages between cycles | **Fixed on branch:** when the inbox preview advances but the last-seen message is still in the bounded thread-detail page, the poller now emits every newer message from that page in chronological order rather than only the latest preview. | multiple-messages-between-polls regression added; pending batch local run |
+| 51 | Captioned media reply enrichment | **Fixed on branch:** a non-text reply with a caption but no attachment nodes is now considered incomplete and resolved from thread history, allowing image/video reply commands to receive the media attachment. | captioned-media reply regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 45 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds seventeen runtime regression checks, two wrapper regression checks, and TypeScript overload/event-shape examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 47 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds nineteen runtime regression checks, two wrapper regression checks, and TypeScript overload/event-shape examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#49 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#51 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -96,7 +98,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#49 batch.
+1. Run the full Node 20 validation suite once after the current #30–#51 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
