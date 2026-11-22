@@ -1,4 +1,5 @@
 /*!
+const createCallback = require("../../utils/createCallback");
  * insta-chat - Unofficial Instagram Chat API
  * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
  * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
@@ -9,7 +10,7 @@
 // Instagram only allows this within 15 minutes of sending.
 module.exports = function (client) {
   return async function editMessage(text, messageID, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     client.lastEditError = null;
     try {
       const tid = client._resolveThread(messageID);
@@ -24,6 +25,7 @@ module.exports = function (client) {
     } catch (error) {
       // Preserve FCA's non-throwing contract, but expose the reason for debugging.
       client.lastEditError = error;
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       return false;
     }
