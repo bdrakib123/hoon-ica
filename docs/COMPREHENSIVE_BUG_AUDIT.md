@@ -100,15 +100,16 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 78 | Recursive attachment flattening can overflow on deep/circular arrays | **Fixed on branch:** FCA attachment arrays are now flattened iteratively with cycle detection, preserving order without recursive call-stack growth. | nested/circular multi-attachment regression added; pending batch local run |
 | 79 | Captioned media Promise.all hides the other commit's outcome | **Fixed on branch:** caption and media commits now both settle before the send reports failure; the thrown error includes `partialSend.captionSent` / `partialSend.mediaSent` so callers can distinguish a partial send from a total failure. | delayed-media/failed-caption partial-outcome regression added; pending batch local run |
 | 80 | Multi-attachment send failure hides already-sent items | **Fixed on branch:** FCA multi-attachment sends now attach `partialSend` metadata (`sentCount`, `totalAttachments`, and known message IDs) when a later item fails, so callers can distinguish partial completion from a total failure. | second-item failure/partial-progress regression added; pending batch local run |
+| 81 | Media URL download has no timeout or response-size cap | **Fixed on branch:** photo/video/voice URL downloads now accept only HTTP(S), use a 30-second default timeout (configurable up to 120 seconds), and cap response size at 100 MiB by default (configurable up to 512 MiB). | protocol rejection, size cap, timeout and redirect-limit regression added; pending batch local run |
 | 73 | Poller misses backlog beyond the first 20 thread messages | **Fixed on branch:** when the last-seen message is not in the initial thread-detail page, the poller now follows up to four opaque Relay cursors (up to 100 messages total), emits all messages newer than the last-seen ID in order, and advances its seen cursor to the newest detail-page message. | 25-new-messages/two-page regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 68 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty runtime regression checks, seven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 69 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-one runtime regression checks, seven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#80 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#81 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -127,7 +128,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#80 batch.
+1. Run the full Node 20 validation suite once after the current #30–#81 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
