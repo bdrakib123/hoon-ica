@@ -189,7 +189,11 @@ class MediaMethods {
       );
     } catch (error) {
       const kind = error.igKind || classify(error).kind;
-      if (NO_CAPTION_FALLBACK_KINDS.has(kind)) throw error;
+      // Do not replay a caption after a timeout/reset: the GraphQL mutation may
+      // have committed even though its response was lost. The legacy fallback is
+      // only safe after an explicit GraphQL operation rejection.
+      const explicitGraphQLError = error.name === "InstagramGraphQLError" && Array.isArray(error.errors);
+      if (!explicitGraphQLError || NO_CAPTION_FALLBACK_KINDS.has(kind)) throw error;
       await this.http.postForm(EP.BROADCAST_TEXT, {
         action: "send_item",
         thread_ids: JSON.stringify([String(threadID)]),
