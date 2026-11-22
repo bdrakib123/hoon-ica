@@ -156,6 +156,30 @@ async function main() {
   });
 
 
+  await reproduce("RealtimeListener treats an unacknowledged iris publish as subscribed", async () => {
+    class FakeRealtimeClient extends EventEmitter {
+      constructor() {
+        super();
+        this.connected = true;
+      }
+      async connect() { this.connected = true; }
+      async irisSubscribe() {
+        // Simulate a successful socket write with no iris_sub_response.
+      }
+      disconnect() {}
+    }
+    const fake = new FakeRealtimeClient();
+    const listener = new RealtimeListener({}, {
+      getClient: async () => fake,
+      seqId: 9,
+      snapshotAtMs: 1700000000000
+    });
+    await listener.start(() => {});
+    assert.equal(listener._subscribed, true);
+    assert.equal(fake.listenerCount("iris_sub_response"), 0);
+    listener.stop();
+  });
+
   await reproduce("getThreadHistory ignores its timestamp argument", async () => {
     let received;
     const getThreadHistory = createGetThreadHistory({
