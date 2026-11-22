@@ -44,7 +44,7 @@ function attachmentsFromContent(content) {
     case "SlideMessageAnimatedMediaContent":
       return one("gif", firstUrl(content.animated_media, content.gifs));
     case "SlideMessageXMAContent":
-      return one("share", content.xma?.preview_image?.url || textOf({ content }) || null);
+      return one("share", content.xma?.preview_image?.url || content.xma?.preview_image?.uri || null);
     default: {
       const o = pick(content.attachments) || content.image || content.video || content.audio;
       const url = firstUrl(o);
