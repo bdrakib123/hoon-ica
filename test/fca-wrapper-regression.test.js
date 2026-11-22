@@ -483,6 +483,24 @@ async function testDirectThreadNameDoesNotUseViewer() {
   })("thread-2");
   assert.deepEqual(pkOnly.participantIDs, ["self-2", "other-2"]);
   assert.equal(pkOnly.threadName, "friend_two");
+
+  const whitespaceFallback = await createGetThreadInfo({
+    api: {
+      getThreadInfo: async () => ({
+        viewer: { id: " ", pk: "self-3", username: "my_account" },
+        users: [
+          { id: " ", pk: "friend-3", username: "friend_three" },
+          { id: "friend-3", username: "duplicate_friend" },
+          null,
+          {}
+        ]
+      })
+    },
+    _learnThreads() {}
+  })("thread-3");
+  assert.deepEqual(whitespaceFallback.participantIDs, ["friend-3", "self-3"]);
+  assert.equal(whitespaceFallback.threadName, "friend_three");
+  assert.equal(whitespaceFallback.isGroup, false);
 }
 
 async function testFriendshipStatusPreservesUnknownFields() {
