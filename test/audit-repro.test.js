@@ -132,7 +132,7 @@ async function main() {
     assert.equal(calls, 1);
   });
 
-  await reproduce("RealtimeListener omits onReady after a cursor subscription", async () => {
+  await reproduce("RealtimeListener invokes onReady after an acknowledged cursor subscription", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -142,6 +142,7 @@ async function main() {
       async connect() { this.connected = true; }
       async irisSubscribe(seqId, snapshotAtMs) {
         this.subscriptions.push({ seqId, snapshotAtMs });
+        this.emit("iris_sub_response", { status: "ok" });
       }
       disconnect() {}
     }
@@ -155,12 +156,12 @@ async function main() {
     });
     await listener.start(() => {});
     assert.deepEqual(fake.subscriptions, [{ seqId: 7, snapshotAtMs: 1700000000000 }]);
-    assert.equal(readyCalls, 0);
+    assert.equal(readyCalls, 1);
     listener.stop();
   });
 
 
-  await reproduce("realtime error and disconnect events can start duplicate polling fallbacks", async () => {
+  await reproduce("realtime error and disconnect events start only one polling fallback", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -185,11 +186,11 @@ async function main() {
     await new Promise((resolve) => setImmediate(resolve));
     fake.emit("error", new Error("socket receive failed"));
     fake.emit("disconnected", {});
-    assert.equal(fallbackStarts, 2);
+    assert.equal(fallbackStarts, 1);
     stop();
   });
 
-  await reproduce("RealtimeListener treats an unacknowledged iris publish as subscribed", async () => {
+  await reproduce("RealtimeListener rejects an unacknowledged iris subscription", async () => {
     class FakeRealtimeClient extends EventEmitter {
       constructor() {
         super();
@@ -205,10 +206,14 @@ async function main() {
     const listener = new RealtimeListener({}, {
       getClient: async () => fake,
       seqId: 9,
-      snapshotAtMs: 1700000000000
+      snapshotAtMs: 1700000000000,
+      subscriptionTimeoutMs: 20
     });
-    await listener.start(() => {});
-    assert.equal(listener._subscribed, true);
+    await assert.rejects(
+      listener.start(() => {}),
+      /acknowledgement timed out/
+    );
+    assert.equal(listener._subscribed, false);
     assert.equal(fake.listenerCount("iris_sub_response"), 0);
     listener.stop();
   });
@@ -227,7 +232,7 @@ async function main() {
     assert.deepEqual(received, ["thread-1", 20]);
   });
 
-  await reproduce("first DM is skipped if the initial inbox poll is empty", async () => {
+  await reproduce("first DM is delivered after an empty initial inbox poll", async () => {
     const inbox = new InboxMethods({}, () => "self-1");
     let polls = 0;
     inbox.getInbox = async () => {
@@ -265,7 +270,7 @@ async function main() {
       scheduled.shift().fn();
       await new Promise((resolve) => setImmediate(resolve));
       assert.equal(polls, 3);
-      assert.equal(received, 0);
+      assert.equal(received, 1);
       assert.equal(inbox._seen.get("thread-1"), "message-1");
     } finally {
       if (stop) stop();
