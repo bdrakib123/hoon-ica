@@ -5,6 +5,8 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.getUserID(idOrUsername, callback) -> the numeric user id (pk) as a string.
 //
 // Resolves an @handle to its id, or passes a numeric id through. Answers from
@@ -12,19 +14,20 @@
 // Returns null when the handle cannot be resolved.
 module.exports = function (client) {
   return async function getUserID(idOrUsername, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     const raw = String(idOrUsername == null ? "" : idOrUsername).trim().replace(/^@/, "");
     if (/^\d+$/.test(raw)) {
-      if (cb) cb(null, raw);
+      if (cb) await cb(null, raw);
       return raw;
     }
     try {
       const profile = await client.getProfile(raw).catch(() => null);
       const id = profile?.id || null;
-      if (cb) cb(null, id);
+      if (cb) await cb(null, id);
       return id;
     } catch (error) {
-      if (cb) cb(error, null);
+      if (cb?.called) throw error;
+      if (cb) await cb(error, null);
       return null;
     }
   };
