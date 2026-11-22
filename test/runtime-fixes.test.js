@@ -2255,6 +2255,11 @@ async function testEventNormalizerRejectsMissingCoreIdentifiers() {
   assert.equal(await normalizer.normalize({ type: "message", messageID: "mid-1", body: "x" }), null);
   assert.equal(await normalizer.normalize({ type: "message", threadID: "thread-1", body: "x" }), null);
   assert.equal(await normalizer.normalize({ type: "message", threadID: "", messageID: "mid-1" }), null);
+  assert.equal(await normalizer.normalize({ type: "message", threadID: "thread-1", messageID: "mid-2" }), null);
+  const safeBody = await normalizer.normalize({
+    type: "message", threadID: "thread-1", messageID: "mid-3", senderID: "user-1", body: { unexpected: true }
+  });
+  assert.equal(safeBody.body, "");
   assert.equal(await normalizer.normalize({ type: "event", threadID: "thread-1" }), null);
   assert.equal(await normalizer.normalize({ type: "event", messageID: "event-1" }), null);
 }
