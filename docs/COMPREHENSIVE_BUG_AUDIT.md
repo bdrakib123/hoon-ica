@@ -32,7 +32,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 9 | Realtime readiness | **Fixed:** `onReady` runs after a cursor subscription is acknowledged. | regression test added |
 | 10 | Realtime fallback | **Fixed:** polling fallback is guarded so error/disconnect/start rejection can start it only once. | regression test added |
 | 11 | Realtime acknowledgement | **Fixed:** listener waits for `iris_sub_response`; missing acknowledgement times out and is not marked subscribed. | regression test added |
-| 12 | Thread history | FCA wrapper accepts a timestamp argument but does not pass it to the native history method. | timestamp argument ignored |
+| 12 | Thread history | **Fixed on branch:** FCA timestamp is forwarded; older pages are fetched with the Relay message-list query using the opaque `end_cursor`, and results are filtered strictly before the timestamp boundary. | regression tests added; execution pending |
 | 13 | Inbox polling | **Fixed:** the first successful poll primes state even when empty, so the first later DM is emitted. | regression test added |
 | 14 | Link sending | **Fixed:** `sendLink()` takes a turn from the shared outbound send pacer. | regression test added |
 | 15 | Inbox pagination | **Unconfirmed candidate:** the native method currently ignores a cursor, but the documented public API only promises `getInbox()` → `{ threads }`; no cursor-pagination contract has been established. Keep as a compatibility question, not a confirmed defect. | cursor argument currently ignored; contract unverified |
@@ -41,9 +41,9 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 ## Runtime fix progress (2026-11-22)
 
-**15 of the 17 original diagnostic cases are addressed on this branch:** 14 source fixes (#1–#11, #13, #14, #16) and one compatibility mitigation (#17). #12 (history timestamp) is a confirmed FCA compatibility gap, but needs a verified Instagram older-message pagination implementation. #15 (inbox cursor) is not yet a confirmed defect: the argument is typed but no public cursor-pagination behavior is documented.
+**16 of the 17 original diagnostic cases are addressed on this branch:** 15 source fixes (#1–#14 except #15, plus #16) and one compatibility mitigation (#17). #12 now forwards the FCA timestamp and uses the documented Relay message-list cursor flow to fetch older pages; this is source- and mock-tested in newly authored regression cases, but still needs execution in Node and live-session validation before release. #15 (inbox cursor) remains an unconfirmed candidate because no public cursor-pagination behavior is documented.
 
-New test file: `test/runtime-fixes.test.js` (15 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
+New test file: `test/runtime-fixes.test.js` (17 focused regression checks). It has been added to the normal `npm test` command. The legacy `audit:repro` checks were updated so fixed cases assert the corrected behavior rather than the old defect signature.
 
 **Execution status:** these new tests and the full normal test suite have not yet been run in Node after the source edits. Do not treat source review or successful GitHub commits as test passes.
 
@@ -65,7 +65,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 1. Run `npm test`, `npm run test:types`, `npm run release:check`, and `npm run audit:repro` on Node 20.
 2. Fix any test failures before considering a release candidate.
-3. Investigate #12 and #15 against the documented FCA and Instagram Relay pagination contracts.
+3. Keep #15 as an API-contract question unless a documented caller requirement emerges; #12 implementation is now in place and needs local test execution.
 4. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 5. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
@@ -80,7 +80,7 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### P2 — fix after P1, with contract fixtures
 - **Fixed on branch:** #2 profile URL parsing, #3 thread-list preview, #5 DM/group classification, #6 XMA attachment URL, #7 viewer FBID mapping, #8 read retry policy, and #9 realtime readiness callback.
-- **Confirmed compatibility gap, implementation pending:** #12 history timestamp. FCA documentation defines the timestamp as the most recent message boundary for loading older history; this package's Relay path needs an opaque message cursor, so do not pass a Unix timestamp directly as a Relay cursor.
+- **Implemented on branch, execution pending:** #12 history timestamp. The wrapper forwards the FCA millisecond timestamp; the thread method walks `slide_messages.page_info.end_cursor` via `IGDMessageListOffMsysQuery` and returns messages strictly older than the boundary. The timestamp is never used as the Relay cursor.
 - **Unconfirmed candidate:** #15 inbox cursor. The current public docs describe `getInbox()` with no cursor argument; retain only as an API-contract question unless a supported caller contract is identified.
 
 ### Required before release
