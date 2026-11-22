@@ -18,6 +18,7 @@ const { install: installReadRetry } = require("../src/utils/readRetry");
 const { EventEmitter } = require("node:events");
 const { RealtimeListener } = require("../src/realtime/listener");
 const MediaMethods = require("../src/methods/media");
+const InboxMethods = require("../src/methods/inbox");
 
 const reproduced = [];
 
@@ -166,6 +167,21 @@ async function main() {
     });
     await getThreadHistory("thread-1", 5, 1700000000000);
     assert.deepEqual(received, ["thread-1", 20]);
+  });
+
+  await reproduce("getInbox ignores a supplied pagination cursor", async () => {
+    let variables;
+    const inbox = new InboxMethods({
+      session: { __hsi: "device-1" },
+      uuid: () => "device-1",
+      postGraphQL: async (_name, _docId, vars) => {
+        variables = vars;
+        return { data: { get_slide_mailbox_for_iris_subscription: { threads_by_folder: { edges: [] } } } };
+      }
+    }, () => "self-1");
+    await inbox.getInbox("next-page-cursor");
+    assert.equal(Object.prototype.hasOwnProperty.call(variables, "cursor"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(variables, "before"), false);
   });
 
   await reproduce("media caption falls back to legacy send after an auth error", async () => {
