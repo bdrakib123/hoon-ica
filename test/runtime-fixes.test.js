@@ -1635,14 +1635,14 @@ async function testRealtimeReceiveFailureClosesTransport() {
   assert.equal(disconnects, 1);
 
   let throwingDisconnects = 0;
-  let receives = 0;
+  let throwingReceives = 0;
   const throwingTransport = {
     reset() {},
     async connect() {},
     async send() {},
     async recvPacket() {
-      receives += 1;
-      return receives === 1
+      throwingReceives += 1;
+      return throwingReceives === 1
         ? Buffer.from([0x20, 0x02, 0x00, 0x00])
         : Buffer.from([0x20]);
     },
