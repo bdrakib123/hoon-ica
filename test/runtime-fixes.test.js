@@ -1724,6 +1724,14 @@ async function testRealtimeFingerprintRequiresTimestamp() {
     timestamp: 1700000000000
   });
   assert.equal([...withTimestamp].some(key => key.startsWith("fp:")), true);
+
+  const { MessageDeduper } = require("../src/realtime/reconcile");
+  const disabled = new MessageDeduper({ max: 0 });
+  assert.equal(disabled.accept(new Set(["one"])), true);
+  assert.equal(disabled.size, 0);
+  assert.equal(disabled.accept(new Set(["one"])), true);
+  assert.equal(disabled.size, 0);
+  assert.equal(new MessageDeduper({ max: -1 }).max, 5000);
 }
 
 
