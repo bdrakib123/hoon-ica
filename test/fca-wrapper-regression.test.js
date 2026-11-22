@@ -37,7 +37,7 @@ async function testThreadListPaginatesAndHonorsTimestamp() {
     }
   };
   const getThreadList = createGetThreadList(client);
-  const list = await getThreadList(2, 2000, ["INBOX"]);
+  const list = await getThreadList(2, 2000, null);
   assert.deepEqual(calls, [null, "cursor-1"]);
   assert.deepEqual(list.map((item) => item.threadID), ["old-1", "old-2"]);
   assert.equal(list[0].snippet, "old");
