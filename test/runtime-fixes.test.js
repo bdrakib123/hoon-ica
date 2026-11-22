@@ -269,8 +269,22 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
       /downgrade HTTPS/
     );
     assert.doesNotThrow(() => request.options.beforeRedirect({ protocol: "https:" }));
+    await InstaClient.prototype._attachmentToBuffer.call(context, "http://cdn.example/photo.jpg");
+    const fcaRedirectGuard = request.options.beforeRedirect;
+    fcaRedirectGuard({ protocol: "https:" });
+    assert.throws(
+      () => fcaRedirectGuard({ protocol: "http:" }),
+      /downgrade HTTPS/
+    );
     await media._downloadFromUrl("https://cdn.example/photo.jpg", null);
     assert.equal(received.buffer.toString(), "image");
+    await media._downloadFromUrl("http://cdn.example/photo.jpg", null);
+    const redirectGuard = request.options.beforeRedirect;
+    redirectGuard({ protocol: "https:" });
+    assert.throws(
+      () => redirectGuard({ protocol: "http:" }),
+      /downgrade HTTPS/
+    );
     assert.equal(received.options.filename, "photo.jpg");
 
     await assert.rejects(
