@@ -272,27 +272,29 @@ async function testThriftInt64BigIntMode() {
 async function testThreadHistoryTimestampPagination() {
   const ThreadMethods = require("../src/methods/thread");
   const calls = [];
+  // Use realistic Unix-millisecond timestamps. Values below 1e12 are
+  // intentionally normalized as Unix seconds by getHistory().
   const firstThread = {
     id: "long-thread-id",
     thread_fbid: "thread-fbid-1",
     users: [],
     slide_messages: {
       edges: [
-        { node: { id: "m3", timestamp_ms: 3000, text_body: "newest" } },
-        { node: { id: "m2", timestamp_ms: 2000, text_body: "boundary" } }
+        { node: { id: "m3", timestamp_ms: 1700000003000, text_body: "newest" } },
+        { node: { id: "m2", timestamp_ms: 1700000002000, text_body: "boundary" } }
       ],
       page_info: { has_next_page: true, end_cursor: "cursor-1" }
     }
   };
   const olderConnection = {
     edges: [
-      { node: { id: "m2", timestamp_ms: 2000, text_body: "boundary duplicate" } },
-      { node: { id: "m1", timestamp_ms: 1500, text_body: "older one" } }
+      { node: { id: "m2", timestamp_ms: 1700000002000, text_body: "boundary duplicate" } },
+      { node: { id: "m1", timestamp_ms: 1700000001500, text_body: "older one" } }
     ],
     page_info: { has_next_page: true, end_cursor: "cursor-2" }
   };
   const oldestConnection = {
-    edges: [{ node: { id: "m0", timestamp_ms: 1000, text_body: "older two" } }],
+    edges: [{ node: { id: "m0", timestamp_ms: 1700000001000, text_body: "older two" } }],
     page_info: { has_next_page: false, end_cursor: null }
   };
   const http = {
@@ -309,7 +311,7 @@ async function testThreadHistoryTimestampPagination() {
     }
   };
   const thread = new ThreadMethods(http);
-  const items = await thread.getHistory("thread-key-1", 2, 2000);
+  const items = await thread.getHistory("thread-key-1", 2, 1700000002000);
   assert.deepEqual(items.map(item => item.messageID), ["m1", "m0"]);
   assert.equal(calls.length, 3);
   assert.equal(calls[1].variables.after, "cursor-1");
