@@ -95,29 +95,32 @@ class ThreadMethods {
 
     const fbidToIgid = threadFbidMap(thread);
     const firstConnection = thread.slide_messages || {};
-    if (beforeTimestamp == null || beforeTimestamp === "") {
-      return this._mapHistoryEdges(firstConnection.edges, fbidToIgid);
+    let boundary = null;
+    if (beforeTimestamp != null && beforeTimestamp !== "") {
+      boundary = Number(beforeTimestamp);
+      if (!Number.isFinite(boundary) || boundary <= 0) boundary = null;
+      // FCA callers normally pass milliseconds; accept Unix seconds as well.
+      else if (boundary < 1e12) boundary *= 1000;
     }
-
-    let boundary = Number(beforeTimestamp);
-    if (!Number.isFinite(boundary) || boundary <= 0) {
-      return this._mapHistoryEdges(firstConnection.edges, fbidToIgid);
-    }
-    // FCA callers normally pass milliseconds; accept Unix seconds as well.
-    if (boundary < 1e12) boundary *= 1000;
 
     const wanted = Math.max(1, Number(limit) || 20);
     const threadFBID = thread.thread_fbid || thread.id || String(threadID);
     const results = [];
+    const seenIDs = new Set();
     const seenCursors = new Set();
     let connection = firstConnection;
 
+    // Always follow Relay pages until the requested amount is collected (or
+    // the server says there are no more). Some web responses cap the first
+    // thread-detail page below the requested count, even when first is larger.
     while (true) {
       const page = this._mapHistoryEdges(connection.edges, fbidToIgid);
       for (const item of page) {
-        if (item.timestamp != null && item.timestamp < boundary) {
+        if (seenIDs.has(String(item.messageID))) continue;
+        seenIDs.add(String(item.messageID));
+        if (boundary == null || (item.timestamp != null && item.timestamp < boundary)) {
           results.push(item);
-          if (results.length >= wanted) return results;
+          if (results.length >= wanted) return results.slice(0, wanted);
         }
       }
 
@@ -125,7 +128,11 @@ class ThreadMethods {
       const cursor = pageInfo.end_cursor;
       if (!pageInfo.has_next_page || !cursor || seenCursors.has(cursor)) break;
       seenCursors.add(cursor);
-      connection = await this.fetchOlderMessages(threadFBID, cursor, wanted);
+      try {
+        connection = await this.fetchOlderMessages(threadFBID, cursor, wanted - results.length);
+      } catch (_) {
+        break;
+      }
       if (!connection || !Array.isArray(connection.edges) || connection.edges.length === 0) break;
     }
 
