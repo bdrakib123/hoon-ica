@@ -370,7 +370,7 @@ if (first.nextCursor) {
 }
 ```
 
-`nextCursor` is an opaque Relay cursor; pass it back unchanged. `hasNextPage` indicates whether Instagram reports another page. The result remains backward-compatible with callers that only read `{ threads }`.
+`nextCursor` is an opaque Relay cursor; pass it back unchanged. `hasNextPage` indicates whether Instagram reports another page. Malformed Relay edges without a usable `id` or `thread_id` are ignored. The result remains backward-compatible with callers that only read `{ threads }`.
 
 
 ### FCA thread-list pagination
