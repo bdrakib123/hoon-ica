@@ -763,6 +763,9 @@ class InboxMethods {
           authFailures += 1;
           if (authFailures >= AUTH_CONFIRMATIONS) {
             const check = await this.http.checkSession({ attempts: 1 });
+            // stopListening() may run while the confirmation probe is in flight.
+            // Do not report a late auth failure to a listener that was stopped.
+            if (stopped) return;
             if (check.state === "rate_limited") {
               authFailures = 0;
               schedule(Math.max(check.retryAfterMs || 0, AUTH_RECHECK_MS));
