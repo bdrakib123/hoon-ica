@@ -17,6 +17,7 @@
 // first entry so the text renders above the images; the callback reports the last
 // message.
 const { extractMessageId } = require("../../utils/format");
+const { setBounded } = require("../../utils/boundedMap");
 
 // Normalises `attachment` / `attachments` into a flat, non-null list. A nested
 // array is flattened one level deep; null/undefined entries are dropped.
@@ -68,14 +69,14 @@ module.exports = function (client) {
             i === 0 ? body : ""
           );
           const sentId = extractMessageId(result);
-          if (sentId) client._msgThread.set(sentId, String(threadID));
+          if (sentId) setBounded(client._msgThread, sentId, String(threadID), 5000);
         }
       } else {
         result = await client.api.sendMessage(client.convert(body), String(threadID), replyTo);
       }
 
       const messageID = extractMessageId(result);
-      if (messageID) client._msgThread.set(messageID, String(threadID));
+      if (messageID) setBounded(client._msgThread, messageID, String(threadID), 5000);
       const info = { messageID, threadID: String(threadID), timestamp: Date.now() };
       if (cb) cb(null, info);
       return info;
