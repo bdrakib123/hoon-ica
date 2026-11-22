@@ -122,6 +122,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 99 | FCA getThreadList result is block-scoped inside try | **Fixed on branch:** the accumulated list now lives in the adapter's outer scope, so successful Promise and callback paths can return it after the validation/request catch. | existing pagination and callback-overload regressions exercise both successful return paths; pending batch local run |
 | 100 | Partial-send error handler cannot access send tracking state | **Fixed on branch:** follow-up inspection found `sentMessageIDs` and `attachmentCount` were still declared inside `try`, making them inaccessible to `catch`; both now live in the enclosing function scope so the original send error and partial-send metadata survive. | existing multi-attachment second-item failure regression; pending batch local run |
 | 101 | FCA attachment streams can stall indefinitely | **Fixed on branch:** readable-stream attachments now share the configured download timeout with HTTP downloads; a stalled stream is destroyed and rejects with a clear timeout error while the existing byte cap remains enforced. | PassThrough stalled-stream timeout regression added; pending batch local run |
+| 102 | Session cookie loader continues after permission-hardening failure | **Fixed on branch:** `secureFile()` now reports chmod failure, and cookie loading refuses to read an existing primary or backup file unless permission hardening succeeds. Session saves also abort when existing session files cannot be secured. | chmod-failure regression asserts neither primary nor backup is read; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -129,7 +130,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 77 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-nine runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#101 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 78 runtime regression tests and 15 FCA wrapper regression tests; counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#102 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 79 runtime regression tests and 15 FCA wrapper regression tests; counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -148,7 +149,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#101 batch.
+1. Run the full Node 20 validation suite once after the current #30–#102 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
