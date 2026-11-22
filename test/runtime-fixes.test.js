@@ -263,6 +263,13 @@ async function testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds() {
     assert.equal(request.options.maxBodyLength, 5);
     assert.equal(request.options.timeout, 4000);
     assert.equal(request.options.maxRedirects, 3);
+    assert.equal(typeof request.options.beforeRedirect, "function");
+    assert.throws(
+      () => request.options.beforeRedirect({ protocol: "http:" }),
+      /downgrade HTTPS/
+    );
+    assert.doesNotThrow(() => request.options.beforeRedirect({ protocol: "https:" }));
+    await media._downloadFromUrl("https://cdn.example/photo.jpg", null);
     assert.equal(received.buffer.toString(), "image");
     assert.equal(received.options.filename, "photo.jpg");
 
