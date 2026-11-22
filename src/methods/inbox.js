@@ -808,7 +808,8 @@ class InboxMethods {
           backoff = Math.min(Math.max(backoff * 2, wait), BACKOFF_MAX_MS);
           try { this._emitter && this._emitter.emit && this._emitter.emit("rateLimit", { wait }); } catch (_) {}
           callback(error, null);
-          schedule(jittered(wait));
+          // Jitter may extend Retry-After, but must never shorten Instagram's minimum wait.
+          schedule(Math.max(wait, jittered(wait)));
           return;
         }
 
