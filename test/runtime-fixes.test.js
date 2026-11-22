@@ -436,6 +436,15 @@ async function testMediaCommitRetryReusesOfflineThreadingId() {
 }
 
 
+async function testMqttDecompressionOutputIsBounded() {
+  const zlib = require("node:zlib");
+  const { tryDecompressPayload } = require("../src/realtime/mqttot");
+  const small = zlib.deflateSync(Buffer.from('{"ok":true}'));
+  assert.equal(tryDecompressPayload(small).toString("utf8"), '{"ok":true}');
+  const oversized = zlib.deflateSync(Buffer.alloc(33 * 1024 * 1024, 0x41));
+  assert.strictEqual(tryDecompressPayload(oversized), oversized);
+}
+
 async function testMqttTransportRejectsOversizedAndMalformedFrames() {
   const { EventEmitter } = require("node:events");
   const { SocketMQTToTTransport } = require("../src/realtime/mqttot");
@@ -560,7 +569,8 @@ async function run() {
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
-  process.stdout.write("runtime-fixes.test.js: 24 regression tests passed\n");
+  await testMqttDecompressionOutputIsBounded();
+  process.stdout.write("runtime-fixes.test.js: 25 regression tests passed\n");
 }
 
 run().catch((error) => {
