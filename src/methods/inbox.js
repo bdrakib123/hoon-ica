@@ -8,6 +8,7 @@
 const { DOC_ID } = require("../constants");
 const { textOf, attachmentsFromContent, normalizeRepliedMessage } = require("../messageContent");
 const { fetchThreadDetail, threadFbidMap } = require("../threadDetail");
+const ThreadMethods = require("./thread");
 const { classify, toIgError, retryAfterMs } = require("../utils/errors");
 const { globalAntiSuspension } = require("../utils/antiSuspension");
 const { setBounded } = require("../utils/boundedMap");
@@ -256,7 +257,7 @@ class InboxMethods {
       // present in the page.
       let replyById = null;
       if (fresh.length) {
-        replyById = await this.fetchReplies(threadID, fbidToIgid).catch(() => null);
+        replyById = await this.fetchReplies(threadID, fbidToIgid, lastSeenID).catch(() => null);
         const detailedNodes = replyById && replyById._messages;
         if (lastSeenID && Array.isArray(detailedNodes)) {
           const seenAt = detailedNodes.findIndex((node) => String(node.id) === String(lastSeenID));
@@ -315,12 +316,42 @@ class InboxMethods {
   // The inbox node lacks reply linkage and offline_threading_id, so both are
   // taken from here; offline_threading_id is the client_context a quote-reply
   // to that item needs.
-  async fetchReplies(threadID, fbidToIgid = {}) {
+  async fetchReplies(threadID, fbidToIgid = {}, lastSeenID = null) {
     const thread = await fetchThreadDetail(this.http, threadID, 20);
     const out = {};
-    const messages = (Array.isArray(thread?.slide_messages?.edges) ? thread.slide_messages.edges : [])
-      .map((edge) => normalizeMessageId(edge?.node || edge))
-      .filter(Boolean);
+    let connection = thread?.slide_messages || {};
+    const messages = [];
+    const seenIDs = new Set();
+    const appendEdges = (edges) => {
+      for (const edge of Array.isArray(edges) ? edges : []) {
+        const message = normalizeMessageId(edge?.node || edge);
+        if (!message || seenIDs.has(String(message.id))) continue;
+        seenIDs.add(String(message.id));
+        messages.push(message);
+      }
+    };
+    appendEdges(connection.edges);
+
+    // If the last-seen cursor fell outside the initial 20-message detail page,
+    // walk a small bounded number of older Relay pages. This prevents a busy
+    // group from losing messages when more than 20 arrive between poll cycles.
+    const seenCursors = new Set();
+    const threadFBID = thread?.thread_fbid || thread?.id || String(threadID);
+    const threadMethods = new ThreadMethods(this.http);
+    for (let pageCount = 0; lastSeenID != null && !seenIDs.has(String(lastSeenID)) && pageCount < 4; pageCount += 1) {
+      const pageInfo = connection.page_info || {};
+      const cursor = pageInfo.end_cursor;
+      if (!pageInfo.has_next_page || !cursor || seenCursors.has(cursor)) break;
+      seenCursors.add(cursor);
+      try {
+        connection = await threadMethods.fetchOlderMessages(threadFBID, cursor, 20);
+      } catch (_) {
+        break;
+      }
+      if (!connection || !Array.isArray(connection.edges) || connection.edges.length === 0) break;
+      appendEdges(connection.edges);
+    }
+
     Object.defineProperty(out, "_messages", { value: messages, enumerable: false });
     for (const n of messages) {
       out[String(n.id)] = {
