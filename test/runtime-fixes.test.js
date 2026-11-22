@@ -485,6 +485,40 @@ async function testRealtimeReceiveFailureClosesTransport() {
   await assert.rejects(throwingClient._loop, /consumer error handler failed/);
   assert.equal(throwingClient._pingTimer, null);
   assert.equal(throwingDisconnects, 1);
+
+  const { writePublishPacket } = require("../src/realtime/mqttot");
+  let packetDisconnects = 0;
+  let packetReceives = 0;
+  const payload = Buffer.from(JSON.stringify([{
+    data: [{
+      path: "/direct_v2/threads/thread-1/items/item-1",
+      op: "add",
+      value: JSON.stringify({ item_type: 1, user_id: "friend-1", text: "hello" })
+    }]
+  }]));
+  const packetTransport = {
+    reset() {},
+    async connect() {},
+    async send() {},
+    async recvPacket() {
+      packetReceives += 1;
+      return packetReceives === 1
+        ? Buffer.from([0x20, 0x02, 0x00, 0x00])
+        : writePublishPacket("146", payload, 0);
+    },
+    disconnect() { packetDisconnects += 1; }
+  };
+  const packetClient = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: 123456789
+  }, { transport: packetTransport, keepAliveMs: 60000 });
+  packetClient.on("message", () => { throw new Error("message handler failed"); });
+  packetClient.on("error", () => { throw new Error("error listener failed"); });
+  await packetClient.connect();
+  await assert.rejects(packetClient._loop, /error listener failed/);
+  assert.equal(packetClient._pingTimer, null);
+  assert.equal(packetDisconnects, 1);
 }
 
 
