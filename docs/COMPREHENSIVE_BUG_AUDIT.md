@@ -42,14 +42,15 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 19 | Malformed thread-list edges | **Fixed on branch:** entries without a usable `id` / `thread_id` are skipped instead of becoming the shared string `undefined` and suppressing valid threads. | regression test passed in the user-run suite (6 wrapper tests) |
 | 20 | Long-lived session cache growth | **Mitigated on branch:** inbox seen/member/thread-ID maps and FCA user/avatar/message/thread-member lookup maps now use bounded FIFO insertion with explicit limits. Eviction can require a later lookup to be learned again; it does not promise a fixed process-memory ceiling. | bounded-cache helper and 2,001-thread inbox-eviction regression added; fresh local run pending |
 | 21 | Malformed native inbox Relay edges | **Fixed on branch:** `getInbox()` now filters null/malformed Relay nodes and entries without a usable `id` / `thread_id` before updating thread-member and ID caches. | initial-page and cursor-page regression test added; fresh local run pending |
+| 22 | Media upload retry classification | **Fixed on branch:** an `AuthorizationFailedError` with a permanent 401/403 response is no longer retried just because of its message text. Retries remain limited to the observed 412 response or explicitly transient temporary failures. | 401 no-retry regression test added; fresh local run pending |
 
 ## Runtime fix progress (2026-11-22)
 
-**All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user confirmed the full suite through #19, including the malformed-edge guard. The new #20 bounded-cache test and #21 malformed-inbox-edge test still need a fresh local run. None of these protocol changes has been validated against a live Instagram session.
+**All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user confirmed the full suite through #19, including the malformed-edge guard. The new #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry tests still need a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-New test file: `test/runtime-fixes.test.js` (18 original focused regression checks; a 20th malformed-inbox-edge check and a 19th bounded-cache helper check have now been added and await execution). It is part of the normal `npm test` command. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed 18 runtime checks and the full suite through #19 locally. The wrapper regression suite reported 6 passing tests.
+New test file: `test/runtime-fixes.test.js` (18 original focused regression checks; a 21st media-auth retry check, a 20th malformed-inbox-edge check, and a 19th bounded-cache helper check have now been added and await execution). It is part of the normal `npm test` command. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user confirmed 18 runtime checks and the full suite through #19 locally. The wrapper regression suite reported 6 passing tests.
 
-**Execution status:** the user-confirmed test run covers #15, #18, and #19. The additional #20 bounded-cache and #21 malformed-inbox-edge regression tests are new and require a fresh local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** the user-confirmed test run covers #15, #18, and #19. The additional #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests are new and require a fresh local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -68,7 +69,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Re-run the full Node 20 validation suite after the #20 bounded-cache and #21 malformed-inbox-edge changes.
+1. Re-run the full Node 20 validation suite after the #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry changes.
 2. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 3. Audit all INT64 reader consumers before choosing a compatibility-safe representation.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
