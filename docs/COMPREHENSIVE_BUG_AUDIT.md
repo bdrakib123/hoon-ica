@@ -172,7 +172,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 91 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current audit batch has expanded the runtime suite to 91 checks and the FCA wrapper suite to 18 checks, with the latest source-review assertions pending the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#144 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#145 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -193,7 +193,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#144 batch.
+1. Run the full Node 20 validation suite once after the current #30–#145 batch.
 2. Fix any environment-specific test failures revealed by that combined run, then repeat the full suite.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
