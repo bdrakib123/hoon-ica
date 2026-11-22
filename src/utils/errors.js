@@ -103,6 +103,17 @@ function toIgError(err, info) {
   return error;
 }
 
+function hasGraphQLPartialData(err) {
+  const data = err && (
+    err.graphQLData !== undefined
+      ? err.graphQLData
+      : err.response && err.response.data && err.response.data.data
+  );
+  if (!data || typeof data !== "object") return false;
+  const values = Array.isArray(data) ? data : Object.values(data);
+  return values.some((value) => value !== null && value !== undefined);
+}
+
 function retryAfterMs(err) {
   const headers = err && err.response && err.response.headers;
   const raw = headers && (headers["retry-after"] || headers["Retry-After"]);
