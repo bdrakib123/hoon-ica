@@ -22,9 +22,10 @@ module.exports = function (client) {
         const cachedPic = client._picCache.get(key) ||
           client._picCache.get(client._picCache.get(`name:${key}`)) || null;
         const cachedName = client._picCache.get(`name:${key}`) || null;
+        const fullName = u?.full_name || u?.username || cachedName || String(id);
         out[key] = {
-          name: u?.full_name || u?.username || cachedName || String(id),
-          firstName: u?.full_name || u?.username || cachedName || "",
+          name: fullName,
+          firstName: fullName.trim().split(/\\s+/)[0] || "",
           username: u?.username || cachedName || null,
           profileUrl: u?.profile_pic_url || cachedPic || null,
           thumbSrc: u?.profile_pic_url || cachedPic || null,
