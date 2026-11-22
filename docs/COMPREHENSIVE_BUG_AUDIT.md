@@ -185,10 +185,13 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 - Inbox thread maps and FCA identity/message lookup caches were unbounded by entry count. #20 now applies FIFO limits (5,000 entries for seen-message/user/avatar/message-thread maps; 2,000 for thread-member/internal-thread-ID maps). Old entries may remain stale until eviction, and eviction may cause a later lookup to require re-learning; stress-test this behavior before release.
 
+- Voice-note semantics remain unverified: `sendVoiceBuffer()` currently uses the generic `messenger_audio` upload/commit path; confirm whether current Instagram requires additional voice-note metadata before treating this as a supported voice bubble.
+- Realtime cursor/history pagination and media upload retry behavior have regression coverage but still need live, account-safe validation before being considered protocol-confirmed.
+
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#124 batch.
-2. Continue source review for callback, event-normalization, and pagination edge cases.
+1. Run the full Node 20 validation suite once after the current #30–#142 batch.
+2. Fix any environment-specific test failures revealed by that combined run, then repeat the full suite.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
