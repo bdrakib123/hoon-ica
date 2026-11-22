@@ -245,9 +245,40 @@ class MediaMethods {
     return this.sendPhotoBuffer(threadID, fs.readFileSync(filePath), options);
   }
 
+  async _downloadFromUrl(url, options = {}) {
+    let parsed;
+    try {
+      parsed = new URL(String(url));
+    } catch (_) {
+      throw new TypeError("Media URL must be a valid HTTP or HTTPS URL");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new TypeError("Media URL protocol must be HTTP or HTTPS");
+    }
+    const requestedLimit = Number(options.maxDownloadBytes);
+    const maxDownloadBytes = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 512 * 1024 * 1024)
+      : 100 * 1024 * 1024;
+    const requestedTimeout = Number(options.downloadTimeoutMs);
+    const timeout = Number.isSafeInteger(requestedTimeout) && requestedTimeout > 0
+      ? Math.min(requestedTimeout, 120000)
+      : 30000;
+    const res = await axios.get(parsed.href, {
+      responseType: "arraybuffer",
+      timeout,
+      maxContentLength: maxDownloadBytes,
+      maxBodyLength: maxDownloadBytes,
+      maxRedirects: 3
+    });
+    const buffer = Buffer.from(res.data);
+    if (buffer.length > maxDownloadBytes) {
+      throw new RangeError(`Downloaded media exceeds the ${maxDownloadBytes}-byte limit`);
+    }
+    return buffer;
+  }
+
   async sendPhotoFromUrl(threadID, url, options = {}) {
-    const res = await axios.get(url, { responseType: "arraybuffer" });
-    return this.sendPhotoBuffer(threadID, Buffer.from(res.data), options);
+    return this.sendPhotoBuffer(threadID, await this._downloadFromUrl(url, options), options);
   }
 
   async sendVideoBuffer(threadID, buffer, options = {}) {
@@ -264,8 +295,7 @@ class MediaMethods {
   }
 
   async sendVideoFromUrl(threadID, url, options = {}) {
-    const res = await axios.get(url, { responseType: "arraybuffer" });
-    return this.sendVideoBuffer(threadID, Buffer.from(res.data), options);
+    return this.sendVideoBuffer(threadID, await this._downloadFromUrl(url, options), options);
   }
 
   async sendVoiceBuffer(threadID, buffer, options = {}) {
@@ -283,8 +313,7 @@ class MediaMethods {
   }
 
   async sendVoiceFromUrl(threadID, url, options = {}) {
-    const res = await axios.get(url, { responseType: "arraybuffer" });
-    return this.sendVoiceBuffer(threadID, Buffer.from(res.data), options);
+    return this.sendVoiceBuffer(threadID, await this._downloadFromUrl(url, options), options);
   }
 }
 
