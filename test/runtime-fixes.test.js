@@ -1090,6 +1090,55 @@ async function testPollingStopSuppressesInflightResults() {
 }
 
 
+async function testPollingStopSuppressesLateAuthConfirmation() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  let inboxCalls = 0;
+  let resolveCheck;
+  let checkStarted = false;
+  let callbackCalls = 0;
+  inbox.getInbox = async () => {
+    inboxCalls += 1;
+    const error = new Error("login_required");
+    error.igKind = "auth";
+    throw error;
+  };
+  inbox.http.checkSession = () => {
+    checkStarted = true;
+    return new Promise(resolve => { resolveCheck = resolve; });
+  };
+
+  const timers = [];
+  const originalSetTimeout = global.setTimeout;
+  const originalClearTimeout = global.clearTimeout;
+  let stop;
+  try {
+    global.setTimeout = (fn) => {
+      const timer = { fn, unref() {} };
+      timers.push(timer);
+      return timer;
+    };
+    global.clearTimeout = () => {};
+    stop = inbox._startPolling(() => { callbackCalls += 1; }, 2000);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(timers.length, 1);
+
+    timers.shift().fn();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(inboxCalls, 2);
+    assert.equal(checkStarted, true);
+
+    stop();
+    resolveCheck({ state: "auth", error: new Error("session invalid") });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(callbackCalls, 0);
+    assert.equal(timers.length, 0);
+  } finally {
+    if (stop) stop();
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+}
+
 async function testFirstMessageAfterEmptyInboxPoll() {
   const InboxMethods = require("../src/methods/inbox");
   const inbox = new InboxMethods({}, () => "self-1");
@@ -2568,6 +2617,7 @@ async function run() {
   await testReadRetryDoesNotRetryThrownErrors();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
+  await testPollingStopSuppressesLateAuthConfirmation();
   await testPollingPaginatesUntilLastSeenMessageFound();
   await testNewlyDiscoveredThreadDoesNotReplayHistory();
   await testInboxParticipantSnapshotsIncludeViewer();
@@ -2628,7 +2678,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 83 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 84 regression tests passed\n");
 }
 
 run().catch((error) => {
