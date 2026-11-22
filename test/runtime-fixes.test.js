@@ -5,6 +5,7 @@ const { normalizeCookie, toHeader } = require("../src/cookies");
 const { SendPacer, globalAntiSuspension } = require("../src/utils/antiSuspension");
 const MessageMethods = require("../src/methods/message");
 const MediaMethods = require("../src/methods/media");
+const InboxMethods = require("../src/methods/inbox");
 const { install } = require("../src/utils/readRetry");
 
 async function testCookieInputs() {
@@ -269,6 +270,41 @@ async function testThriftInt64BigIntMode() {
 }
 
 
+async function testInboxCursorPagination() {
+  const calls = [];
+  const inbox = new InboxMethods({
+    session: { __hsi: "device-1" },
+    uuid: () => "device-1",
+    postGraphQL: async (name, docId, variables) => {
+      calls.push({ name, docId, variables });
+      if (name === "PolarisDirectInboxQuery") {
+        return { data: { get_slide_mailbox_for_iris_subscription: {
+          id: "mailbox-1",
+          threads_by_folder: {
+            edges: [{ node: { as_ig_direct_thread: { id: "thread-1", thread_id: "internal-1", users: [] } } }],
+            page_info: { has_next_page: true, end_cursor: "cursor-1" }
+          }
+        } } };
+      }
+      return { data: { fetch__SlideMailbox: { threads_by_folder: {
+        edges: [{ node: { as_ig_direct_thread: { id: "thread-2", thread_id: "internal-2", users: [] } } }],
+        page_info: { has_next_page: false, end_cursor: null }
+      } } } };
+    }
+  }, () => "self-1");
+  const first = await inbox.getInbox();
+  assert.deepEqual(first.threads.map(t => t.id), ["thread-1"]);
+  assert.equal(first.nextCursor, "cursor-1");
+  assert.equal(first.hasNextPage, true);
+  const second = await inbox.getInbox(first.nextCursor);
+  assert.deepEqual(second.threads.map(t => t.id), ["thread-2"]);
+  assert.equal(second.nextCursor, null);
+  assert.equal(second.hasNextPage, false);
+  assert.equal(calls[1].name, "IGDThreadListOffMsysPaginationQuery");
+  assert.equal(calls[1].variables.newer_than_timestamp_ms, null);
+  assert.equal(calls[1].variables.__relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider, true);
+}
+
 async function testThreadHistoryTimestampPagination() {
   const ThreadMethods = require("../src/methods/thread");
   const calls = [];
@@ -353,7 +389,8 @@ async function run() {
   await testThriftInt64BigIntMode();
   await testThreadHistoryTimestampPagination();
   await testFcaHistoryTimestampIsForwarded();
-  process.stdout.write("runtime-fixes.test.js: 17 regression tests passed\n");
+  await testInboxCursorPagination();
+  process.stdout.write("runtime-fixes.test.js: 18 regression tests passed\n");
 }
 
 run().catch((error) => {
