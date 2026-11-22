@@ -95,6 +95,37 @@ async function testThreadListSkipsMalformedEntries() {
   assert.equal(list[1].snippet, "valid");
 }
 
+async function testThreadListGroupFallbackIncludesSeparateViewer() {
+  const getThreadList = createGetThreadList({
+    api: {
+      getInbox: async () => ({
+        threads: [
+          {
+            id: "group-thread",
+            users: [{ id: "member-1" }, { id: "member-2" }],
+            viewer: { pk: "self-1" }
+          },
+          {
+            id: "direct-thread",
+            users: [{ id: "friend-1" }],
+            viewer: { pk: "self-1" }
+          },
+          {
+            id: "viewer-already-listed",
+            users: [{ id: "self-1" }, { id: "friend-2" }],
+            viewer: { id: "self-1" }
+          }
+        ],
+        nextCursor: null
+      })
+    }
+  });
+  const list = await getThreadList(10);
+  assert.equal(list.find(item => item.threadID === "group-thread").isGroup, true);
+  assert.equal(list.find(item => item.threadID === "direct-thread").isGroup, false);
+  assert.equal(list.find(item => item.threadID === "viewer-already-listed").isGroup, false);
+}
+
 async function testThreadHistoryPreservesAmountAndCallbackOverloads() {
   const calls = [];
   const client = {
@@ -472,6 +503,7 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testThreadListPaginatesAndHonorsTimestamp();
   await testThreadListUnreadFilterAndCallbackOverload();
   await testThreadListSkipsMalformedEntries();
+  await testThreadListGroupFallbackIncludesSeparateViewer();
   await testThreadHistoryPreservesAmountAndCallbackOverloads();
   await testSuccessCallbackThrowsOnlyOnce();
   await testFcaCallbacksAreInvokedOnlyOnceWhenTheyThrow();
@@ -484,7 +516,7 @@ async function testUserInfoFirstNameIsFirstToken() {
   await testDirectThreadNameDoesNotUseViewer();
   await testUnknownFriendshipReturnsNull();
   await testUserInfoFirstNameIsFirstToken();
-  process.stdout.write("fca-wrapper-regression.test.js: 15 tests passed\n");
+  process.stdout.write("fca-wrapper-regression.test.js: 16 tests passed\n");
 })().catch((error) => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
