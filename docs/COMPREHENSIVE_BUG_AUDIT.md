@@ -104,15 +104,16 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 82 | FCA participantIDs omit the logged-in viewer | **Fixed on branch:** inbox member caches and system-event snapshots now merge the separate `viewer` record into participants, deduplicating the id and preserving its name. | viewer-excluded-from-users participant regression added; pending batch local run |
 | 83 | Async FCA callback rejections become unhandled promises | **Fixed on branch:** FCA adapters now await callback results, propagate rejected async callbacks, and use the once-only guard to prevent a second callback invocation. | async rejection regressions for history/list/user-info/profile/id callbacks added; pending batch local run |
 | 84 | Persisted GraphQL session parameters are world-readable | **Fixed on branch:** `_loadSessionParams()` now restricts an existing `session-params.json` to owner-only `0600` before reading reusable `fb_dtsg`/LSD/browser-session tokens. | existing-file permission regression added to session-file security test; pending batch local run |
+| 85 | Inbox cursor silently ignored when mailbox bootstrap fails | **Fixed on branch:** after bootstrapping, `getInbox(cursor)` now throws a clear error if Instagram did not return a mailbox id instead of silently returning page one and ignoring the requested cursor. | missing-mailbox cursor regression added; pending batch local run |
 | 73 | Poller misses backlog beyond the first 20 thread messages | **Fixed on branch:** when the last-seen message is not in the initial thread-detail page, the poller now follows up to four opaque Relay cursors (up to 100 messages total), emits all messages newer than the last-seen ID in order, and advances its seen cursor to the newest detail-page message. | 25-new-messages/two-page regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 70 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-two runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 71 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-three runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#84 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#85 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -131,7 +132,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#84 batch.
+1. Run the full Node 20 validation suite once after the current #30–#85 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
