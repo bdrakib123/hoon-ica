@@ -250,6 +250,13 @@ class InboxMethods {
       let fresh = collectFresh(nodes);
       let latestSeenID = nodes[0]?.id || null;
 
+      // A thread first appearing after the listener has already primed its
+      // baseline has no trustworthy last-seen cursor. Do not replay its entire
+      // 20-message preview as if it were new; emit only its newest message.
+      if (!lastSeenID && this._statePrimed && !this._threadState.has(threadID)) {
+        fresh = nodes.slice(0, 1);
+      }
+
       // The inbox preview may contain only the newest message even when several
       // arrived between poll cycles. The thread-detail read already fetches a
       // bounded history page for reply metadata, so reuse its full message list
