@@ -141,6 +141,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 118 | Scheduler accepts one-shot delays that Node timers silently clamp to 1 ms | **Fixed on branch:** `scheduleOnce()` now rejects delays above Node's maximum supported timeout instead of unexpectedly firing a long-delay task almost immediately. | regression passes a delay one millisecond above the timer ceiling and asserts no task is registered; pending batch local run |
 | 119 | Invalid thread-history timestamps silently disable the before filter | **Fixed on branch:** `getHistory()` now validates the timestamp before making a GraphQL request; invalid/non-integer values throw instead of returning the newest messages as if no filter were supplied. | existing timestamp-pagination regression now asserts invalid input rejects without issuing another request; pending batch local run |
 | 120 | Inbox polling accepts intervals beyond Node's maximum timer delay | **Fixed on branch:** the configured minimum and per-listen interval are normalized and capped at Node's maximum timeout; jitter is capped too, preventing an oversized delay from wrapping into an almost-immediate poll. | regression covers an infinite configured floor and a maximum-finite listen interval; captured scheduled delay stays within the timer limit; pending batch local run |
+| 121 | Realtime receive-loop regression fixture redeclares its receive counter | **Fixed on branch:** the throwing-error-handler scenario now uses its own `throwingReceives` counter, avoiding a duplicate lexical declaration that prevented the runtime regression suite from parsing. | user Node 20 run identified the SyntaxError; corrected fixture is included in the branch; pending rerun |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -148,7 +149,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 87 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds fifty-nine runtime regression checks, eleven wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#120 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 87 runtime regression tests and 17 FCA wrapper regression tests (104 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#121 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 87 runtime regression tests and 17 FCA wrapper regression tests (104 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -166,7 +167,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#120 batch.
+1. Run the full Node 20 validation suite once after the current #30–#121 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
