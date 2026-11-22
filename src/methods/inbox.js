@@ -678,9 +678,12 @@ class InboxMethods {
           authFailures += 1;
           if (authFailures >= AUTH_CONFIRMATIONS) {
             const check = await this.http.checkSession({ attempts: 1 });
-            if (check.state === "ok" || check.state === "transient" || check.state === "rate_limited") {
+            if (["ok", "transient", "rate_limited", "graphql_error", "unexpected_response"].includes(check.state)) {
+              // A GraphQL validation error or unexpected body does not prove
+              // the cookie is invalid. Keep the listener alive and recheck
+              // later instead of permanently stopping on an inconclusive probe.
               authFailures = 0;
-              schedule(pollDelay());
+              schedule(jittered(AUTH_RECHECK_MS));
               return;
             }
             stopped = true;
