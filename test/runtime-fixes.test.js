@@ -259,6 +259,45 @@ async function testSendLinkUsesPacer() {
   }
 }
 
+async function testNativeMediaUploadsHaveBufferAndSizeBounds() {
+  const MediaMethods = require("../src/methods/media");
+  let calls = 0;
+  const media = new MediaMethods({
+    postRupload: async (_consumer, buffer) => {
+      calls += 1;
+      return { media_id: String(buffer.length) };
+    }
+  }, {});
+  await assert.rejects(
+    () => media._upload("thread-1", {
+      buffer: "not-a-buffer",
+      filename: "bad.jpg",
+      contentType: "image/jpeg"
+    }),
+    /requires a Buffer/
+  );
+  await assert.rejects(
+    () => media._upload("thread-1", {
+      buffer: Buffer.alloc(5),
+      filename: "large.jpg",
+      contentType: "image/jpeg",
+      maxUploadBytes: 4
+    }),
+    /exceeds the 4-byte limit/
+  );
+  assert.equal(calls, 0);
+
+  const uploaded = await media._upload("thread-1", {
+    buffer: Buffer.alloc(5),
+    filename: "ok.jpg",
+    contentType: "image/jpeg",
+    maxUploadBytes: 5
+  });
+  assert.equal(uploaded.fbid, "5");
+  assert.equal(calls, 1);
+}
+
+
 async function testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets() {
   const { createPublicLookup, isPublicAddress } = require("../src/utils/publicUrlLookup");
   assert.equal(isPublicAddress("93.184.216.34", 4), true);
@@ -2441,6 +2480,7 @@ async function run() {
   await testLegacyTextFallbackUsesOfflineThreadingId();
   await testPartialGraphqlDataPreventsLegacyFallback();
   await testCaptionedMediaWaitsForBothCommitOutcomes();
+  await testNativeMediaUploadsHaveBufferAndSizeBounds();
   await testMediaUrlDownloadsRejectPrivateAndMixedDnsTargets();
   await testMediaUrlDownloadsHaveProtocolSizeAndTimeoutBounds();
   await testFcaAttachmentDownloadsAndStreamsAreBounded();
@@ -2505,7 +2545,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 79 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 80 regression tests passed\n");
 }
 
 run().catch((error) => {
