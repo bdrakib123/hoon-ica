@@ -62,7 +62,7 @@ module.exports = function (client) {
     const cb = createCallback(callback);
 
     try {
-      const { body, attachment, attachments } = client._normalizeForm(form);
+      const { body, attachment, attachments, maxDownloadBytes, downloadTimeoutMs } = client._normalizeForm(form);
       const mediaList = toAttachmentList(attachment, attachments);
       const sentMessageIDs = [];
       const attachmentCount = mediaList.length;
@@ -76,7 +76,8 @@ module.exports = function (client) {
           result = await client._sendAttachment(
             String(threadID),
             mediaList[i],
-            i === 0 ? body : ""
+            i === 0 ? body : "",
+            { maxDownloadBytes, downloadTimeoutMs }
           );
           const sentId = extractMessageId(result);
           if (sentId) {
