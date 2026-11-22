@@ -120,6 +120,13 @@ async function run() {
   assert.equal(boundedLimiter.endpoints.size, 2);
   assert.equal(boundedLimiter.endpoints.has("https://example.com/a"), false);
 
+  const normalizedBreaker = new CircuitBreaker({
+    failureThreshold: Infinity,
+    cooldownMs: Infinity
+  });
+  assert.equal(normalizedBreaker.failureThreshold, 5);
+  assert.equal(normalizedBreaker.cooldownMs, 30000);
+
   const boundedBreaker = new CircuitBreaker({ maxCircuits: 2 });
   boundedBreaker.state("one");
   boundedBreaker.state("two");
