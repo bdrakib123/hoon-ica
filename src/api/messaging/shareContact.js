@@ -1,4 +1,5 @@
 /*!
+const createCallback = require("../../utils/createCallback");
  * insta-chat - Unofficial Instagram Chat API
  * Copyright (c) 2026 hoon (https://github.com/Bdrakib123)
  * Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
@@ -9,7 +10,7 @@
 // messageID) is answered with the user's profile link + id as a normal message.
 module.exports = function (client) {
   return async function shareContact(uid, _uid2, threadID, callback) {
-    const cb = typeof callback === "function" ? callback : null;
+    const cb = createCallback(callback);
     try {
       const u = await client.api.getUserInfo(String(uid)).catch(() => null);
       const name = u?.full_name || u?.username || String(uid);
@@ -19,6 +20,7 @@ module.exports = function (client) {
       return info;
     } catch (error) {
       client.lastShareContactError = error;
+      if (cb?.called) throw error;
       if (cb) cb(error, null);
       return null;
     }
