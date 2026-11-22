@@ -30,7 +30,8 @@ async function reproduce(name, check) {
 }
 
 async function main() {
-  await reproduce("documented cookie-array input throws before normalization", async () => {
+  await reproduce("documented cookie object/array inputs throw before normalization", async () => {
+    assert.throws(() => normalizeCookie({ sessionid: "session-value", csrftoken: "csrf-value" }), TypeError);
     assert.throws(() => normalizeCookie([{ name: "sessionid", value: "session-value" }]), TypeError);
   });
 
