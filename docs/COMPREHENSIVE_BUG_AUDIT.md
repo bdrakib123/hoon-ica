@@ -164,6 +164,8 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 144 | Runtime test called `_learnThreads` on a plain fixture object without its prototype method | **Fixed on branch:** the second fixture invocation now calls `InstaClient.prototype._learnThreads.call(client, payload)`, matching the first invocation and preserving the intended lightweight fixture. Production code was correct; no runtime behavior change. | test fixture corrected; pending user local run |
 | 145 | Learned-thread whitespace-ID fixture expected viewer last, contrary to viewer-first insertion | **Fixed on branch:** the expected participant order now matches `_learnThreads()`; valid `pk` fallbacks and duplicate elimination are unchanged. No runtime behavior change. | test expectation corrected; pending user local run |
 | 146 | MQTT truncated remaining-length test omitted the second fixed-header byte | **Fixed on branch:** the fixture now supplies a fixed header plus an unterminated remaining-length byte (`0x20, 0x80`), so `decodePacket()` reaches and verifies the intended truncated-varint guard. Parser behavior was correct. | malformed-frame fixture corrected; pending user local run |
+| 147 | Realtime cancellation regression referenced `RealtimeClient` without importing it | **Fixed on branch:** the test now imports `RealtimeClient` from `src/realtime/client`; production code was unaffected. | test import corrected; pending user local run |
+| 148 | Inbox rate-limit jitter could schedule a retry earlier than HTTP `Retry-After` | **Fixed on branch:** rate-limit scheduling now takes the maximum of the server-provided wait and jittered wait, so jitter can extend but never shorten the server minimum. Existing regression asserts the 120-second lower bound. | runtime fix and regression assertion present; pending user local run |
 | 142 | Reply normalization can prefer a whitespace message ID over a valid fallback | **Fixed on branch:** replied-message IDs now select the first nonblank `id` or `message_id`, preserving valid quote context when the primary field is whitespace. | runtime regression verifies a whitespace primary ID falls back to the valid message ID; pending user local run |
 | 141 | Optional reliability utility maps can grow without bounds | **Fixed on branch:** adaptive endpoint history and circuit registries now have configurable hard entry limits; idempotency result retention, TTL and concurrent in-flight operations are normalized and capped. Open/half-open circuits are not evicted to make room for a new key. | reliability regression covers endpoint/circuit eviction, infinite cache options and in-flight saturation; pending user local run |
 
@@ -173,7 +175,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 91 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current audit batch has expanded the runtime suite to 91 checks and the FCA wrapper suite to 18 checks, with the latest source-review assertions pending the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#146 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#148 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 91 runtime regression tests and 18 FCA wrapper regression tests (109 focused tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -194,7 +196,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#146 batch.
+1. Run the full Node 20 validation suite once after the current #30–#148 batch.
 2. Fix any environment-specific test failures revealed by that combined run, then repeat the full suite.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
