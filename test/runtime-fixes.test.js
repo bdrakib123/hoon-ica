@@ -741,6 +741,31 @@ async function testInboxSkipsMalformedRelayThreads() {
   assert.equal(inbox._threadIdMap.has("undefined"), false);
 }
 
+async function testMissingProfileCountsRemainUnknown() {
+  const { normalizeWebProfileInfo } = require("../src/profileParse");
+  const missing = normalizeWebProfileInfo({
+    id: "user-1",
+    username: "profile",
+    edge_followed_by: null,
+    edge_follow: null,
+    edge_owner_to_timeline_media: null
+  });
+  assert.equal(missing.followerCount, null);
+  assert.equal(missing.followingCount, null);
+  assert.equal(missing.mediaCount, null);
+
+  const present = normalizeWebProfileInfo({
+    id: "user-2",
+    edge_followed_by: { count: 12 },
+    edge_follow: { count: 34 },
+    edge_owner_to_timeline_media: { count: 5 }
+  });
+  assert.equal(present.followerCount, 12);
+  assert.equal(present.followingCount, 34);
+  assert.equal(present.mediaCount, 5);
+}
+
+
 async function testProfileCacheIsBounded() {
   const UserMethods = require("../src/methods/user");
   const users = new UserMethods({}, null, null);
@@ -811,13 +836,14 @@ async function run() {
   await testInboxSkipsMalformedRelayThreads();
   await testBoundedSessionCache();
   await testProfileCacheIsBounded();
+  await testMissingProfileCountsRemainUnknown();
   await testMediaUploadDoesNotRetryPermanentAuthFailure();
   await testMediaCommitDoesNotRetryGraphqlFieldException();
   await testMediaCommitRetryReusesOfflineThreadingId();
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 33 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 34 regression tests passed\n");
 }
 
 run().catch((error) => {
