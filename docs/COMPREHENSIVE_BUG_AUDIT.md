@@ -81,14 +81,15 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 58 | HTTP-date Retry-After ignored | **Fixed on branch:** `retryAfterMs()` now parses both numeric seconds and HTTP-date header values, capped at 30 minutes. | numeric/date/invalid header regression added; pending batch local run |
 | 59 | Poller retries before server Retry-After | **Fixed on branch:** inbox rate-limit and blocked backoff now honors the server-provided retry delay, including session-check rate limits, instead of always using a shorter local delay. | 120-second Retry-After poller regression added; pending batch local run |
 | 60 | Realtime handlers registered before connect are lost | **Fixed on branch:** `realtimeOn()` now queues handlers without creating a premature client; `sharedRealtimeClient()` attaches them to the client created with the requested options and restores them after reconnect/disconnect. | pre-connect handler registration and reconnect regression added; pending batch local run |
+| 61 | Contact sharing lacks a native web mutation | **Clarified, not implemented:** the FCA wrapper previously called a nonexistent `InstaAPI.shareContact` and silently returned `null`. It now records `IG_METHOD_UNSUPPORTED` in `lastShareContactError` and documents the limitation. Actual contact-card sharing remains unsupported until a verified Instagram web mutation contract is available. | unsupported-adapter callback regression added; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 55 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds twenty-seven runtime regression checks, two wrapper regression checks, and TypeScript overload/event-shape examples; these await the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 55 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds twenty-seven runtime regression checks, three wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#60 are implemented with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#61 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -107,7 +108,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the current #30–#60 batch.
+1. Run the full Node 20 validation suite once after the current #30–#61 batch.
 2. Continue source review for callback, event-normalization, and pagination edge cases.
 3. Stress-test cache eviction and assess first-page-only inbox polling under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
