@@ -755,6 +755,10 @@ async function testReadRetryConfigurationIsHardBounded() {
   assert.equal(config.firstWaitMs, MAX_READ_RETRY_WAIT_MS);
   assert.equal(config.maxWaitMs, MAX_READ_RETRY_WAIT_MS);
 
+  const clampedFirstWait = resolveConfig({ attempts: 3, firstWaitMs: 30000, maxWaitMs: 1000 });
+  assert.equal(clampedFirstWait.firstWaitMs, 1000);
+  assert.equal(clampedFirstWait.maxWaitMs, 1000);
+
   const huge = resolveConfig({ attempts: 1000000000, firstWaitMs: 0, maxWaitMs: 0 });
   assert.equal(huge.attempts, MAX_READ_RETRY_ATTEMPTS);
   assert.equal(huge.firstWaitMs, 0);
