@@ -8,6 +8,7 @@ const MediaMethods = require("../src/methods/media");
 const InboxMethods = require("../src/methods/inbox");
 const { install } = require("../src/utils/readRetry");
 const { setBounded } = require("../src/utils/boundedMap");
+const { RealtimeClient } = require("../src/realtime/client");
 
 async function testCookieInputs() {
   assert.deepEqual(normalizeCookie({ sessionid: "s1", csrftoken: "c1" }), {
