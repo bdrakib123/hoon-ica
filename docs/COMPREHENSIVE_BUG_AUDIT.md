@@ -108,6 +108,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 | 85 | Inbox cursor silently ignored when mailbox bootstrap fails | **Fixed on branch:** after bootstrapping, `getInbox(cursor)` now throws a clear error if Instagram did not return a mailbox id instead of silently returning page one and ignoring the requested cursor. | missing-mailbox cursor regression added; pending batch local run |
 | 86 | Realtime listener leaks handlers after failed startup | **Fixed on branch:** `RealtimeListener.start()` now calls its own cleanup when connect, cursor resolution, subscription acknowledgement, or onReady fails; shared clients retain their session connection while listener-owned connections are closed. | startup acknowledgement timeout regression asserts all per-listener handlers are removed and shared client is not disconnected; pending batch local run |
 | 87 | Pending realtime subscription waits full timeout after disconnect | **Fixed on branch:** a disconnect now rejects the pending iris-subscription acknowledgement immediately and avoids duplicate callback notification. | disconnect-before-ack regression asserts prompt rejection and handler cleanup; pending batch local run |
+| 88 | Multi-attachment send tracking references uninitialized variables | **Fixed on branch:** `sendMessage` now initializes its sent-message ID list and total attachment count before sending, allowing successful multi-media sends and accurate partial-send metadata. | existing deep/circular attachment and partial-progress regressions cover success and later-item failure; pending batch local run |
 
 ## Runtime fix progress (2026-11-22)
 
@@ -115,7 +116,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 72 focused regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current batch adds forty-four runtime regression checks, nine wrapper regression checks, and TypeScript overload/event-shape/diagnostic examples; these await the user's combined local run.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#87 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#88 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. Do not treat source review or successful GitHub commits as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
