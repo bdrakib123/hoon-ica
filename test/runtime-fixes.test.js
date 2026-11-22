@@ -295,6 +295,22 @@ async function testNativeMediaUploadsHaveBufferAndSizeBounds() {
   });
   assert.equal(uploaded.fbid, "5");
   assert.equal(calls, 1);
+
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hoonica-upload-limit-"));
+  const file = path.join(dir, "large.bin");
+  try {
+    fs.writeFileSync(file, Buffer.alloc(5));
+    assert.throws(
+      () => media._readFileBuffer(file, { maxUploadBytes: 4 }),
+      /exceeds the 4-byte limit/
+    );
+    assert.equal(media._readFileBuffer(file, { maxUploadBytes: 5 }).length, 5);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 
