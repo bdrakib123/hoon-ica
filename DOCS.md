@@ -383,3 +383,15 @@ only threads whose latest message is older than that boundary are returned.
 inbox threads. The current Instagram web pagination query is documented for the
 `INBOX` folder only, so `ARCHIVED`, `PENDING`, and `OTHER` are rejected rather
 than silently returning inbox results for a different folder.
+
+
+### Long-running session cache limits
+
+Long-lived inbox and FCA lookup maps use bounded FIFO caches to prevent memory use
+from growing without limit during extended sessions. The current internal limits
+are 5,000 entries for seen-message, user-index, avatar, and message-to-thread
+lookups, and 2,000 entries for thread-member and internal-thread-ID mappings.
+Updating an existing key refreshes its insertion position. When a limit is
+reached, the oldest entry is evicted; a later lookup may need to be learned again
+from inbox/thread data or resolved through the normal API fallback. These limits
+bound cache growth but do not guarantee a fixed process-memory ceiling.
