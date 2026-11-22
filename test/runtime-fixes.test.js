@@ -35,6 +35,41 @@ async function testNestedPacingConfiguration() {
   }
 }
 
+async function testRealtimeHandlersCanRegisterBeforeConnect() {
+  const InstaAPI = require("../src/api");
+  const EventEmitter = require("node:events");
+  let creations = 0;
+  let received = 0;
+  const api = Object.create(InstaAPI.prototype);
+  api._realtime = null;
+  api._realtimeConnecting = null;
+  api.realtimeClient = (options) => {
+    creations += 1;
+    const client = new EventEmitter();
+    client.options = options;
+    client.connected = false;
+    client.asyncConnectOptions = options;
+    client.connect = async () => { client.connected = true; };
+    client.disconnect = () => { client.connected = false; };
+    return client;
+  };
+
+  api.realtimeOn("message", () => { received += 1; });
+  assert.equal(creations, 0);
+  const first = await api.sharedRealtimeClient({ host: "custom-broker" });
+  assert.equal(creations, 1);
+  assert.equal(first.options.host, "custom-broker");
+  first.emit("message", {});
+  assert.equal(received, 1);
+
+  api.realtimeDisconnect();
+  const second = await api.sharedRealtimeClient();
+  assert.equal(creations, 2);
+  second.emit("message", {});
+  assert.equal(received, 2);
+}
+
+
 async function testSharedRealtimeReconnectSurvivesOldAttemptCleanup() {
   const InstaAPI = require("../src/api");
   let rejectFirst;
@@ -1540,6 +1575,7 @@ async function run() {
   await testLegacyLoginPreservesCookieMaps();
   await testMentionHydrationRetriesAfterInboxFailure();
   await testSharedRealtimeReconnectSurvivesOldAttemptCleanup();
+  await testRealtimeHandlersCanRegisterBeforeConnect();
   await testSendLinkUsesPacer();
   await testCaptionAuthFailureDoesNotFallback();
   await testAmbiguousGraphqlSendDoesNotFallback();
@@ -1587,7 +1623,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 54 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 55 regression tests passed\n");
 }
 
 run().catch((error) => {
