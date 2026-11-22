@@ -1055,6 +1055,17 @@ async function testFcaLearnedThreadMembersDeduplicateViewer() {
     viewer: { pk: "self-1", username: "bot" }
   });
   assert.deepEqual(client._threadMembers.get("thread-1"), ["self-1", "friend-1"]);
+
+  client._learnThreads({
+    id: "thread-blank-ids",
+    users: [
+      { id: " ", pk: "friend-pk", username: "friend" },
+      { id: "", pk: "other-pk", username: "other" },
+      { id: "friend-pk", username: "duplicate" }
+    ],
+    viewer: { id: "  ", pk: "self-pk", username: "bot" }
+  });
+  assert.deepEqual(client._threadMembers.get("thread-blank-ids"), ["friend-pk", "other-pk", "self-pk"]);
 }
 
 
