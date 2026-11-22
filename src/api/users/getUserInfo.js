@@ -5,10 +5,11 @@
  * Original author credit must be retained in all copies and derivatives.
  */
 
+const createCallback = require("../../utils/createCallback");
+
 // fca.getUserInfo(id | id[], callback) -> { <id>: { name, firstName, username,
 // profileUrl, thumbSrc, gender } }.
 const { setBounded } = require("../../utils/boundedMap");
-const createCallback = require("../../utils/createCallback");
 
 module.exports = function (client) {
   return async function getUserInfo(ids, callback) {
