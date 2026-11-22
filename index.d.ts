@@ -161,6 +161,10 @@ export interface ThreadHistoryItem {
 
 export interface InboxResult {
   threads: any[];
+  /** Relay cursor for the next inbox page, or null when there is no next page. */
+  nextCursor?: string | null;
+  /** Whether Instagram reports another inbox page. */
+  hasNextPage?: boolean;
 }
 
 // The complete profile Instagram exposes, merged from every source the session
