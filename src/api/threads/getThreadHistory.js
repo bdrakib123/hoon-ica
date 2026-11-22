@@ -8,9 +8,23 @@
 // fca.getThreadHistory(threadID, amount, timestamp, callback).
 module.exports = function (client) {
   return async function getThreadHistory(threadID, _amount, _timestamp, callback) {
+    // FCA permits getThreadHistory(threadID, amount, callback) and
+    // getThreadHistory(threadID, callback) with the timestamp omitted.
+    if (typeof _amount === "function") {
+      callback = _amount;
+      _amount = null;
+      _timestamp = null;
+    } else if (typeof _timestamp === "function") {
+      callback = _timestamp;
+      _timestamp = null;
+    }
     const cb = typeof callback === "function" ? callback : null;
     try {
-      const limit = Math.max(Number(_amount) || 0, 20);
+      const requested = _amount == null ? 20 : Number(_amount);
+      if (!Number.isInteger(requested) || requested <= 0) {
+        throw new TypeError("getThreadHistory: amount must be a positive integer");
+      }
+      const limit = requested;
       const items = await client.api.getThreadHistory(String(threadID), limit, _timestamp);
       if (cb) cb(null, items);
       return items;
