@@ -138,7 +138,7 @@ function normalizeGraphqlUser(user) {
 function normalizePolarisViewer(data) {
   if (!data || typeof data !== "object" || !data.username) return null;
   return normalize({
-    id: data.id,
+    id: firstUsableId(data.id, data.pk),
     username: data.username,
     fullName: data.full_name,
     biography: data.biography,
