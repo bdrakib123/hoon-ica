@@ -651,6 +651,26 @@ async function testThreadHistoryPaginatesWithoutTimestamp() {
 }
 
 
+async function testInboxParticipantSnapshotsIncludeViewer() {
+  const inbox = new InboxMethods({}, () => "self-1");
+  inbox._rememberInboxThreads([{
+    id: "thread-1",
+    users: [{ id: "friend-1", username: "friend" }],
+    viewer: { id: "self-1", username: "bot" }
+  }]);
+  assert.deepEqual(inbox.getThreadMemberIDs("thread-1"), ["friend-1", "self-1"]);
+
+  const snapshot = inbox._snapshot({
+    id: "thread-1",
+    is_group: true,
+    users: [{ id: "friend-1", username: "friend" }],
+    viewer: { id: "self-1", username: "bot" }
+  });
+  assert.deepEqual([...snapshot.members].sort(), ["friend-1", "self-1"]);
+  assert.equal(snapshot.names["self-1"], "bot");
+}
+
+
 async function testNewlyDiscoveredThreadDoesNotReplayHistory() {
   const messages = ["old-3", "old-2", "old-1", "newest"].map(id => ({
     id,
@@ -2042,6 +2062,7 @@ async function run() {
   await testPollingStopSuppressesInflightResults();
   await testPollingPaginatesUntilLastSeenMessageFound();
   await testNewlyDiscoveredThreadDoesNotReplayHistory();
+  await testInboxParticipantSnapshotsIncludeViewer();
   await testThreadHistoryPaginatesWithoutTimestamp();
   await testPollingDeliversAllMessagesSinceLastSeen();
   await testInboxCallbackErrorsDoNotEscapeListener();
@@ -2091,7 +2112,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 69 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 70 regression tests passed\n");
 }
 
 run().catch((error) => {
