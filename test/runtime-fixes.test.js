@@ -204,6 +204,28 @@ async function testRealtimeFallbackStartsOnlyOnce() {
 }
 
 
+async function testRealtimeConnectFailureClosesTransport() {
+  const { RealtimeClient } = require("../src/realtime/client");
+  let disconnects = 0;
+  const transport = {
+    reset() {},
+    async connect() {},
+    async send() {},
+    async recvPacket() { return Buffer.from([0x20, 0x02, 0x00, 0x05]); },
+    disconnect() { disconnects += 1; }
+  };
+  const client = new RealtimeClient({
+    sessionid: "session",
+    deviceId: "device-123",
+    userId: "user-1"
+  }, { transport });
+  await assert.rejects(client.connect(), /Realtime MQTT connect failed/);
+  assert.equal(client.connected, false);
+  assert.equal(client._pingTimer, null);
+  assert.equal(disconnects, 1);
+}
+
+
 async function testRealtimeFallbackAfterEstablishedDisconnect() {
   const { EventEmitter } = require("node:events");
   const InboxMethods = require("../src/methods/inbox");
@@ -611,6 +633,7 @@ async function run() {
   await testRealtimeMissingAcknowledgementFails();
   await testRealtimeFallbackStartsOnlyOnce();
   await testRealtimeFallbackAfterEstablishedDisconnect();
+  await testRealtimeConnectFailureClosesTransport();
   await testRelayThreadListPreview();
   await testDirectThreadClassification();
   await testXmaWithoutPreviewHasNoAttachment();
@@ -628,7 +651,7 @@ async function run() {
   await testMqttTransportRejectsOversizedAndMalformedFrames();
   await testMqttDecompressionOutputIsBounded();
   await testThriftReaderRejectsMalformedAndOversizedValues();
-  process.stdout.write("runtime-fixes.test.js: 27 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 28 regression tests passed\n");
 }
 
 run().catch((error) => {
