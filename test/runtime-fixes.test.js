@@ -217,7 +217,7 @@ async function testRealtimeConnectFailureClosesTransport() {
   const client = new RealtimeClient({
     sessionid: "session",
     deviceId: "device-123",
-    userId: "user-1"
+    userId: 123456789
   }, { transport });
   await assert.rejects(client.connect(), /Realtime MQTT connect failed/);
   assert.equal(client.connected, false);
