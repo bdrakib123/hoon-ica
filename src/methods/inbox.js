@@ -115,7 +115,7 @@ class InboxMethods {
       const page = await this.http.postGraphQL(
         "IGDThreadListOffMsysPaginationQuery",
         DOC_ID.INBOX_PAGINATION,
-        { id: this._mailboxId, cursor, count: 15, folder: "INBOX" },
+        { id: this._mailboxId, cursor, count: 15, folder: "INBOX", newer_than_timestamp_ms: null, ...INBOX_PAGINATION_VARIABLES },
         "https://www.instagram.com/direct/inbox/"
       );
       data = this._unwrap(page);
