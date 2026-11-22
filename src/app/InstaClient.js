@@ -348,8 +348,15 @@ class InstaClient {
         }
         return { buffer, filename: path.basename(parsed.pathname) || `file_${Date.now()}.jpg` };
       }
+      const fileSize = fs.statSync(src).size;
+      if (fileSize > maxDownloadBytes) {
+        throw new RangeError(`Attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      }
       const buffer = fs.readFileSync(src);
-      if (buffer.length > maxDownloadBytes) throw new RangeError(`Attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      // Re-check after reading in case the file changed between stat and read.
+      if (buffer.length > maxDownloadBytes) {
+        throw new RangeError(`Attachment exceeds the ${maxDownloadBytes}-byte limit`);
+      }
       return { buffer, filename: path.basename(src) };
     }
     if (src && typeof src.pipe === "function") {
