@@ -35,7 +35,7 @@ class CircuitBreaker {
         if (!evictable) throw new RangeError("Circuit breaker has reached its configured circuit limit");
         this.circuits.delete(evictable[0]);
       }
-      entry = { state: STATE.CLOSED, failures: 0, successes: 0, openedAt: 0, probeInFlight: false, inFlight: 0 };
+      entry = { state: STATE.CLOSED, failures: 0, successes: 0, openedAt: 0, probeInFlight: false, probeToken: null, inFlight: 0 };
       this.circuits.set(id, entry);
     }
     return entry;
@@ -45,6 +45,7 @@ class CircuitBreaker {
     if (entry.state === STATE.OPEN && Date.now() - entry.openedAt >= this.cooldownMs) {
       entry.state = STATE.HALF_OPEN;
       entry.probeInFlight = false;
+      entry.probeToken = null;
     }
   }
 
@@ -61,12 +62,16 @@ class CircuitBreaker {
     this._refresh(entry);
 
     const probe = entry.state === STATE.HALF_OPEN;
+    const probeToken = probe ? {} : null;
     if (entry.state === STATE.OPEN || (probe && entry.probeInFlight)) {
       const error = new Error("Circuit breaker is open");
       error.code = "CIRCUIT_OPEN";
       throw error;
     }
-    if (probe) entry.probeInFlight = true;
+    if (probe) {
+      entry.probeInFlight = true;
+      entry.probeToken = probeToken;
+    }
     entry.inFlight += 1;
 
     try {
@@ -75,17 +80,30 @@ class CircuitBreaker {
       // another concurrent request opened while this operation was in flight.
       // Only a successful half-open probe may transition OPEN -> CLOSED.
       if (probe) {
-        entry.failures = 0;
-        entry.successes += 1;
-        entry.state = STATE.CLOSED;
+        // A request that began before the circuit opened can fail while this
+        // probe is running. If that failure reopens the circuit, this older
+        // probe must not close it when its own success arrives later. The token
+        // also prevents a probe from an earlier half-open window mutating a
+        // newer probe after another cooldown has elapsed.
+        if (entry.probeToken === probeToken) {
+          entry.probeInFlight = false;
+          entry.probeToken = null;
+          if (entry.state === STATE.HALF_OPEN) {
+            entry.failures = 0;
+            entry.successes += 1;
+            entry.state = STATE.CLOSED;
+          }
+        }
       } else if (entry.state === STATE.CLOSED) {
         entry.failures = 0;
         entry.successes += 1;
       }
-      if (probe) entry.probeInFlight = false;
       return result;
     } catch (error) {
-      if (probe) entry.probeInFlight = false;
+      if (probe && entry.probeToken === probeToken) {
+        entry.probeInFlight = false;
+        entry.probeToken = null;
+      }
       if (this.isFailure(error)) {
         entry.failures += 1;
         entry.successes = 0;
