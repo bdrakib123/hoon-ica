@@ -8,10 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and uses
 
 ## [Unreleased]
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-11-23
 
 ### Fixed
 
+- Changed browser session-harvest navigation readiness from `networkidle2` to `domcontentloaded`, avoiding hangs caused by Instagram background requests while retaining the bounded session-parameter capture wait.
 - Hardened inbox and realtime lifecycle handling, including bounded pagination,
   subscription acknowledgement deadlines, disconnect cleanup, polling fallback,
   and duplicate-event prevention.
@@ -24,6 +25,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and uses
   unsafe redirects, stalled streams, and oversized responses.
 - Corrected thread, participant, profile, cookie, and identifier normalization
   for malformed or partial Instagram payloads.
+
+### Added
+
+- Added a reporting-only thread-detail summary helper and regression tests. The report distinguishes raw user records from verified participants and does not infer total membership from `users.length` alone.
 
 ### Changed
 
