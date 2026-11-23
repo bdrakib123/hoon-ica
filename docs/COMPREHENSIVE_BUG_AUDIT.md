@@ -208,9 +208,17 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Follow-up source review (2026-11-23)
 
-Reviewed the current realtime listener/client lifecycle, MQTT TLS transport reset and cancellation paths, media upload/commit retry logic, HTTP error classification, and outbound send pacing after #156. No additional confirmed production defect was established by this source-only pass. Existing regression coverage exercises pending TLS cancellation, stale connection-loop isolation, shared-client reconnect cleanup, media commit retry ID reuse, permanent auth non-retry, and caption/media partial-send reporting.
+Reviewed the current realtime listener/client lifecycle, MQTT TLS transport reset and cancellation paths, media upload/commit retry logic, HTTP error classification, outbound send pacing, and optional reliability utilities after #156. This pass identified #157 in the optional CircuitBreaker helper. Existing regression coverage exercises pending TLS cancellation, stale connection-loop isolation, shared-client reconnect cleanup, media commit retry ID reuse, permanent auth non-retry, and caption/media partial-send reporting.
 
 Remaining protocol-level uncertainty is unchanged: source fixtures do not prove current Instagram broker or mutation behavior. In particular, keep voice-note semantics (#154), HTTP 412 upload retry classification, and remote idempotency behavior marked for account-safe protocol capture rather than changing payloads speculatively. No live account actions, merge, or npm publish were performed.
+
+### #157 — A stale half-open circuit probe could erase a later failure
+
+- **Fixed on branch:** a request that began before the breaker opened can fail while a half-open recovery probe is running. That late failure reopens the circuit, but the older probe's later success previously set the state to CLOSED unconditionally.
+- **Fix:** each half-open probe now owns a unique token. Only the currently active probe may close or reopen its circuit; a superseded probe cannot mutate a newer half-open attempt.
+- **Regression:** `test/reliability-utils.test.js` now holds an old request open, opens the breaker with a concurrent failure, starts a half-open probe, then fails the old request before resolving the probe. The circuit must remain OPEN after the stale probe succeeds.
+- **Scope:** this optional `CircuitBreaker` utility is not wired into `HttpClient` by default. The change protects applications that explicitly use the helper; it does not alter normal Instagram request behavior.
+- **Validation status:** source and regression test are committed on the audit branch; the user's next local `npm test` run must confirm the new case.
 
 ## Initial severity triage (provisional)
 
