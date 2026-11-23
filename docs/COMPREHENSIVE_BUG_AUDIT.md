@@ -250,5 +250,5 @@ Severity reflects likely impact from source behavior, not confirmed production i
 ### #155 — Polling listener ignored inbox pages after the first 15 threads
 - **Fixed on branch:** polling now follows Relay cursors for a bounded number of pages instead of silently limiting the listener to page one. The new `pollMaxPages` option defaults to 3 (up to 45 threads), is clamped to 1–10, and can be set to 1 to retain first-page-only behavior.
 - Duplicate thread IDs across pages are deduplicated, repeated cursors stop traversal, and a listener stopped while a page request is in flight discards that page.
-- Added regression coverage for page traversal, cursor propagation, deduplication, maximum-page enforcement, option bounds, and stop-during-pagination. The test source now declares 92 runtime regression checks; execution is pending the user's local run.
+- Added regression coverage for page traversal, cursor propagation, deduplication, maximum-page enforcement, option bounds, and stop-during-pagination. The test source declares 93 runtime regression checks; the user confirmed all 93 passed locally after pulling `924bf14`.
 - **Remaining limitation:** a thread beyond the configured page budget is still not polled in that cycle. Increasing the page budget increases GraphQL request volume; choose it based on account/thread volume and rate-limit behavior.
