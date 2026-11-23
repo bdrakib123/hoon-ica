@@ -78,6 +78,13 @@ if (incomingEvent.type === "event") {
 void fcaClient.lastShareContactError;
 void fcaClient.lastEditError;
 
+const sessionOptions: import("../index").InstaChatOptions = {
+  appStateFile: "./app-state.json",
+  sessionGuardFile: "./session-guard.json",
+  sessionGuard: false
+};
+void sessionOptions;
+
 const mediaOptions: SendOptions = {
   maxDownloadBytes: 20 * 1024 * 1024,
   maxUploadBytes: 40 * 1024 * 1024,
