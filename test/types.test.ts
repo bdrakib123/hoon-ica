@@ -30,6 +30,8 @@ const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight:
 declare const nativeApi: InstaAPI;
 declare const fcaClient: InstaClient;
 const nullableContext: InstaContext = login.createContext(fcaClient, null);
+const contextNativeApi: InstaAPI = nullableContext.api;
+const contextUserID: string | null = nullableContext.userID;
 const cookieArray = login.CookieUtils.parse([{ name: "sessionid", value: "example" }]);
 const cookieObject = login.CookieUtils.parse({ sessionid: "example", csrftoken: "example" });
 
@@ -60,7 +62,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
-  nullableContext, cookieArray, cookieObject,
+  nullableContext, contextNativeApi, contextUserID, cookieArray, cookieObject,
   defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
   nativeModuleLoginWithOptions, nativeModuleLoginCallback
