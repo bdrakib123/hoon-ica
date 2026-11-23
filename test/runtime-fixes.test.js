@@ -1441,6 +1441,25 @@ async function testRealtimeMissingAcknowledgementFails() {
   listener.stop();
 }
 
+
+async function testRealtimeSubscriptionTimeoutAlsoBoundsStalledPublish() {
+  const { EventEmitter } = require("node:events");
+  const { RealtimeListener } = require("../src/realtime/listener");
+  const client = new EventEmitter();
+  client.irisSubscribe = () => new Promise(() => {});
+  const listener = new RealtimeListener({}, { subscriptionTimeoutMs: 20 });
+  listener._client = client;
+
+  const pending = listener._subscribeWithAck({ seqId: 1, snapshotAtMs: Date.now() });
+  const outcome = await Promise.race([
+    pending.then(() => null, (error) => error),
+    new Promise((resolve) => setTimeout(() => resolve("outer timeout"), 250))
+  ]);
+  assert.equal(outcome instanceof Error, true, "stalled publish must not outlive the subscription deadline");
+  assert.match(outcome.message, /acknowledgement timed out/);
+  assert.equal(client.listenerCount("iris_sub_response"), 0);
+}
+
 async function testRealtimeDisconnectRejectsPendingSubscription() {
   const { EventEmitter } = require("node:events");
   const { RealtimeListener } = require("../src/realtime/listener");
@@ -2961,6 +2980,7 @@ async function run() {
   await testInboxPollerHonorsRetryAfterHeader();
   await testRealtimeAcknowledgementAndReady();
   await testRealtimeMissingAcknowledgementFails();
+  await testRealtimeSubscriptionTimeoutAlsoBoundsStalledPublish();
   await testRealtimeSubscriptionTimeoutIsClamped();
   await testRealtimeDisconnectRejectsPendingSubscription();
   await testRealtimeListenerStopDuringClientLookup();
@@ -3010,7 +3030,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 93 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 94 regression tests passed\n");
 }
 
 run().catch((error) => {
