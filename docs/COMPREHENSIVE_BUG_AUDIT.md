@@ -180,7 +180,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#170 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#171 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -384,4 +384,13 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Defect:** the declaration allowed `string | boolean` but omitted numeric IDs, rejecting a value accepted by the runtime.
 - **Fix:** widened the fourth parameter to `string | number | boolean`.
 - **Regression:** `test/types.test.ts` now supplies a numeric explicit thread ID.
+- **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
+
+
+### #171 — InstaContext declaration omitted exposed api and userID properties
+
+- **Found in source review:** the `InstaContext` constructor assigns `this.api = client.api` and `this.userID = client.userID`, in addition to `client` and `threadID`.
+- **Defect:** the public class declaration exposed only `client` and `threadID`, so TypeScript consumers could not access two runtime properties.
+- **Fix:** added `api: InstaAPI` and `userID: string | null` to the class declaration.
+- **Regression:** `test/types.test.ts` now reads both properties with their expected types.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
