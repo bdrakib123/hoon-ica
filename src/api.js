@@ -60,6 +60,7 @@ class InstaAPI {
     this.user = new UserMethods(this.http, () => ({ id: this.userID, username: this.username }), (key) => this._learnedUser(key));
     this.inbox = new InboxMethods(this.http, () => this.userID, {
       minPollIntervalMs: options.minPollIntervalMs,
+      pollMaxPages: options.pollMaxPages,
       identity: this.identity,
       realtime: options.realtime,
       // false (default) = drop the session's own outbound messages from the
