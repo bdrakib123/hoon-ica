@@ -380,10 +380,10 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### #170 — setMessageReaction declaration excluded numeric explicit thread IDs
 
-- **Found in source review:** the runtime `_resolveThread(messageID, threadID)` accepts both string and number explicit thread IDs; booleans are ignored because FCA uses the fourth parameter as a legacy force flag.
+- **Found in source review:** the runtime `_resolveThread(messageID, threadID)` accepts string and number explicit thread IDs, and treats null as “resolve from the message cache”; booleans are ignored because FCA uses the fourth parameter as a legacy force flag.
 - **Defect:** the declaration allowed `string | boolean` but omitted numeric IDs, rejecting a value accepted by the runtime.
-- **Fix:** widened the fourth parameter to `string | number | boolean`.
-- **Regression:** `test/types.test.ts` now supplies a numeric explicit thread ID.
+- **Fix:** widened the fourth parameter to `string | number | boolean | null`.
+- **Regression:** `test/types.test.ts` now supplies numeric and null explicit thread IDs.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
 
 
@@ -425,10 +425,10 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 ### #175 — unsendMessage declaration excluded numeric explicit thread IDs
 
-- **Found in source review:** `unsendMessage()` forwards its optional third argument to `_resolveThread()`, which accepts both string and numeric thread IDs.
+- **Found in source review:** `unsendMessage()` forwards its optional third argument to `_resolveThread()`, which accepts string and numeric thread IDs and treats null as a cache-based fallback.
 - **Defect:** the declaration accepted only a string for the explicit thread ID, despite runtime support for numeric IDs.
-- **Fix:** widened the third argument to `string | number`.
-- **Regression:** `test/types.test.ts` now calls `unsendMessage(messageID, undefined, numericThreadID)`.
+- **Fix:** widened the third argument to `string | number | null`.
+- **Regression:** `test/types.test.ts` now calls `unsendMessage` with numeric and null explicit thread IDs.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
 
 
