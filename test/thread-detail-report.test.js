@@ -18,34 +18,38 @@ function summarizeThreadDetail(detail) {
   };
 }
 
-const sample = summarizeThreadDetail({
-  users: [{ id: "user-1" }],
-  viewer: { id: "viewer-1" },
-  slide_messages: {
-    edges: Array.from({ length: 20 }, (_, i) => ({ node: { id: String(i) } })),
-    page_info: { has_next_page: true }
-  }
-});
+module.exports = { summarizeThreadDetail };
 
-assert.deepEqual(sample, {
-  usersRecords: 1,
-  viewerPresent: true,
-  participantsVerified: false,
-  messagePreviewCount: 20,
-  hasMoreMessages: true
-});
+if (require.main === module) {
+  const sample = summarizeThreadDetail({
+    users: [{ id: "user-1" }],
+    viewer: { id: "viewer-1" },
+    slide_messages: {
+      edges: Array.from({ length: 20 }, (_, i) => ({ node: { id: String(i) } })),
+      page_info: { has_next_page: true }
+    }
+  });
 
-const withoutViewer = summarizeThreadDetail({
-  users: [],
-  slide_messages: { edges: [], page_info: { has_next_page: false } }
-});
+  assert.deepEqual(sample, {
+    usersRecords: 1,
+    viewerPresent: true,
+    participantsVerified: false,
+    messagePreviewCount: 20,
+    hasMoreMessages: true
+  });
 
-assert.deepEqual(withoutViewer, {
-  usersRecords: 0,
-  viewerPresent: false,
-  participantsVerified: false,
-  messagePreviewCount: 0,
-  hasMoreMessages: false
-});
+  const withoutViewer = summarizeThreadDetail({
+    users: [],
+    slide_messages: { edges: [], page_info: { has_next_page: false } }
+  });
 
-process.stdout.write("thread-detail-report.test.js: 2 tests passed\\n");
+  assert.deepEqual(withoutViewer, {
+    usersRecords: 0,
+    viewerPresent: false,
+    participantsVerified: false,
+    messagePreviewCount: 0,
+    hasMoreMessages: false
+  });
+
+  process.stdout.write("thread-detail-report.test.js: 2 tests passed\\n");
+}
