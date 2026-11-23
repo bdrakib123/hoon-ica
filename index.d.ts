@@ -425,6 +425,10 @@ export interface LoginExport {
   harvestSessionParams(cookieJar: Record<string, string>, options?: object): Promise<Record<string, string>>;
   findChromium(): string | undefined;
   constants: any;
+  reconcile: any;
+  bridge: any;
+  antiSuspension: any;
+  sessionGuard: any;
   moduleLogin: ModuleLoginExport;
   RealtimeClient: any;
   RealtimeListener: any;
@@ -442,6 +446,10 @@ export interface ModuleLoginExport {
   (cookie: string | object, options: InstaChatOptions, callback: (err: Error | null, api: InstaAPI | null) => void): void;
 }
 
+export const reconcile: any;
+export const bridge: any;
+export const antiSuspension: any;
+export const sessionGuard: any;
 export const RealtimeClient: any;
 export const RealtimeListener: any;
 export const moduleLogin: ModuleLoginExport;
