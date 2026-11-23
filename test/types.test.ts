@@ -23,6 +23,11 @@ const cache: IdempotencyCache = new login.IdempotencyCache({ ttlMs: 1000 });
 const scheduler: Scheduler = new login.Scheduler({ enabled: false });
 const namespacedScheduler: Scheduler = new utilities.Scheduler({ enabled: false });
 
+const realtimeTransport: RealtimeOptions["transport"] = { connect: async () => undefined };
+const realtimeOptions: RealtimeOptions = {
+  transport: realtimeTransport,
+  getClient: async () => ({ connected: true })
+};
 const boundedLimiter: AdaptiveRateLimiter = new login.AdaptiveRateLimiter({ maxEndpoints: 25 });
 const boundedBreaker: CircuitBreaker = new login.CircuitBreaker({ maxCircuits: 25 });
 const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight: 25 });
@@ -81,7 +86,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
-  boundedLimiter, boundedBreaker, boundedCache,
+  realtimeOptions, boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, numericContext, directlyCreatedNumericContext, contextNativeApi, contextUserID, nativeThreadIdMap, wrappedThreadIdMap, cookieArray, cookieObject,
   defaultLogin, namedDefaultLogin, commonJsLogin, commonJsDefaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
