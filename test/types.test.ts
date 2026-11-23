@@ -111,6 +111,10 @@ void nullableContext.getHistory((error, items) => {
   void error;
   void items;
 });
+void nullableContext.getHistory(10, (error, items) => {
+  void error;
+  void items;
+});
 
 void fcaClient.getThreadHistory("thread-1", (error, items) => {
   void error;
