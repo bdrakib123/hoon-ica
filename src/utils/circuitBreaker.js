@@ -100,11 +100,14 @@ class CircuitBreaker {
       }
       return result;
     } catch (error) {
-      if (probe && entry.probeToken === probeToken) {
+      const ownsProbe = probe && entry.probeToken === probeToken;
+      if (ownsProbe) {
         entry.probeInFlight = false;
         entry.probeToken = null;
       }
-      if (this.isFailure(error)) {
+      // A stale probe from an earlier half-open window must not reopen or
+      // otherwise mutate a circuit now owned by a newer probe.
+      if ((!probe || ownsProbe) && this.isFailure(error)) {
         entry.failures += 1;
         entry.successes = 0;
         if (probe || entry.failures >= this.failureThreshold) {
