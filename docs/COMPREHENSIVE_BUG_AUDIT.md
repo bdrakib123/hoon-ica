@@ -178,9 +178,9 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `924bf14` (2026-11-23): all 93 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. The newly added #156 regression test is not included in that run yet.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4adfedf` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout regression.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#155 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and passed the user's combined local run at `924bf14`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); 93 runtime tests and all 18 wrapper tests were confirmed green at `924bf14`, while the new #156 test awaits execution. Do not treat source review or successful GitHub commits alone as test passes.
+**Execution status:** #20–#156 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `4adfedf`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed. The working tree was clean. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -201,11 +201,16 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite after the #156 stalled-publish timeout change (94 named runtime tests + 18 wrapper tests).
-2. Fix any environment-specific test failures revealed by that combined run, then repeat the full suite.
-3. Stress-test cache eviction and the configurable polling page budget under high thread churn.
-4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
+1. Stress-test bounded caches and the configurable polling page budget under high thread churn, using deterministic fixtures and bounded workloads.
+2. Add focused tests for any newly confirmed race or malformed-input case before changing production behavior.
+3. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
 
+
+## Follow-up source review (2026-11-23)
+
+Reviewed the current realtime listener/client lifecycle, MQTT TLS transport reset and cancellation paths, media upload/commit retry logic, HTTP error classification, and outbound send pacing after #156. No additional confirmed production defect was established by this source-only pass. Existing regression coverage exercises pending TLS cancellation, stale connection-loop isolation, shared-client reconnect cleanup, media commit retry ID reuse, permanent auth non-retry, and caption/media partial-send reporting.
+
+Remaining protocol-level uncertainty is unchanged: source fixtures do not prove current Instagram broker or mutation behavior. In particular, keep voice-note semantics (#154), HTTP 412 upload retry classification, and remote idempotency behavior marked for account-safe protocol capture rather than changing payloads speculatively. No live account actions, merge, or npm publish were performed.
 
 ## Initial severity triage (provisional)
 
@@ -257,4 +262,4 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - `_subscribeWithAck()` created a timeout for the iris acknowledgement, but awaited `irisSubscribe()` before awaiting the acknowledgement promise. If the MQTT socket write remained pending, the configured subscription deadline could fire while startup remained blocked on the publish promise; the acknowledgement rejection could also be temporarily unhandled.
 - **Fixed on branch:** publish and acknowledgement are now observed concurrently with `Promise.all()`. The configured timeout settles startup even if the publish promise stalls, and both outcomes have rejection handlers immediately.
 - Added a regression test with a deliberately unresolved `irisSubscribe()` promise; it verifies the subscription timeout rejects within the deadline and removes the acknowledgement listener.
-- **Validation status:** source and test changes are committed, but the new test and full suite await the user's local run. The last user-confirmed green run is commit `924bf14` (93 runtime tests).
+- **Validation status:** user-confirmed green at commit `4adfedf` (2026-11-23): all 94 runtime regression tests, all 18 FCA wrapper tests, remaining npm suites, 17 audit checks, TypeScript declarations, zero-vulnerability dependency audit, package dry-run, and clean working tree.
