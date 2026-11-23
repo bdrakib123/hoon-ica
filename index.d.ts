@@ -385,8 +385,8 @@ export declare class InstaContext {
   edit(text: string, messageID: string, callback?: Function): Promise<any>;
   typing(): Promise<boolean>;
   getInfo(callback?: Function): Promise<any>;
-  getHistory(callback: Function): Promise<any[]>;
-  getHistory(amount?: number | null, callback?: Function): Promise<any[]>;
+  getHistory(callback: (error: Error | null, items: ThreadHistoryItem[]) => void): Promise<ThreadHistoryItem[]>;
+  getHistory(amount?: number | null, callback?: (error: Error | null, items: ThreadHistoryItem[]) => void): Promise<ThreadHistoryItem[]>;
 }
 
 /** Namespaced view: client.messages.send(), client.threads.getInfo(), ... */
