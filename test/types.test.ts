@@ -38,6 +38,14 @@ const defaultLogin: Promise<InstaClient> = login("session-cookie");
 const explicitNativeLogin: Promise<InstaAPI> = login("session-cookie", { native: true });
 const defaultCreateClient: Promise<InstaClient> = login.createClient("session-cookie");
 const nativeCreateClient: Promise<InstaAPI> = login.createClient("session-cookie", { native: true });
+const defaultLoginCallback: void = login("session-cookie", (error, api) => {
+  void error;
+  if (api) void api.getCurrentUserID();
+});
+const nativeLoginCallback: void = login("session-cookie", { native: true }, (error, api) => {
+  void error;
+  if (api) void api.getCurrentUserID();
+});
 
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
@@ -50,7 +58,7 @@ void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, cookieArray, cookieObject,
-  defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient,
+  defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
