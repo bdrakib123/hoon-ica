@@ -88,6 +88,23 @@ if (incomingEvent.type === "event") {
   void incomingEvent.logMessageType;
 }
 
+void fcaClient.sendPhoto("thread-1", "/tmp/photo.jpg", (error, info) => {
+  void error;
+  void info;
+});
+void fcaClient.sendPhotoFromUrl("thread-1", "https://cdn.example/photo.jpg", (error, info) => {
+  void error;
+  void info;
+});
+void fcaClient.sendVideoFromUrl("thread-1", "https://cdn.example/video.mp4", (error, info) => {
+  void error;
+  void info;
+});
+void fcaClient.sendVoiceFromUrl("thread-1", "https://cdn.example/audio.ogg", (error, info) => {
+  void error;
+  void info;
+});
+
 void fcaClient.getProfilePictureV2("user-1", (error, info) => {
   void error;
   if (info) void info.sizes;
