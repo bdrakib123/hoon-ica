@@ -16,6 +16,20 @@ The user pulled the audit branch through `4ef0c55` and confirmed all checks exit
 
 This confirms the current audit-branch changes locally. It does **not** verify live Instagram login, messaging, MQTT subscriptions, media upload, or account actions. No npm publish or release-branch merge was performed. The package version remains 1.0.0 on the audit branch at this validation point.
 
+## Release branch follow-up — 1.0.1
+
+The user confirmed the full local release suite on release/1.0.1 (2026-11-23), using Node.js v20.20.2 / npm 10.8.2:
+
+- npm test: all suites passed, including 94 runtime regression tests and 18 FCA wrapper tests.
+- npm run audit:repro: 17 checks passed.
+- npm run test:types: strict TypeScript declarations passed.
+- npm run release:check: passed; dependency audit found 0 vulnerabilities and npm pack dry-run produced @cexi/hoonica@1.0.1 (78 files).
+- git status --short: clean.
+
+A follow-up documentation review found that the public README and package description described voice-note sending as confirmed, although finding #154 records that the implementation currently uses the generic audio upload path and lacks verified voice-specific waveform/duration metadata. The 1.0.1 package description, README, and DOCS now describe these as audio upload helpers and explicitly mark voice-note rendering as protocol-unverified. The 1.0.1 changelog also records this limitation. No speculative protocol payload change was made.
+
+These results remain local source/regression and package dry-run validation. They do not prove live Instagram behavior. No npm publish, release merge, or live account action was performed.
+
 ## Validation status (2026-11-22)
 
 - The user ran the diagnostic suite locally in UserLAnd on **Node.js v20.20.2** and **npm 10.8.2**.
