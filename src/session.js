@@ -145,8 +145,11 @@ async function harvestSessionParams(cookieJar, options = {}) {
       }
     });
 
+    // Instagram keeps background requests active, so networkidle2 can time out
+    // even after the inbox page has loaded and its GraphQL request was captured.
+    // Wait for document parsing, then use the bounded capture wait below.
     await page.goto("https://www.instagram.com/direct/inbox/", {
-      waitUntil: "networkidle2",
+      waitUntil: "domcontentloaded",
       timeout: options.timeout || 60000
     });
 
