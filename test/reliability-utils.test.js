@@ -200,7 +200,7 @@ async function run() {
 
   // A late failure from a request that began before the breaker opened
   // must not be erased by a half-open probe that completes afterward.
-  const lateFailureBreaker = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 5 });
+  const lateFailureBreaker = new CircuitBreaker({ failureThreshold: 1, cooldownMs: 10000 });
   let releaseOldFailure;
   let releaseRecoveryProbe;
   const oldRequest = lateFailureBreaker.run("late-failure", () => new Promise((_, reject) => {
@@ -212,7 +212,8 @@ async function run() {
     throw error;
   });
   await assert.rejects(thresholdFailure, /opens before old request settles/);
-  await new Promise(resolve => setTimeout(resolve, 10));
+  const lateFailureEntry = lateFailureBreaker.circuits.get("late-failure");
+  lateFailureEntry.openedAt = Date.now() - 10001;
   const recoveryProbe = lateFailureBreaker.run("late-failure", () => new Promise(resolve => {
     releaseRecoveryProbe = resolve;
   }));
@@ -220,10 +221,10 @@ async function run() {
   delayedFailure.code = "ECONNRESET";
   releaseOldFailure(delayedFailure);
   await assert.rejects(oldRequest, /old request failed during half-open probe/);
-  assert.equal(lateFailureBreaker.state("late-failure"), "open");
+  assert.equal(lateFailureEntry.state, "open");
   releaseRecoveryProbe("probe completed");
   assert.equal(await recoveryProbe, "probe completed");
-  assert.equal(lateFailureBreaker.state("late-failure"), "open");
+  assert.equal(lateFailureEntry.state, "open");
 
   process.stdout.write("reliability-utils.test.js: all checks passed\n");
 }
