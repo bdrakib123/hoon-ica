@@ -25,6 +25,7 @@ const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight:
 
 declare const nativeApi: InstaAPI;
 const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = nativeApi.realtimeSubscribe();
+const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = fcaClient.realtimeSubscribe();
 
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
@@ -36,7 +37,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
-  realtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
+  realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
 
