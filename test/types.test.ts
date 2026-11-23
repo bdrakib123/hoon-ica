@@ -23,6 +23,9 @@ const boundedBreaker: CircuitBreaker = new login.CircuitBreaker({ maxCircuits: 2
 const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight: 25 });
 
 
+declare const nativeApi: InstaAPI;
+const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = nativeApi.realtimeSubscribe();
+
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
 const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (error, api) => {
@@ -33,7 +36,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
-  nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
+  realtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
 
