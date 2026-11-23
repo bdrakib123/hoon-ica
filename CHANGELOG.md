@@ -8,6 +8,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and uses
 
 ## [Unreleased]
 
+## [1.0.1] - Unreleased
+
+### Fixed
+
+- Hardened inbox and realtime lifecycle handling, including bounded pagination,
+  subscription acknowledgement deadlines, disconnect cleanup, polling fallback,
+  and duplicate-event prevention.
+- Improved message and media send reliability with bounded retries, stable
+  idempotency identifiers, explicit partial-send outcomes, and callback
+  exception handling.
+- Added bounds and validation for media transfers, MQTT frames, decompressed
+  payloads, Thrift decoding, timers, retries, and long-lived caches.
+- Hardened media URL fetching against private/local network destinations,
+  unsafe redirects, stalled streams, and oversized responses.
+- Corrected thread, participant, profile, cookie, and identifier normalization
+  for malformed or partial Instagram payloads.
+
+### Changed
+
+- Expanded FCA compatibility and aligned the TypeScript declarations with
+  supported runtime overloads, callback forms, nullable values, and helper
+  exports.
+- Added strict declaration regression coverage and a consolidated source-audit
+  report with 186 tracked findings.
+
+### Security
+
+- Restricted persisted session, cookie, backup, device, and session-parameter
+  files to owner-only permissions where supported.
+- Kept browser automation optional; the package runtime remains Node.js 20+
+  without a browser dependency.
+
+
 ## [1.0.0] - 2026-11-22
 
 ### Changed
