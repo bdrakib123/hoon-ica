@@ -250,7 +250,7 @@ export interface ProfilePicture {
 }
 
 export interface CookieUtils {
-  parse(input: string): Record<string, string>;
+  parse(input: string | object): Record<string, string>;
 }
 
 // The FCA / GoatBot-Pro shaped client. Commands written for the Facebook Chat
@@ -374,7 +374,7 @@ export declare class EventNormalizer {
 
 export declare function loadApiMethods(client: InstaClient): string[];
 export declare function wrap(native: InstaAPI, options?: InstaChatOptions): InstaClient;
-export declare function createContext(nativeOrClient: InstaAPI | InstaClient, threadID: string): InstaContext;
+export declare function createContext(nativeOrClient: InstaAPI | InstaClient, threadID: string | null): InstaContext;
 
 export interface LoginExport {
   (cookie: string | object, options?: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
