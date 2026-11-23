@@ -17,7 +17,12 @@ const cache: IdempotencyCache = new login.IdempotencyCache({ ttlMs: 1000 });
 const scheduler: Scheduler = new login.Scheduler({ enabled: false });
 const namespacedScheduler: Scheduler = new utilities.Scheduler({ enabled: false });
 
-void [limiter, breaker, cache, scheduler, namespacedScheduler];
+const boundedLimiter: AdaptiveRateLimiter = new login.AdaptiveRateLimiter({ maxEndpoints: 25 });
+const boundedBreaker: CircuitBreaker = new login.CircuitBreaker({ maxCircuits: 25 });
+const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight: 25 });
+
+
+void [limiter, breaker, cache, scheduler, namespacedScheduler, boundedLimiter, boundedBreaker, boundedCache];
 
 
 declare const fcaClient: InstaClient;
