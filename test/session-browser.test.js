@@ -151,7 +151,10 @@ async function testHarvestCleanupOrder() {
       assert.equal(event, "request");
       requestHandler = handler;
     },
-    async goto() {
+    async goto(url, options) {
+      assert.equal(url, "https://www.instagram.com/direct/inbox/");
+      assert.equal(options.waitUntil, "domcontentloaded");
+      assert.equal(options.timeout, 1000);
       requestHandler({
         url: () => "https://www.instagram.com/api/graphql",
         headers: () => ({
