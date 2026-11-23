@@ -393,7 +393,7 @@ export interface LoginExport {
   harvestSessionParams(cookieJar: Record<string, string>, options?: object): Promise<Record<string, string>>;
   findChromium(): string | undefined;
   constants: any;
-  moduleLogin: LoginExport;
+  moduleLogin: ModuleLoginExport;
   RealtimeClient: any;
   RealtimeListener: any;
   utilities: typeof utilities;
@@ -403,9 +403,16 @@ export interface LoginExport {
   Scheduler: typeof Scheduler;
 }
 
+/** Separate legacy entry point that always resolves to the native InstaAPI. */
+export interface ModuleLoginExport {
+  (cookie: string | object, options?: InstaChatOptions): Promise<InstaAPI>;
+  (cookie: string | object, callback: (err: Error | null, api: InstaAPI | null) => void): void;
+  (cookie: string | object, options: InstaChatOptions, callback: (err: Error | null, api: InstaAPI | null) => void): void;
+}
+
 export const RealtimeClient: any;
 export const RealtimeListener: any;
-export const moduleLogin: LoginExport;
+export const moduleLogin: ModuleLoginExport;
 
 export declare class InstaAPI {
   constructor(cookieRaw: string | object, options?: InstaChatOptions);
