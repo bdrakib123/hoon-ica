@@ -294,6 +294,6 @@ Severity reflects likely impact from source behavior, not confirmed production i
 
 - **Found in source review:** `InstaAPI.realtimeSubscribe()` returns the cursor object from `inbox.fetchRealtimeState()`. That path uses `normalizeSequenceId()`, which deliberately returns a decimal string when the sequence exceeds `Number.MAX_SAFE_INTEGER`.
 - **Defect:** `index.d.ts` declared the returned `seqId` as `number` only, even though the runtime can and must preserve large sequence IDs as strings to avoid precision loss.
-- **Fix:** widened the return type to `number | string`, matching `RealtimeOptions.seqId` and the actual normalization behavior.
-- **Regression:** `test/types.test.ts` assigns the native method result to a promise whose `seqId` accepts both safe numbers and exact decimal strings.
+- **Fix:** widened both `InstaAPI.realtimeSubscribe()` and the FCA-shaped `InstaClient.realtimeSubscribe()` return declarations to `number | string`, matching `RealtimeOptions.seqId` and the actual normalization behavior.
+- **Regression:** `test/types.test.ts` assigns both native and FCA-shaped method results to promises whose `seqId` accepts both safe numbers and exact decimal strings.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
