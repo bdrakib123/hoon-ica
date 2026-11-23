@@ -367,6 +367,8 @@ export declare class InstaClient {
 export declare class InstaContext {
   constructor(client: InstaClient, threadID: string | null);
   client: InstaClient;
+  api: InstaAPI;
+  userID: string | null;
   threadID: string | null;
   send(form: any, callback?: Function, replyToMessage?: string): Promise<any>;
   reply(form: any, callback?: Function, messageID?: string): Promise<any>;
