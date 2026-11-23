@@ -8,6 +8,12 @@ export interface InstaChatOptions {
   sessionParamsFile?: string;
   /** Path to the persisted device identity file. Defaults to ./device.json */
   deviceFile?: string;
+  /** Path used to persist and restore the Instagram app-state cookie snapshot. */
+  appStateFile?: string;
+  /** Alternate path for the persisted app-state snapshot (used when appStateFile is unset). */
+  sessionGuardFile?: string;
+  /** Disable the FCA client's automatic session-guard installation. Defaults to enabled. */
+  sessionGuard?: boolean;
   /** Polling interval in ms for listen(). Defaults to 15000. */
   pollInterval?: number;
   /** Lowest interval listen() will honour (ms, min 2000). Defaults to 15000. */
