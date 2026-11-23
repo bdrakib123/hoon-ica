@@ -12,7 +12,8 @@ import login, {
   SendPacingOptions,
   ProfileInfo,
   PartialSendError,
-  utilities
+  utilities,
+  moduleLogin as namedModuleLogin
 } from "../index";
 
 const limiter: AdaptiveRateLimiter = new login.AdaptiveRateLimiter({ globalMinDelayMs: 10 });
@@ -49,6 +50,7 @@ const nativeLoginCallback: void = login("session-cookie", { native: true }, (err
 });
 
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
+const namedNativeModuleLogin: Promise<InstaAPI> = namedModuleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
 const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (error, api) => {
   void error;
@@ -60,7 +62,8 @@ void [
   boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, cookieArray, cookieObject,
   defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
-  realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
+  realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
+  nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
 
