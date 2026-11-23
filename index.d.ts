@@ -63,6 +63,18 @@ export interface SendPacingOptions {
   dailyCap?: number;
   /** Gap applied once a cap is exceeded, in ms. Defaults to 20000. */
   overCapGapMs?: number;
+  /** Base cooldown after repeated suspension signals, in ms. Defaults to 3600000. */
+  cooldownMs?: number;
+  /** Maximum escalated cooldown duration, in ms. Defaults to 21600000. */
+  maxCooldownMs?: number;
+  /** Window in which repeated cooldown activations increase the cooldown level, in ms. Defaults to 86400000. */
+  escalationWindowMs?: number;
+  /** Number of suspicion strikes needed to activate cooldown. Defaults to 2. */
+  strikesToActivate?: number;
+  /** Time after which inactive suspicion strikes decay, in ms. Defaults to 1800000. */
+  strikeDecayMs?: number;
+  /** Minimum send gap while a cooldown is active, in ms. Defaults to 30000. */
+  cooldownGapMs?: number;
 }
 
 export interface ReadRetryOptions {
