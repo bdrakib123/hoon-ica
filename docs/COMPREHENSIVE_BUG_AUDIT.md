@@ -178,9 +178,9 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4e24d66`: all 28 runtime regression checks, 6 wrapper tests, type checks, audit checks, dependency audit, and release dry-run passed; working tree was clean. The current audit batch has expanded the runtime suite to 93 named checks and the FCA wrapper suite to 18 checks, with the latest source-review assertions pending the user's combined local run.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `924bf14` (2026-11-23): all 93 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. The newly added #156 regression test is not included in that run yet.
 
-**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#155 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and await one combined local run. The current branch contains 93 named runtime regression tests and 18 FCA wrapper regression tests (111 named tests total); counts are source-inspected, not test-run results. Do not treat source review or successful GitHub commits as test passes.
+**Execution status:** #20–#29 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment. #30–#155 are implemented or explicitly classified as unsupported with regression coverage on the audit branch and passed the user's combined local run at `924bf14`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); 93 runtime tests and all 18 wrapper tests were confirmed green at `924bf14`, while the new #156 test awaits execution. Do not treat source review or successful GitHub commits alone as test passes.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -201,7 +201,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Recommended next validation sequence
 
-1. Run the full Node 20 validation suite once after the #155 bounded polling change (93 named runtime tests + 18 wrapper tests).
+1. Run the full Node 20 validation suite after the #156 stalled-publish timeout change (94 named runtime tests + 18 wrapper tests).
 2. Fix any environment-specific test failures revealed by that combined run, then repeat the full suite.
 3. Stress-test cache eviction and the configurable polling page budget under high thread churn.
 4. Keep live Instagram account actions, merge, and npm publish separate; they require their own explicit approval.
