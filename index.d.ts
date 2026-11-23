@@ -473,7 +473,7 @@ export declare class InstaAPI {
   realtimeClient(options?: RealtimeOptions): any;
   realtimeConnect(options?: RealtimeOptions): Promise<any>;
   realtimeOn(event: string, handler: (payload: any) => void): this;
-  realtimeSubscribe(): Promise<{ seqId: number; snapshotAtMs: number }>;
+  realtimeSubscribe(): Promise<{ seqId: number | string; snapshotAtMs: number }>;
   realtimePing(): Promise<boolean>;
   realtimeDisconnect(): void;
 }
