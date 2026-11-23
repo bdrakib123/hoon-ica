@@ -75,6 +75,13 @@ class InboxMethods {
     // (FCA's selfListen); false (default) = drop them. Only the self filter
     // below honours it; reactions and admin logs are still skipped.
     this.selfListen = options.selfListen === true;
+    // Poll a bounded number of inbox pages so older threads are visible without
+    // turning every polling cycle into an unbounded GraphQL crawl. Default: 3
+    // pages (up to 45 threads); callers can set 1 to keep first-page-only mode.
+    const requestedPollMaxPages = Number(options.pollMaxPages);
+    this.pollMaxPages = Number.isFinite(requestedPollMaxPages)
+      ? Math.min(10, Math.max(1, Math.floor(requestedPollMaxPages)))
+      : 3;
     // Lowest poll interval listen() will honour, in ms. Instagram has no DM
     // push, so reply latency is bounded by one poll cycle. The 15000 default is
     // the conservative safe floor for a personal account; operators on a
@@ -669,6 +676,37 @@ class InboxMethods {
     }
   }
 
+  async _getPollingThreads(isStopped = () => false) {
+    const threads = [];
+    const seenThreadIDs = new Set();
+    const seenCursors = new Set();
+    let page = await this.getInbox();
+
+    for (let pageIndex = 0; pageIndex < this.pollMaxPages; pageIndex += 1) {
+      if (isStopped()) break;
+      for (const thread of Array.isArray(page?.threads) ? page.threads : []) {
+        const id = firstUsableId(thread?.id, thread?.thread_id);
+        if (!id || seenThreadIDs.has(id)) continue;
+        seenThreadIDs.add(id);
+        threads.push(thread);
+      }
+
+      if (
+        pageIndex + 1 >= this.pollMaxPages ||
+        page?.hasNextPage !== true ||
+        page?.nextCursor == null ||
+        String(page.nextCursor).trim() === ""
+      ) break;
+
+      const cursor = String(page.nextCursor);
+      if (seenCursors.has(cursor)) break;
+      seenCursors.add(cursor);
+      page = await this.getInbox(cursor);
+    }
+
+    return threads;
+  }
+
   _startPolling(callback, intervalMs = 20000) {
     const MIN_INTERVAL_MS = this.minPollIntervalMs;
     const requestedInterval = Number(intervalMs);
@@ -703,7 +741,7 @@ class InboxMethods {
       if (polling || stopped) return;
       polling = true;
       try {
-        const { threads } = await this.getInbox();
+        const threads = await this._getPollingThreads(() => stopped);
         // stopListening() may be called while the network request is in flight.
         // Do not dispatch stale events or schedule another poll after stop.
         if (stopped) return;
