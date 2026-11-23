@@ -46,6 +46,11 @@ const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: numb
 const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = fcaClient.realtimeSubscribe();
 
 const defaultLogin: Promise<InstaClient> = login("session-cookie");
+login.createClient("session-cookie", (error, api) => {
+  void error;
+  const createdClient: InstaClient | null = api;
+  void createdClient;
+});
 const namedDefaultLogin: Promise<InstaClient> = namedLogin("session-cookie");
 const commonJsLogin: Promise<InstaClient> = login.login("session-cookie");
 const commonJsDefaultLogin: Promise<InstaClient> = login.default("session-cookie");
