@@ -1,6 +1,6 @@
 {
   "name": "@cexi/hoonica",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Unofficial Instagram Chat API for Node.js | Build Instagram DM bots on personal accounts — send messages, media, voice notes, reactions, edit & unsend, listen for incoming chats. No browser at runtime",
   "main": "index.js",
   "types": "index.d.ts",
