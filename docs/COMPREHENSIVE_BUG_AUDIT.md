@@ -178,9 +178,9 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 **All 17 original diagnostic cases have a branch-level response; #18 remains partial FCA compatibility and #20 is a bounded-cache mitigation.** #12 uses the Relay message-list cursor for older messages; #15 uses the documented inbox pagination query. #18 handles multi-page INBOX results, timestamp filtering, and unread filtering. Archived/pending/other folders remain unsupported by the currently verified web query. The user has now confirmed #20 bounded-cache, #21 malformed-inbox-edge, and #22 media-auth retry regression tests in the full local suite. #23 makes media commit retries idempotent, and #24 bounds MQTT frame parsing and buffering; the user has now confirmed all 24 regression tests pass locally. #25 adds a decompression output cap and #26 bounds malformed Thrift structures; both await a fresh local run. None of these protocol changes has been validated against a live Instagram session.
 
-`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `4adfedf` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout regression.
+`test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #20–#156 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `4adfedf`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed. The working tree was clean. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #20–#157 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `29f8e14`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed. The working tree was clean. #158 is committed after that validation and awaits the next local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -208,7 +208,7 @@ These require more focused fixtures, payload captures, or runtime validation bef
 
 ## Follow-up source review (2026-11-23)
 
-Reviewed the current realtime listener/client lifecycle, MQTT TLS transport reset and cancellation paths, media upload/commit retry logic, HTTP error classification, outbound send pacing, and optional reliability utilities after #156. This pass identified #157 in the optional CircuitBreaker helper. Existing regression coverage exercises pending TLS cancellation, stale connection-loop isolation, shared-client reconnect cleanup, media commit retry ID reuse, permanent auth non-retry, and caption/media partial-send reporting.
+Reviewed the current realtime listener/client lifecycle, MQTT TLS transport reset and cancellation paths, media upload/commit retry logic, HTTP error classification, outbound send pacing, optional reliability utilities, and public TypeScript declarations after #156. This pass identified #157 in the optional CircuitBreaker helper and #158 in the utility option declarations. Existing regression coverage exercises pending TLS cancellation, stale connection-loop isolation, shared-client reconnect cleanup, media commit retry ID reuse, permanent auth non-retry, and caption/media partial-send reporting.
 
 Remaining protocol-level uncertainty is unchanged: source fixtures do not prove current Instagram broker or mutation behavior. In particular, keep voice-note semantics (#154), HTTP 412 upload retry classification, and remote idempotency behavior marked for account-safe protocol capture rather than changing payloads speculatively. No live account actions, merge, or npm publish were performed.
 
@@ -219,6 +219,14 @@ Remaining protocol-level uncertainty is unchanged: source fixtures do not prove 
 - **Regression:** `test/reliability-utils.test.js` now holds an old request open, opens the breaker with a concurrent failure, starts a half-open probe, then fails the old request before resolving the probe. The circuit must remain OPEN after the stale probe succeeds.
 - **Scope:** this optional `CircuitBreaker` utility is not wired into `HttpClient` by default. The change protects applications that explicitly use the helper; it does not alter normal Instagram request behavior.
 - **Validation status:** source and regression test are committed on the audit branch; the user's next local `npm test` run must confirm the new case.
+
+### #158 — TypeScript declarations omitted supported reliability capacity options
+
+- **Fixed on branch:** runtime constructors already supported `AdaptiveRateLimiter.maxEndpoints`, `CircuitBreaker.maxCircuits`, and `IdempotencyCache.maxInflight`, but `index.d.ts` rejected these valid options. TypeScript consumers could not configure the documented bounded-state limits without casts or plain JavaScript.
+- **Fix:** added the three optional properties to the corresponding constructor option types.
+- **Regression:** `test/types.test.ts` now instantiates all three helpers with their capacity options, so `npm run test:types` verifies the public declarations.
+- **Documentation:** `DOCS.md` now describes the defaults and hard caps for each bound.
+- **Validation status:** declarations, type regression, and documentation are committed on the audit branch; the user's next local validation run must confirm them.
 
 ## Initial severity triage (provisional)
 
