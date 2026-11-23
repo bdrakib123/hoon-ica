@@ -9,6 +9,7 @@ import login, {
   IncomingEvent,
   SendOptions,
   RealtimeOptions,
+  SendPacingOptions,
   PartialSendError,
   utilities
 } from "../index";
@@ -77,6 +78,16 @@ if (incomingEvent.type === "event") {
 
 void fcaClient.lastShareContactError;
 void fcaClient.lastEditError;
+
+const completeSendPacing: SendPacingOptions = {
+  cooldownMs: 60 * 60 * 1000,
+  maxCooldownMs: 6 * 60 * 60 * 1000,
+  escalationWindowMs: 24 * 60 * 60 * 1000,
+  strikesToActivate: 2,
+  strikeDecayMs: 30 * 60 * 1000,
+  cooldownGapMs: 30000
+};
+void completeSendPacing;
 
 const sessionOptions: import("../index").InstaChatOptions = {
   appStateFile: "./app-state.json",
