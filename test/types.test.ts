@@ -88,6 +88,11 @@ if (incomingEvent.type === "event") {
   void incomingEvent.logMessageType;
 }
 
+void fcaClient.getProfilePictureV2("user-1", (error, info) => {
+  void error;
+  if (info) void info.sizes;
+});
+
 void fcaClient.lastShareContactError;
 void fcaClient.lastEditError;
 
