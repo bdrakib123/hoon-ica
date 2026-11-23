@@ -226,3 +226,8 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - The cursor-bootstrap test constructed the inbox HTTP client without the `uuid()` method required by the first-page Polaris inbox query.
 - The fixture now supplies a deterministic device UUID, allowing the production path to reach and assert the intended missing-mailbox error.
 - This was a test-fixture defect; no production runtime code changed.
+
+### #152 — Event normalizer identifier test rejected valid cache writes
+- The regression fixture configured `rememberThread()` to throw unconditionally, but its malformed-body case intentionally has valid message/thread identifiers and should be cached.
+- The fixture now asserts that every cache write has nonblank identifiers and verifies that only the valid event is remembered.
+- Production normalization already rejects missing core identifiers before cache writes; no runtime change was needed.
