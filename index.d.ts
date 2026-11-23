@@ -420,6 +420,7 @@ export interface LoginExport {
   EventNormalizer: typeof EventNormalizer;
   createClient(cookie: string | object, options: InstaChatOptions & { native: true }): Promise<InstaAPI>;
   createClient(cookie: string | object, options?: InstaChatOptions & { native?: false }): Promise<InstaClient>;
+  createClient(cookie: string | object, callback: (err: Error | null, api: InstaClient | null) => void): void;
   createClient(cookie: string | object, options: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
   createFcaClient: typeof createFcaClient;
   loadApiMethods: typeof loadApiMethods;
