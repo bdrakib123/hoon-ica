@@ -114,6 +114,10 @@ export interface RealtimeOptions {
   appVersion?: string;
   /** Android User-Agent sent in the CONNECT. */
   userAgent?: string;
+  /** Optional custom MQTT transport (primarily useful for advanced integrations and tests). */
+  transport?: any;
+  /** Supply a shared RealtimeClient instead of creating a new connection. */
+  getClient?: () => any | Promise<any>;
   /** Fired when the connection + subscription are ready. */
   onReady?: (listener: any) => void;
 }
