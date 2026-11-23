@@ -69,6 +69,17 @@ void [
 ];
 
 
+void nativeApi.getThreadHistory("thread-1", null, null);
+void fcaClient.getThreadHistory("thread-1", null, null, (error, items) => {
+  void error;
+  void items;
+});
+void nullableContext.getHistory(null);
+void nullableContext.getHistory((error, items) => {
+  void error;
+  void items;
+});
+
 void fcaClient.getThreadHistory("thread-1", (error, items) => {
   void error;
   void items;
