@@ -3010,7 +3010,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 92 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 93 regression tests passed\n");
 }
 
 run().catch((error) => {
