@@ -53,6 +53,11 @@ const nativeLoginCallback: void = login("session-cookie", { native: true }, (err
   if (api) void api.getCurrentUserID();
 });
 
+void login.reconcile.buildKeys({ threadID: "thread-1", senderID: "user-1", body: "hello" });
+void login.bridge.isMessagePatch("path", "replace");
+void login.antiSuspension.globalAntiSuspension.stats();
+void login.sessionGuard.loadSaved("./appstate.json", { sessionid: "example" });
+
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
 const namedNativeModuleLogin: Promise<InstaAPI> = namedModuleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
