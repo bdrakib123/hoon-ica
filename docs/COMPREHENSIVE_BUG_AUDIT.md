@@ -11,6 +11,8 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 - Before runtime fixes began, `npm run audit:repro` completed with exit code 0 and reported **17 reproduced / 17 diagnostic cases**.
 - `git status --short` was empty after the run.
 - These are controlled local runtime reproductions of the current source behavior, **not live Instagram validation**.
+
+- Latest user-confirmed validation (2026-11-23) after pulling commit `4431f9b`: `npm test`, `npm run audit:repro` (17 checks), `npm run test:types`, and `npm run release:check` all exited 0 on Node.js v20.20.2 / npm 10.8.2; the working tree was clean. The release check completed a dependency audit (0 vulnerabilities) and npm package dry-run only. No live Instagram login/messaging or publish was performed.
 - No live Instagram login, DM, MQTT subscription, media upload, or account action was performed.
 - Runtime fixes are now being made only on `audit/comprehensive-bug-hunt`, after the user authorized this work.
 - The normal `npm test` command now includes `test/runtime-fixes.test.js`; the separate `audit:repro` script has been converted to check corrected behavior for fixed cases and retain diagnostics for remaining candidates.
@@ -237,3 +239,14 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - The malformed-edge test checked for four GraphQL calls immediately after the two inbox-page requests, before invoking `fetchReplies()` and `_latestActor()`, which each issue the thread-detail query.
 - Moved the query-count assertion after both detail methods. The intended total remains four calls: first inbox page, pagination page, reply detail, and latest-actor detail.
 - This was a test assertion-order defect; production code was not changed.
+
+### #154 — Voice-note API does not currently demonstrate voice-note-specific semantics
+- `sendVoiceBuffer()` passes a `voice: true` flag into `_send()`, but `_send()` never reads that flag. The upload path selects the generic `messenger_audio` / `audio_type` consumer, and the commit mutation contains only the generic attachment/thread/offline-ID/reply fields.
+- `_waveform()` exists but is not called anywhere in the media send path; no voice-specific waveform or duration metadata is attached by this implementation.
+- This is a concrete implementation/documentation gap, but not yet proof that Instagram requires those fields: a generic audio attachment may still render as an audio/voice bubble depending on server-side classification.
+- **Disposition:** do not change the payload speculatively. Keep voice-note support marked protocol-unverified until a current web-client request/response capture or account-safe fixture establishes the required upload headers and commit metadata. Add regression coverage only after the expected contract is known.
+
+### #155 — Polling listener ignores inbox pages after the first 15 threads
+- `_startPolling()` destructures only `{ threads } = await this.getInbox()` and never follows `nextCursor` / `hasNextPage`; `getInbox()` exposes Relay pagination at 15 threads per page.
+- Therefore, a thread outside the first inbox page is not included in polling snapshots or message extraction. This can delay or miss incoming messages from lower-ranked threads until they move onto page one. The FCA `getThreadList()` wrapper has separate pagination, so this limitation is specific to the listener poller.
+- **Disposition:** confirmed source-level coverage limitation, not yet a production fix. Before changing it, decide a bounded page budget and cursor policy (for example, a small configurable number of pages) to avoid multiplying GraphQL requests on every poll. Tests should verify page traversal, deduplication, stop-during-pagination, and request-budget behavior.
