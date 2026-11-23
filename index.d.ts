@@ -12,6 +12,8 @@ export interface InstaChatOptions {
   pollInterval?: number;
   /** Lowest interval listen() will honour (ms, min 2000). Defaults to 15000. */
   minPollIntervalMs?: number;
+  /** Maximum inbox pages inspected per polling cycle (1–10, default 3; 15 threads per page). */
+  pollMaxPages?: number;
   /** Opt listen() into the realtime MQTT push stream. */
   realtime?: RealtimeOptions;
   /**
