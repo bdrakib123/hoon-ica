@@ -295,7 +295,7 @@ export declare class InstaClient {
   ): Promise<{ messageID: string | null; threadID: string; timestamp: number }>;
   sendMessageSync(form: any, threadID: string): Promise<any>;
   editMessage(text: string, messageID: string, callback?: (err: any, res: any) => void): Promise<any>;
-  unsendMessage(messageID: string, callback?: (err: any, ok: any) => void): Promise<boolean>;
+  unsendMessage(messageID: string, callback?: (err: any, ok: any) => void, threadID?: string): Promise<boolean>;
   setMessageReaction(emoji: string, messageID: string, callback?: (err: any, info: any) => void, threadID?: string | boolean): Promise<any>;
   sendTypingIndicator(threadID: string): Promise<boolean>;
   markAsRead(threadID: string, itemID: string): Promise<boolean>;
