@@ -221,3 +221,8 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - Run all four validation commands listed above on Node 20 and inspect their complete outputs.
 - For INT64, inspect all consumers before changing the default from Number to BigInt or string; either can be a public API compatibility break.
 - Do not run live account actions as part of ordinary regression tests.
+
+### #151 — Inbox cursor missing-mailbox test fixture lacked device UUID
+- The cursor-bootstrap test constructed the inbox HTTP client without the `uuid()` method required by the first-page Polaris inbox query.
+- The fixture now supplies a deterministic device UUID, allowing the production path to reach and assert the intended missing-mailbox error.
+- This was a test-fixture defect; no production runtime code changed.
