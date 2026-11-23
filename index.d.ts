@@ -359,7 +359,7 @@ export declare class InstaClient {
   // realtime
   listen(callback: (err: Error | null, event: IncomingEvent | null) => void, intervalMs?: number): () => void;
   stopListening(): void;
-  getInbox(cursor?: string): Promise<InboxResult>;
+  getInbox(cursor?: string | null): Promise<InboxResult>;
   rememberThread(messageID: string, threadID: string): void;
 
   // realtime (MQTT) — also on the native client
@@ -522,7 +522,7 @@ export declare class InstaAPI {
   sendVoiceFromUrl(threadID: string, url: string, options?: SendOptions): Promise<any>;
 
   // listening
-  getInbox(cursor?: string): Promise<InboxResult>;
+  getInbox(cursor?: string | null): Promise<InboxResult>;
   listen(callback: (err: Error | null, event: IncomingEvent | null) => void, intervalMs?: number): () => void;
   stopListening(): void;
 
