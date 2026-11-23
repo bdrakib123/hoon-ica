@@ -2867,6 +2867,55 @@ async function testBoundedSessionCache() {
   assert.equal(inbox._threadIdMap.has("internal-0"), false);
 }
 
+
+async function testPollingTraversesBoundedInboxPagesAndDeduplicatesThreads() {
+  const inbox = new InboxMethods({}, () => "self-1", { pollMaxPages: 3 });
+  const calls = [];
+  inbox.getInbox = async (cursor = null) => {
+    calls.push(cursor);
+    if (cursor == null) {
+      return { threads: [{ id: "thread-1" }, { id: "thread-2" }], nextCursor: "cursor-1", hasNextPage: true };
+    }
+    if (cursor === "cursor-1") {
+      return { threads: [{ id: "thread-2" }, { id: "thread-3" }], nextCursor: "cursor-2", hasNextPage: true };
+    }
+    if (cursor === "cursor-2") {
+      return { threads: [{ id: "thread-4" }], nextCursor: "cursor-3", hasNextPage: true };
+    }
+    throw new Error("unexpected cursor " + cursor);
+  };
+
+  const threads = await inbox._getPollingThreads();
+  assert.deepEqual(calls, [null, "cursor-1", "cursor-2"]);
+  assert.deepEqual(threads.map((thread) => thread.id), ["thread-1", "thread-2", "thread-3", "thread-4"]);
+  assert.equal(new InboxMethods({}, () => "self-1").pollMaxPages, 3);
+  assert.equal(new InboxMethods({}, () => "self-1", { pollMaxPages: 0 }).pollMaxPages, 1);
+  assert.equal(new InboxMethods({}, () => "self-1", { pollMaxPages: 99 }).pollMaxPages, 10);
+}
+
+async function testPollingPaginationStopsAfterStopDuringPageRequest() {
+  const inbox = new InboxMethods({}, () => "self-1", { pollMaxPages: 4 });
+  let resolveSecondPage;
+  inbox.getInbox = async (cursor = null) => {
+    if (cursor == null) {
+      return { threads: [{ id: "thread-1" }], nextCursor: "cursor-1", hasNextPage: true };
+    }
+    return new Promise((resolve) => { resolveSecondPage = resolve; });
+  };
+
+  let stopped = false;
+  const pending = inbox._getPollingThreads(() => stopped);
+  await new Promise((resolve) => setImmediate(resolve));
+  stopped = true;
+  resolveSecondPage({
+    threads: [{ id: "thread-2" }],
+    nextCursor: "cursor-2",
+    hasNextPage: true
+  });
+  const threads = await pending;
+  assert.deepEqual(threads.map((thread) => thread.id), ["thread-1"]);
+}
+
 async function run() {
   await testCookieInputs();
   await testNestedPacingConfiguration();
@@ -2895,6 +2944,8 @@ async function run() {
   await testInboxPollIntervalsRespectNodeTimerLimit();
   await testFirstMessageAfterEmptyInboxPoll();
   await testPollingStopSuppressesInflightResults();
+  await testPollingTraversesBoundedInboxPagesAndDeduplicatesThreads();
+  await testPollingPaginationStopsAfterStopDuringPageRequest();
   await testPollingStopSuppressesLateAuthConfirmation();
   await testPollingPaginatesUntilLastSeenMessageFound();
   await testNewlyDiscoveredThreadDoesNotReplayHistory();
@@ -2959,7 +3010,7 @@ async function run() {
   await testThriftReaderRejectsMalformedAndOversizedValues();
   await testThriftMapProtoKeyCannotMutatePrototype();
   await testRealtimeFingerprintRequiresTimestamp();
-  process.stdout.write("runtime-fixes.test.js: 90 regression tests passed\n");
+  process.stdout.write("runtime-fixes.test.js: 92 regression tests passed\n");
 }
 
 run().catch((error) => {
