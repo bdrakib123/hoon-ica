@@ -291,7 +291,7 @@ export declare class InstaClient {
     form: string | { body?: string; attachment?: any; attachments?: any[]; maxDownloadBytes?: number; downloadTimeoutMs?: number },
     threadID: string,
     callback?: ((err: any, info: any) => void) | string,
-    replyToMessage?: string | { messageID?: string; id?: string }
+    replyToMessage?: string | number | { messageID?: string; id?: string }
   ): Promise<{ messageID: string | null; threadID: string; timestamp: number }>;
   sendMessageSync(form: any, threadID: string): Promise<any>;
   editMessage(text: string, messageID: string, callback?: (err: any, res: any) => void): Promise<any>;
@@ -370,8 +370,8 @@ export declare class InstaContext {
   api: InstaAPI;
   userID: string | null;
   threadID: string | null;
-  send(form: any, callback?: Function, replyToMessage?: string | { messageID?: string; id?: string }): Promise<any>;
-  reply(form: any, callback?: Function, messageID?: string | { messageID?: string; id?: string }): Promise<any>;
+  send(form: any, callback?: Function, replyToMessage?: string | number | { messageID?: string; id?: string }): Promise<any>;
+  reply(form: any, callback?: Function, messageID?: string | number | { messageID?: string; id?: string }): Promise<any>;
   react(emoji: string, messageID: string, callback?: Function): Promise<any>;
   unsend(messageID: string, callback?: Function): Promise<any>;
   edit(text: string, messageID: string, callback?: Function): Promise<any>;
