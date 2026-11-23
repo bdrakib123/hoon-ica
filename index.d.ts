@@ -370,8 +370,8 @@ export declare class InstaContext {
   api: InstaAPI;
   userID: string | null;
   threadID: string | null;
-  send(form: any, callback?: Function, replyToMessage?: string): Promise<any>;
-  reply(form: any, callback?: Function, messageID?: string): Promise<any>;
+  send(form: any, callback?: Function, replyToMessage?: string | { messageID?: string; id?: string }): Promise<any>;
+  reply(form: any, callback?: Function, messageID?: string | { messageID?: string; id?: string }): Promise<any>;
   react(emoji: string, messageID: string, callback?: Function): Promise<any>;
   unsend(messageID: string, callback?: Function): Promise<any>;
   edit(text: string, messageID: string, callback?: Function): Promise<any>;
