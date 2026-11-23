@@ -468,7 +468,14 @@ export declare class InstaAPI {
   refreshSession(params?: Record<string, string>): Promise<boolean>;
   /** Re-tune outbound send pacing on a live client; see SendPacingOptions. */
   setSendPacing(options?: SendPacingOptions): any;
+  setSessionParams(params: Record<string, string>): void;
   getCurrentUserID(): string | null;
+  /** Return a copy of the learned internal-thread-ID to inbox-thread-ID map. */
+  getThreadIdMap(): Map<string, string>;
+  /** Replace the browser-generated session parameters used by subsequent requests. */
+  setSessionParams(params: Record<string, string>): void;
+  /** Return a copy of the learned internal-thread-ID to inbox-thread-ID map. */
+  getThreadIdMap(): Map<string, string>;
 
   // messaging
   /** replyToItemId is the target message id (item_id / messageID). */
