@@ -105,6 +105,8 @@ void fcaClient.sendVoiceFromUrl("thread-1", "https://cdn.example/audio.ogg", (er
   void info;
 });
 
+void fcaClient.setMessageReaction("❤️", "message-1", undefined, 12345);
+
 void fcaClient.unsendMessage("message-1", (error, ok) => {
   void error;
   void ok;
