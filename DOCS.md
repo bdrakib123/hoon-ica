@@ -358,11 +358,15 @@ The following standalone helpers are exported as `login.utilities` and
 `require("@cexi/hoonica").utilities`:
 
 - `AdaptiveRateLimiter` — caller-managed global/per-endpoint pacing and
-  adaptive backoff after HTTP 429 responses.
+  adaptive backoff after HTTP 429 responses. Its `maxEndpoints` option bounds
+  tracked endpoint state (default 1,000; hard cap 10,000).
 - `CircuitBreaker` — optional per-operation circuit breaker with a single
-  half-open probe.
+  half-open probe. Its `maxCircuits` option bounds tracked circuit state
+  (default 1,000; hard cap 10,000).
 - `IdempotencyCache` — short-lived in-memory deduplication for explicitly
-  keyed operations.
+  keyed operations. `maxSize` bounds cached results (default 1,000; hard cap
+  100,000), and `maxInflight` bounds distinct concurrent operations (default
+  10,000; hard cap 100,000).
 
 These helpers are **not automatically attached to the Instagram HTTP client**.
 They do not change request timing, login, message sending, retries, or realtime
