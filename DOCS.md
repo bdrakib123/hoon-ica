@@ -57,6 +57,7 @@ commands call). Pass `{ native: true }` to get the bare `InstaAPI` instead.
 | `deviceFile` | `./device.json` | Persisted device identity. |
 | `pollInterval` | `15000` | `listen()` poll interval (ms), used when realtime is off. |
 | `minPollIntervalMs` | `15000` | Lowest interval `listen()` will honour (floor, min 2000). |
+| `pollMaxPages` | `3` | Maximum inbox pages inspected per polling cycle (1–10; 15 threads per page). Set `1` to use only the first page. |
 | `realtime` | – | `{ enabled, fallback, host, keepAliveMs, subscriptionTimeoutMs }` — realtime MQTT push for `listen()`. `keepAliveMs` (default 25000) is the PINGREQ interval and must stay below the CONNECT keep-alive (60 s); `subscriptionTimeoutMs` (default 10000) bounds the iris-subscription acknowledgement wait and is capped at Node's maximum timer delay. |
 | `readRetry` | `{ attempts: 3, firstWaitMs: 3000, maxWaitMs: 30000 }` | Retry a throttled read (a `null` result) before giving up. `false` disables it. |
 | `sendPacing` | – | Tune the anti-suspension send pacer (`{ enabled, globalMinGapMs, perThreadMinGapMs, jitterMs, warmupWindowMs, warmupHourlyCap, normalHourlyCap, dailyCap, overCapGapMs }`). `{ enabled: false }` sends with no throttle at all. |
