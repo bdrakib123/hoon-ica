@@ -4,6 +4,18 @@ Branch: `audit/comprehensive-bug-hunt`
 Baseline: `audit/fca-wrapper-regression`  
 Scope: source inspection, isolated runtime fixes, and local regression-test preparation.
 
+## Latest local validation — 2026-11-23 (commit 4ef0c551)
+
+The user pulled the audit branch through `4ef0c55` and confirmed all checks exited 0 on **Node.js v20.20.2 / npm 10.8.2**:
+
+- `npm test`: all suites passed — 4 edit tests, 18 FCA wrapper tests, 6 session checks, 3 no-browser checks, reliability utilities, scheduler, and 94 runtime regression tests.
+- `npm run audit:repro`: 17/17 checks passed. These checks cover source/mock behavior, not a live Instagram session.
+- `npm run test:types`: strict TypeScript declaration tests passed, including findings #159–#186.
+- `npm run release:check`: passed; runtime tests and type tests passed again, dependency audit reported 0 vulnerabilities, and `npm pack --dry-run` completed for the 1.0.0 package.
+- `git status --short`: clean.
+
+This confirms the current audit-branch changes locally. It does **not** verify live Instagram login, messaging, MQTT subscriptions, media upload, or account actions. No npm publish or release-branch merge was performed. The package version remains 1.0.0 on the audit branch at this validation point.
+
 ## Validation status (2026-11-22)
 
 - The user ran the diagnostic suite locally in UserLAnd on **Node.js v20.20.2** and **npm 10.8.2**.
@@ -180,7 +192,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#185 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #159–#186 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the latest combined validation above. All 94 runtime regression tests, 18 FCA wrapper tests, the remaining npm test suites, 17 audit checks, strict TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. Do not treat source review or successful local mock tests as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -525,4 +537,4 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Defect:** both getHistory(callback) and getHistory(amount, callback) accepted callbacks syntactically but did not provide typed callback parameters or a typed history result.
 - **Fix:** both overloads now declare (error: Error | null, items: ThreadHistoryItem[]) => void and return Promise<ThreadHistoryItem[]>.
 - **Regression:** test/types.test.ts covers callback-only and amount-plus-callback forms; strict type validation is pending after this commit.
-- **Validation status:** fix and regression test committed on the audit branch; awaiting the user's batched local validation. No runtime behavior changed.
+- **Validation status:** user-confirmed strict TypeScript validation passed at commit 4ef0c55 (2026-11-23), together with the full runtime, audit, and release-check suites. No runtime behavior changed.
