@@ -306,8 +306,8 @@ export declare class InstaClient {
   getThreadInfo(threadID: string, callback?: (err: any, info: any) => void): Promise<any>;
   getThreadList(limit?: number, timestamp?: any, tags?: any, callback?: (err: any, list: ThreadListItem[]) => void): Promise<ThreadListItem[]>;
   getThreadHistory(threadID: string, callback?: (err: any, items: any[]) => void): Promise<any[]>;
-  getThreadHistory(threadID: string, amount: number, callback?: (err: any, items: any[]) => void): Promise<any[]>;
-  getThreadHistory(threadID: string, amount: number, timestamp?: any, callback?: (err: any, items: any[]) => void): Promise<any[]>;
+  getThreadHistory(threadID: string, amount: number | null, callback?: (err: any, items: any[]) => void): Promise<any[]>;
+  getThreadHistory(threadID: string, amount: number | null, timestamp?: number | string | null, callback?: (err: any, items: any[]) => void): Promise<any[]>;
 
   // users
   getUserInfo(ids: string | string[], callback?: (err: any, info: any) => void): Promise<Record<string, any>>;
@@ -377,7 +377,8 @@ export declare class InstaContext {
   edit(text: string, messageID: string, callback?: Function): Promise<any>;
   typing(): Promise<boolean>;
   getInfo(callback?: Function): Promise<any>;
-  getHistory(amount?: number, callback?: Function): Promise<any[]>;
+  getHistory(callback: Function): Promise<any[]>;
+  getHistory(amount?: number | null, callback?: Function): Promise<any[]>;
 }
 
 /** Namespaced view: client.messages.send(), client.threads.getInfo(), ... */
@@ -471,7 +472,7 @@ export declare class InstaAPI {
 
   // threads
   getThreadInfo(threadID: string): Promise<any>;
-  getThreadHistory(threadID: string, limit?: number, beforeTimestamp?: number | string): Promise<any[]>;
+  getThreadHistory(threadID: string, limit?: number | null, beforeTimestamp?: number | string | null): Promise<any[]>;
   markThreadSeen(threadID: string, itemID: string): Promise<any>;
   muteThread(threadID: string): Promise<any>;
   unmuteThread(threadID: string): Promise<any>;
