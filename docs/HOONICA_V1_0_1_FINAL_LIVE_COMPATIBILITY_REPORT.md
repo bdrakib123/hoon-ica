@@ -82,3 +82,38 @@ All requested commands were executed on Node.js 20.20.2:
 ## Remaining action for live verification
 
 Only if explicitly authorized, perform read-only compatibility checks using the user's own local browser/session environment. Keep credentials local and owner-only. Start with session validation and self-info, then inbox and thread-list retrieval; do not send or mutate anything. If Instagram presents a checkpoint, challenge, or rate limit, stop and record the result without bypassing it.
+
+## Post-Commit Correction Addendum
+
+**Correction date:** 2026-11-23  
+**Applies to:** `release/1.0.1` after the original audit and the subsequent release-candidate commit.
+
+### Verified branch and commit state
+
+- The original audit baseline `2297068177770d6674a86430f4060d17be99285b` is the parent of the subsequent commit; it is not the current branch head.
+- The GitHub branch endpoint was checked immediately before this report correction. It reported `release/1.0.1` at `9d3a93d6475f72da3d247dfab147827fb78cb44e`.
+- The commit message is `fix: support external browser session harvesting`.
+- The commit changed six files: `src/api.js`, `src/session.js`, `index.d.ts`, `package.json`, `test/session-browser.test.js`, and this report. The recorded diff was 539 insertions and 40 deletions.
+- The local terminal output supplied during this work showed `git status` clean and `HEAD` and `origin/release/1.0.1` both at this commit. The GitHub branch check independently confirmed the remote branch head.
+
+### Production implementation correction
+
+The original report's statement that no production code was changed applies only to the earlier audit baseline and is superseded for the current release candidate:
+
+- `src/session.js` now supports connecting to an already-running browser through either `browserURL` or `browserWSEndpoint`, or launching a local browser when neither is supplied. Supplying both external-browser options is rejected.
+- Browser ownership is respected: the helper disconnects from an externally managed browser and closes a browser it launched itself.
+- `src/api.js` exposes this through `refreshSession()`. Caller-supplied params are still accepted directly; otherwise it passes the HTTP cookie seed and configured browser options to `harvestSessionParams()`.
+- The constructor options are declared in `index.d.ts`, including browser connection/launch settings, user agent, harvest timeout, and settle delay.
+- This harvesting path is explicit: `init()` does not automatically invoke `refreshSession()`. Its session initialization path checks the session, attempts current-user identification, and bootstraps tokens.
+- `package.json` adds the browser-session regression test to `npm test`; `test/session-browser.test.js` contains nine browser lifecycle and option-forwarding tests.
+
+### Verification scope and current limitations
+
+- The automated test, type-check, audit, and release dry-run results in the main report were run locally before the `9d3a93d` commit. The new browser-session tests and external-browser helper integration were also run locally and passed before that commit. These are local results, not proof that GitHub Actions ran successfully.
+- The external-browser helper was exercised against the existing Termux Chromium over UserLAnd CDP. The browser version reported by that test was `HeadlessChrome/158.0.8127.36`; the helper connected and disconnected without closing the externally managed browser.
+- No live Instagram navigation, cookie-authenticated login, real session-parameter harvest, self-info request, inbox retrieval, or thread-list retrieval has been completed. The live compatibility status therefore remains **UNVERIFIED / NOT RUN**, as applicable in the tables above.
+- No messages were sent and no Instagram account-changing operation was attempted. If live read-only checks are later authorized and Instagram returns a checkpoint, challenge, or rate limit, stop without retrying or bypassing it.
+- GitHub Actions status has not been independently confirmed by this audit. The release check was a local npm dry run only; `@cexi/hoonica@1.0.1` has not been published as part of this work.
+- The earlier statement that the working tree contained uncommitted source changes is stale for the post-commit state: the supplied local terminal output showed a clean working tree at `9d3a93d`.
+- The earlier statement that no commit or push had occurred describes the audit before the release-candidate commit. The commit above was subsequently pushed to `release/1.0.1`; this report correction is a documentation-only follow-up.
+- The `release/1.0.0` branches and their unrelated histories remain outside this change. No merge, rebase, reset, force-push, deployment, or npm publication was performed.
