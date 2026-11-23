@@ -2535,9 +2535,14 @@ async function testNormalizedReplyRetainsMetadata() {
 
 async function testEventNormalizerRejectsMissingCoreIdentifiers() {
   const EventNormalizer = require("../src/events/normalizeEvent");
+  const remembered = [];
   const normalizer = new EventNormalizer({
     api: { getUserInfo: async () => { throw new Error("must not perform lookup"); } },
-    rememberThread() { throw new Error("must not cache malformed identifiers"); }
+    rememberThread(messageID, threadID) {
+      assert.ok(messageID && String(messageID).trim(), "must not cache a missing message id");
+      assert.ok(threadID && String(threadID).trim(), "must not cache a missing thread id");
+      remembered.push([messageID, threadID]);
+    }
   });
   assert.equal(await normalizer.normalize({ type: "message", messageID: "mid-1", body: "x" }), null);
   assert.equal(await normalizer.normalize({ type: "message", threadID: "thread-1", body: "x" }), null);
@@ -2547,6 +2552,7 @@ async function testEventNormalizerRejectsMissingCoreIdentifiers() {
     type: "message", threadID: "thread-1", messageID: "mid-3", senderID: "user-1", body: { unexpected: true }
   });
   assert.equal(safeBody.body, "");
+  assert.deepEqual(remembered, [["mid-3", "thread-1"]]);
   assert.equal(await normalizer.normalize({ type: "event", threadID: "thread-1" }), null);
   assert.equal(await normalizer.normalize({ type: "event", messageID: "event-1" }), null);
 }
