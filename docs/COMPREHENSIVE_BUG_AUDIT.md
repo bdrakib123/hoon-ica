@@ -231,3 +231,9 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - The regression fixture configured `rememberThread()` to throw unconditionally, but its malformed-body case intentionally has valid message/thread identifiers and should be cached.
 - The fixture now asserts that every cache write has nonblank identifiers and verifies that only the valid event is remembered.
 - Production normalization already rejects missing core identifiers before cache writes; no runtime change was needed.
+
+
+### #153 — Malformed Relay edge test asserted query count too early
+- The malformed-edge test checked for four GraphQL calls immediately after the two inbox-page requests, before invoking `fetchReplies()` and `_latestActor()`, which each issue the thread-detail query.
+- Moved the query-count assertion after both detail methods. The intended total remains four calls: first inbox page, pagination page, reply detail, and latest-actor detail.
+- This was a test assertion-order defect; production code was not changed.
