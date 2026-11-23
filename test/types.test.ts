@@ -13,7 +13,8 @@ import login, {
   ProfileInfo,
   PartialSendError,
   utilities,
-  moduleLogin as namedModuleLogin
+  moduleLogin as namedModuleLogin,
+  login as namedLogin
 } from "../index";
 
 const limiter: AdaptiveRateLimiter = new login.AdaptiveRateLimiter({ globalMinDelayMs: 10 });
@@ -41,6 +42,7 @@ const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: numb
 const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = fcaClient.realtimeSubscribe();
 
 const defaultLogin: Promise<InstaClient> = login("session-cookie");
+const namedDefaultLogin: Promise<InstaClient> = namedLogin("session-cookie");
 const explicitNativeLogin: Promise<InstaAPI> = login("session-cookie", { native: true });
 const defaultCreateClient: Promise<InstaClient> = login.createClient("session-cookie");
 const nativeCreateClient: Promise<InstaAPI> = login.createClient("session-cookie", { native: true });
@@ -70,7 +72,7 @@ void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, numericContext, directlyCreatedNumericContext, contextNativeApi, contextUserID, cookieArray, cookieObject,
-  defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
+  defaultLogin, namedDefaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
   nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
