@@ -55,12 +55,15 @@ commands call). Pass `{ native: true }` to get the bare `InstaAPI` instead.
 | `sessionParams` | – | Pre-harvested browser session params. |
 | `sessionParamsFile` | `./session-params.json` | Load params from disk. |
 | `deviceFile` | `./device.json` | Persisted device identity. |
+| `appStateFile` | `./appstate.json` | Persisted app-state cookie snapshot path; loaded at startup and refreshed by the session guard. |
+| `sessionGuardFile` | `./appstate.json` | Alternate app-state path used when `appStateFile` is unset; also used by the FCA session guard. |
+| `sessionGuard` | `true` | Install the FCA client's periodic app-state saver. Set `false` to disable the saver (startup restore remains available). |
 | `pollInterval` | `15000` | `listen()` poll interval (ms), used when realtime is off. |
 | `minPollIntervalMs` | `15000` | Lowest interval `listen()` will honour (floor, min 2000). |
 | `pollMaxPages` | `3` | Maximum inbox pages inspected per polling cycle (1–10; 15 threads per page). Set `1` to use only the first page. |
 | `realtime` | – | `{ enabled, fallback, host, keepAliveMs, subscriptionTimeoutMs }` — realtime MQTT push for `listen()`. `keepAliveMs` (default 25000) is the PINGREQ interval and must stay below the CONNECT keep-alive (60 s); `subscriptionTimeoutMs` (default 10000) bounds the iris-subscription acknowledgement wait and is capped at Node's maximum timer delay. |
 | `readRetry` | `{ attempts: 3, firstWaitMs: 3000, maxWaitMs: 30000 }` | Retry a throttled read (a `null` result) before giving up. `false` disables it. |
-| `sendPacing` | – | Tune the anti-suspension send pacer (`{ enabled, globalMinGapMs, perThreadMinGapMs, jitterMs, warmupWindowMs, warmupHourlyCap, normalHourlyCap, dailyCap, overCapGapMs }`). `{ enabled: false }` sends with no throttle at all. |
+| `sendPacing` | – | Tune the anti-suspension send pacer (`{ enabled, globalMinGapMs, perThreadMinGapMs, jitterMs, warmupWindowMs, warmupHourlyCap, normalHourlyCap, dailyCap, overCapGapMs, cooldownMs, maxCooldownMs, escalationWindowMs, strikesToActivate, strikeDecayMs, cooldownGapMs }`). `{ enabled: false }` sends with no throttle at all. |
 
 A throttled read (`getThreadInfo`, `getUserInfo`, `getUserInfoV2`) resolves
 `null` instead of throwing. With `readRetry` on, the client retries that
