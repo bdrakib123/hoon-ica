@@ -94,8 +94,15 @@ class RealtimeListener {
     try {
       const seqId = normalizeSequenceId(cursor.seqId);
       if (seqId == null) throw new TypeError("Realtime sequence ID must be a non-negative safe integer or decimal string");
-      await this._client.irisSubscribe(seqId, Number(cursor.snapshotAtMs));
-      return await acknowledgement;
+      // Observe the publish and acknowledgement concurrently. If the socket
+      // write stalls, the subscription timeout must still settle start(); awaiting
+      // publish first would leave the acknowledgement rejection temporarily
+      // unhandled and could keep startup pending beyond its configured deadline.
+      await Promise.all([
+        this._client.irisSubscribe(seqId, Number(cursor.snapshotAtMs)),
+        acknowledgement
+      ]);
+      return true;
     } catch (error) {
       cleanup();
       this._subscriptionReject = null;
