@@ -33,6 +33,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and uses
 - Added strict declaration regression coverage and a consolidated source-audit
   report with 186 tracked findings.
 
+### Known limitations
+
+- `sendVoice`, `sendVoiceBuffer`, and `sendVoiceFromUrl` currently use the generic audio upload path. Voice-note-specific rendering, waveform, and duration metadata have not been verified against a current Instagram web-client capture; do not rely on these helpers for guaranteed voice-note bubbles yet.
+
 ### Security
 
 - Restricted persisted session, cookie, backup, device, and session-parameter
