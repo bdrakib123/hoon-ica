@@ -43,6 +43,8 @@ const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: n
 
 const defaultLogin: Promise<InstaClient> = login("session-cookie");
 const namedDefaultLogin: Promise<InstaClient> = namedLogin("session-cookie");
+const commonJsLogin: Promise<InstaClient> = login.login("session-cookie");
+const commonJsDefaultLogin: Promise<InstaClient> = login.default("session-cookie");
 const explicitNativeLogin: Promise<InstaAPI> = login("session-cookie", { native: true });
 const defaultCreateClient: Promise<InstaClient> = login.createClient("session-cookie");
 const nativeCreateClient: Promise<InstaAPI> = login.createClient("session-cookie", { native: true });
@@ -72,7 +74,7 @@ void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, numericContext, directlyCreatedNumericContext, contextNativeApi, contextUserID, cookieArray, cookieObject,
-  defaultLogin, namedDefaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
+  defaultLogin, namedDefaultLogin, commonJsLogin, commonJsDefaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
   nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
