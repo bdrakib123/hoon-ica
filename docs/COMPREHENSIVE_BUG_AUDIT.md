@@ -180,7 +180,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#177 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#178 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -447,4 +447,13 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Defect:** these four runtime-accessible helper namespaces were absent from both `LoginExport` and the named export declarations, so strict TypeScript consumers could not access properties that exist at runtime.
 - **Fix:** declared all four namespaces on the root login export and as named exports. Their internal helper shapes remain `any` for now rather than inventing a partial public schema.
 - **Regression:** `test/types.test.ts` now references representative functions through each namespace.
+- **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
+
+
+### #178 — named `login` runtime export was missing from the declaration file
+
+- **Found in source review:** `index.js` assigns `module.exports.login = login` as well as `module.exports.default = login`, so CommonJS consumers and compatible named-import tooling can access both forms.
+- **Defect:** `index.d.ts` declared only the default export and omitted the matching named `login` export.
+- **Fix:** exported the existing `login` declaration by name as well as default.
+- **Regression:** `test/types.test.ts` now imports and calls the named `login` export.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
