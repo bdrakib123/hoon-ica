@@ -403,6 +403,10 @@ export declare function wrap(native: InstaAPI, options?: InstaChatOptions): Inst
 export declare function createContext(nativeOrClient: InstaAPI | InstaClient, threadID: string | number | null): InstaContext;
 
 export interface LoginExport {
+  /** CommonJS self-reference exposed by the runtime module object. */
+  login: LoginExport;
+  /** CommonJS default self-reference exposed by the runtime module object. */
+  default: LoginExport;
   (cookie: string | object, options: InstaChatOptions & { native: true }): Promise<InstaAPI>;
   (cookie: string | object, options?: InstaChatOptions & { native?: false }): Promise<InstaClient>;
   (cookie: string | object, options: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
