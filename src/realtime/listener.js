@@ -98,11 +98,11 @@ class RealtimeListener {
       // write stalls, the subscription timeout must still settle start(); awaiting
       // publish first would leave the acknowledgement rejection temporarily
       // unhandled and could keep startup pending beyond its configured deadline.
-      await Promise.all([
+      const [, ackPayload] = await Promise.all([
         this._client.irisSubscribe(seqId, Number(cursor.snapshotAtMs)),
         acknowledgement
       ]);
-      return true;
+      return ackPayload;
     } catch (error) {
       cleanup();
       this._subscriptionReject = null;
