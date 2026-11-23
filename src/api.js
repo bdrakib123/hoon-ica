@@ -136,22 +136,40 @@ class InstaAPI {
     return globalAntiSuspension.configure(options);
   }
 
-  // Instagram's web API needs the browser session params (__dyn/__csr/__hs/...).
-  // They expire, so re-harvest them (scripts/harvestSession.js) and call this to
-  // refresh a running client without restarting.
+  // Instagram's web API needs browser-generated session params.
+  // Existing params can still be supplied directly. Otherwise, harvest
+  // fresh params using the browser configuration provided at construction.
   async refreshSession(params) {
     if (params) {
       this.setSessionParams(params);
       return true;
     }
+
     try {
       const { harvestSessionParams } = require("./session");
-      const fresh = await harvestSessionParams(this.http.seed);
-      if (fresh) {
+
+      const harvestOptions = {
+        browserURL: this.options.browserURL,
+        browserWSEndpoint: this.options.browserWSEndpoint,
+        executablePath: this.options.browserExecutablePath,
+        headless: this.options.browserHeadless,
+        args: this.options.browserArgs,
+        userAgent: this.options.browserUserAgent,
+        timeout: this.options.sessionHarvestTimeout,
+        settleMs: this.options.sessionHarvestSettleMs
+      };
+
+      const fresh = await harvestSessionParams(
+        this.http.seed,
+        harvestOptions
+      );
+
+      if (fresh && Object.keys(fresh).length > 0) {
         this.setSessionParams(fresh);
         return true;
       }
     } catch (_) {}
+
     return false;
   }
 

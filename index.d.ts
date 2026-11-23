@@ -6,6 +6,22 @@ export interface InstaChatOptions {
   sessionParams?: Record<string, string>;
   /** Path to a JSON file holding sessionParams. Defaults to ./session-params.json */
   sessionParamsFile?: string;
+  /** Connect to an already-running Chromium through its DevTools HTTP URL. */
+  browserURL?: string;
+  /** Connect to an already-running Chromium through its DevTools WebSocket endpoint. */
+  browserWSEndpoint?: string;
+  /** Explicit Chromium executable path when launching a local browser. */
+  browserExecutablePath?: string;
+  /** Headless mode used when launching a local browser. */
+  browserHeadless?: boolean | "new";
+  /** Additional Chromium launch arguments. */
+  browserArgs?: string[];
+  /** User-Agent used during browser session harvesting. */
+  browserUserAgent?: string;
+  /** Timeout in milliseconds for browser session harvesting. */
+  sessionHarvestTimeout?: number;
+  /** Extra wait in milliseconds when the expected request is not captured immediately. */
+  sessionHarvestSettleMs?: number;
   /** Path to the persisted device identity file. Defaults to ./device.json */
   deviceFile?: string;
   /** Path used to persist and restore the Instagram app-state cookie snapshot. */
