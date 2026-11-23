@@ -203,6 +203,7 @@ const mediaOptions: SendOptions = {
 };
 void fcaClient.sendPhotoFromUrl("thread-1", "https://cdn.example/photo.jpg", mediaOptions);
 void fcaClient.sendMessage({ body: "caption", attachments: [], maxDownloadBytes: 10_000_000, downloadTimeoutMs: 45000 }, "thread-1");
+void fcaClient.sendMessage({ message: "legacy FCA message alias" }, "thread-1");
 
 const partialSendError: PartialSendError = Object.assign(new Error("partial"), {
   partialSend: { captionSent: true, mediaSent: false }
