@@ -2079,7 +2079,7 @@ async function testFcaHistoryTimestampIsForwarded() {
     }
   });
   await getThreadHistory("thread-1", 5, 1700000000000);
-  assert.deepEqual(received, ["thread-1", 20, 1700000000000]);
+  assert.deepEqual(received, ["thread-1", 5, 1700000000000]);
 }
 
 async function testMediaUploadDoesNotRetryPermanentAuthFailure() {
