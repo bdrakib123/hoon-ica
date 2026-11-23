@@ -23,7 +23,7 @@ Instagram sibling of an FCA package. It talks to the same web endpoints
 `www.instagram.com` uses (Relay GraphQL + `rupload`), so you can build a bot on
 your own personal account:
 
-- ✅ **Send** text, photos, videos, voice notes
+- ✅ **Send** text, photos, videos and audio attachments
 - ✅ **React**, edit and unsend messages
 - ✅ **Listen** for incoming DMs — realtime MQTT push or polling — and dispatch them to your own commands
 - ✅ **Typing** indicators, mark-seen, mute/unmute, hide
@@ -185,7 +185,7 @@ binds a thread. `EventNormalizer` maps raw inbox events to the FCA event shape.
 | `sendPhotoBuffer(threadID, buffer, [opts])` | Photo from a Buffer. |
 | `sendPhotoFromUrl(threadID, url, [opts])` | Photo from a URL. |
 | `sendVideo` / `sendVideoBuffer` / `sendVideoFromUrl` | Video variants. |
-| `sendVoice` / `sendVoiceBuffer` / `sendVoiceFromUrl` | Voice-note variants. |
+| `sendVoice` / `sendVoiceBuffer` / `sendVoiceFromUrl` | Audio upload helpers; voice-note rendering is not yet protocol-verified. |
 
 `opts`: `{ filename, text }`.
 
