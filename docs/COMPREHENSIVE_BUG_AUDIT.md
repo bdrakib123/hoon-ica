@@ -180,7 +180,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #20–#157 are locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `29f8e14`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed. The working tree was clean. #158 is committed after that validation and awaits the next local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159 is committed after that validation and awaits a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -279,3 +279,12 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Fixed on branch:** publish and acknowledgement are now observed concurrently with `Promise.all()`. The configured timeout settles startup even if the publish promise stalls, and both outcomes have rejection handlers immediately.
 - Added a regression test with a deliberately unresolved `irisSubscribe()` promise; it verifies the subscription timeout rejects within the deadline and removes the acknowledgement listener.
 - **Validation status:** user-confirmed green at commit `4adfedf` (2026-11-23): all 94 runtime regression tests, all 18 FCA wrapper tests, remaining npm suites, 17 audit checks, TypeScript declarations, zero-vulnerability dependency audit, package dry-run, and clean working tree.
+
+
+### #159 — `moduleLogin` declaration incorrectly reused the root login export type
+
+- **Found in source review:** the root `login.moduleLogin` and named `moduleLogin` export point to `module/login.js`, a distinct legacy entry point that always constructs and returns an `InstaAPI`. It does not attach the root login function's static properties (`InstaClient`, `createClient`, `utilities`, etc.).
+- **Defect:** `index.d.ts` declared `moduleLogin: LoginExport`, incorrectly advertising the root callable's union return type and static properties on this separate function. Consumers could receive inaccurate IntelliSense and accept code that fails at runtime.
+- **Fix:** introduced `ModuleLoginExport` with promise and callback overloads that return only `InstaAPI`; both `login.moduleLogin` and the named export now use that interface.
+- **Regression:** `test/types.test.ts` now checks promise, options, and callback forms against the native `InstaAPI` return type.
+- **Validation status:** declaration and regression-test changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
