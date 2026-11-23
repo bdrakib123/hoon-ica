@@ -25,6 +25,7 @@ const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight:
 
 
 declare const nativeApi: InstaAPI;
+declare const fcaClient: InstaClient;
 const nullableContext: InstaContext = login.createContext(fcaClient, null);
 const cookieArray = login.CookieUtils.parse([{ name: "sessionid", value: "example" }]);
 const cookieObject = login.CookieUtils.parse({ sessionid: "example", csrftoken: "example" });
@@ -53,7 +54,6 @@ void [
 ];
 
 
-declare const fcaClient: InstaClient;
 void fcaClient.getThreadHistory("thread-1", (error, items) => {
   void error;
   void items;
