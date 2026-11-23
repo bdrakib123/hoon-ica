@@ -51,5 +51,5 @@ if (require.main === module) {
     hasMoreMessages: false
   });
 
-  process.stdout.write("thread-detail-report.test.js: 2 tests passed\\n");
+  process.stdout.write("thread-detail-report.test.js: 2 tests passed\n");
 }
