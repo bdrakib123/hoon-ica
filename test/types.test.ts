@@ -74,6 +74,8 @@ void fcaClient.getThreadHistory("thread-1", null, null, (error, items) => {
   void error;
   void items;
 });
+void nullableContext.send("hello", undefined, { messageID: "quoted-1" });
+void nullableContext.reply("hello", undefined, { id: "quoted-2" });
 void nullableContext.getHistory(null);
 void nullableContext.getHistory((error, items) => {
   void error;
