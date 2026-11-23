@@ -35,6 +35,10 @@ const numericContext: InstaContext = login.createContext(fcaClient, 12345);
 const directlyCreatedNumericContext: InstaContext = new InstaContext(fcaClient, 12346);
 const contextNativeApi: InstaAPI = nullableContext.api;
 const contextUserID: string | null = nullableContext.userID;
+const nativeThreadIdMap: Map<string, string> = nativeApi.getThreadIdMap();
+const wrappedThreadIdMap: Map<string, string> = fcaClient.getThreadIdMap();
+nativeApi.setSessionParams({ lsd: "example-token" });
+fcaClient.setSessionParams({ lsd: "example-token" });
 const cookieArray = login.CookieUtils.parse([{ name: "sessionid", value: "example" }]);
 const cookieObject = login.CookieUtils.parse({ sessionid: "example", csrftoken: "example" });
 
@@ -73,7 +77,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
-  nullableContext, numericContext, directlyCreatedNumericContext, contextNativeApi, contextUserID, cookieArray, cookieObject,
+  nullableContext, numericContext, directlyCreatedNumericContext, contextNativeApi, contextUserID, nativeThreadIdMap, wrappedThreadIdMap, cookieArray, cookieObject,
   defaultLogin, namedDefaultLogin, commonJsLogin, commonJsDefaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient, defaultLoginCallback, nativeLoginCallback,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, namedNativeModuleLogin,
   nativeModuleLoginWithOptions, nativeModuleLoginCallback
