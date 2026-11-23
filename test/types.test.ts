@@ -5,6 +5,7 @@ import login, {
   Scheduler,
   InstaClient,
   InstaAPI,
+  InstaContext,
   IncomingEvent,
   SendOptions,
   RealtimeOptions,
@@ -24,6 +25,10 @@ const boundedCache: IdempotencyCache = new login.IdempotencyCache({ maxInflight:
 
 
 declare const nativeApi: InstaAPI;
+const nullableContext: InstaContext = login.createContext(fcaClient, null);
+const cookieArray = login.CookieUtils.parse([{ name: "sessionid", value: "example" }]);
+const cookieObject = login.CookieUtils.parse({ sessionid: "example", csrftoken: "example" });
+
 const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = nativeApi.realtimeSubscribe();
 const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = fcaClient.realtimeSubscribe();
 
@@ -37,6 +42,7 @@ const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (err
 void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
+  nullableContext, cookieArray, cookieObject,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
