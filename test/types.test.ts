@@ -105,6 +105,11 @@ void fcaClient.sendVoiceFromUrl("thread-1", "https://cdn.example/audio.ogg", (er
   void info;
 });
 
+void fcaClient.unsendMessage("message-1", (error, ok) => {
+  void error;
+  void ok;
+}, "thread-1");
+
 void fcaClient.getProfilePictureV2("user-1", (error, info) => {
   void error;
   if (info) void info.sizes;
