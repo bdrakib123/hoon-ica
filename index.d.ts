@@ -377,14 +377,20 @@ export declare function wrap(native: InstaAPI, options?: InstaChatOptions): Inst
 export declare function createContext(nativeOrClient: InstaAPI | InstaClient, threadID: string | null): InstaContext;
 
 export interface LoginExport {
-  (cookie: string | object, options?: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
-  (cookie: string | object, callback: (err: Error | null, api: InstaClient | InstaAPI | null) => void): void;
+  (cookie: string | object, options: InstaChatOptions & { native: true }): Promise<InstaAPI>;
+  (cookie: string | object, options?: InstaChatOptions & { native?: false }): Promise<InstaClient>;
+  (cookie: string | object, options: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
+  (cookie: string | object, callback: (err: Error | null, api: InstaClient | null) => void): void;
+  (cookie: string | object, options: InstaChatOptions & { native: true }, callback: (err: Error | null, api: InstaAPI | null) => void): void;
+  (cookie: string | object, options: InstaChatOptions & { native?: false }, callback: (err: Error | null, api: InstaClient | null) => void): void;
   (cookie: string | object, options: InstaChatOptions & { native?: boolean }, callback: (err: Error | null, api: InstaClient | InstaAPI | null) => void): void;
   InstaAPI: typeof InstaAPI;
   InstaClient: typeof InstaClient;
   InstaContext: typeof InstaContext;
   EventNormalizer: typeof EventNormalizer;
-  createClient(cookie: string | object, options?: InstaChatOptions): Promise<InstaClient | InstaAPI>;
+  createClient(cookie: string | object, options: InstaChatOptions & { native: true }): Promise<InstaAPI>;
+  createClient(cookie: string | object, options?: InstaChatOptions & { native?: false }): Promise<InstaClient>;
+  createClient(cookie: string | object, options: InstaChatOptions & { native?: boolean }): Promise<InstaClient | InstaAPI>;
   createFcaClient: typeof createFcaClient;
   loadApiMethods: typeof loadApiMethods;
   wrap: typeof wrap;
