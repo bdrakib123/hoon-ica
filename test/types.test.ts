@@ -32,6 +32,11 @@ const cookieObject = login.CookieUtils.parse({ sessionid: "example", csrftoken: 
 const realtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = nativeApi.realtimeSubscribe();
 const fcaRealtimeCursorResult: Promise<{ seqId: number | string; snapshotAtMs: number }> = fcaClient.realtimeSubscribe();
 
+const defaultLogin: Promise<InstaClient> = login("session-cookie");
+const explicitNativeLogin: Promise<InstaAPI> = login("session-cookie", { native: true });
+const defaultCreateClient: Promise<InstaClient> = login.createClient("session-cookie");
+const nativeCreateClient: Promise<InstaAPI> = login.createClient("session-cookie", { native: true });
+
 const nativeModuleLogin: Promise<InstaAPI> = login.moduleLogin("session-cookie");
 const nativeModuleLoginWithOptions: Promise<InstaAPI> = login.moduleLogin("session-cookie", { readRetry: false });
 const nativeModuleLoginCallback: void = login.moduleLogin("session-cookie", (error, api) => {
@@ -43,6 +48,7 @@ void [
   limiter, breaker, cache, scheduler, namespacedScheduler,
   boundedLimiter, boundedBreaker, boundedCache,
   nullableContext, cookieArray, cookieObject,
+  defaultLogin, explicitNativeLogin, defaultCreateClient, nativeCreateClient,
   realtimeCursorResult, fcaRealtimeCursorResult, nativeModuleLogin, nativeModuleLoginWithOptions, nativeModuleLoginCallback
 ];
 
