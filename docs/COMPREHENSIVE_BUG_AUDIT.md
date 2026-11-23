@@ -519,3 +519,10 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Fix:** added `message?: string` to the object form declaration.
 - **Regression:** `test/types.test.ts` now calls `sendMessage({ message: ... })`.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; not yet locally validated. No runtime behavior changed.
+### #186 — InstaContext.getHistory callback parameters were untyped
+
+- **Found during local validation:** the strict TypeScript test added for the callback-only getHistory(callback) overload failed with TS7006 because the declaration used the broad Function type. The callback parameters therefore received no contextual types under strict mode.
+- **Defect:** both getHistory(callback) and getHistory(amount, callback) accepted callbacks syntactically but did not provide typed callback parameters or a typed history result.
+- **Fix:** both overloads now declare (error: Error | null, items: ThreadHistoryItem[]) => void and return Promise<ThreadHistoryItem[]>.
+- **Regression:** test/types.test.ts covers callback-only and amount-plus-callback forms; strict type validation is pending after this commit.
+- **Validation status:** fix and regression test committed on the audit branch; awaiting the user's batched local validation. No runtime behavior changed.
