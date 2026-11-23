@@ -180,7 +180,7 @@ Scope: source inspection, isolated runtime fixes, and local regression-test prep
 
 `test/runtime-fixes.test.js` is part of the normal `npm test` command and currently contains 94 named regression checks. The legacy `audit:repro` checks assert corrected behavior for fixed cases rather than the old defect signature. The user most recently confirmed the full suite after commit `29f8e14` (2026-11-23): all 94 runtime regression tests, 18 FCA wrapper tests, the other npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), and package dry-run passed; working tree was clean. This run includes the #156 stalled-publish timeout and #157 circuit-breaker race regressions.
 
-**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#179 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
+**Execution status:** #158 is locally green in the user's Node 20.20.2 / npm 10.8.2 environment, based on the user's combined validation run at `cf48871`. The current branch contains 94 named runtime regression tests and 18 FCA wrapper regression tests (112 named tests total); all 94 runtime tests, all 18 wrapper tests, the remaining npm test suites, 17 audit checks, TypeScript declarations, dependency audit (0 vulnerabilities), package dry-run, and clean working-tree check passed. #159–#181 are committed after that validation and await a later batched local run. Do not treat source review or successful GitHub commits alone as live Instagram validation.
 
 ## Additional source-review candidates (not yet diagnostic tests)
 
@@ -466,3 +466,20 @@ Severity reflects likely impact from source behavior, not confirmed production i
 - **Fix:** added both self-reference properties to `LoginExport`.
 - **Regression:** `test/types.test.ts` now checks calls through both properties.
 - **Validation status:** declaration and type regression changes are committed on the audit branch; they have not yet been run in the user's local environment. No runtime behavior changed.
+
+
+### #180 — InstaAPI.setSessionParams was omitted from the public declarations
+
+- **Found in source review:** `InstaAPI.setSessionParams(params)` is a public prototype method that forwards session parameters to the HTTP client and is used by `refreshSession()`.
+- **Defect:** the native API declaration omitted this supported method. The FCA client also binds native prototype methods onto its public instance, so its explicit surface omitted it as well.
+- **Fix:** declared `setSessionParams(Record<string, string>): void` on both `InstaAPI` and `InstaClient`.
+- **Regression:** `test/types.test.ts` calls it through both native and wrapped clients.
+- **Validation status:** declaration and type regression changes are committed on the audit branch; not yet locally validated. No runtime behavior changed.
+
+### #181 — getThreadIdMap was omitted from both public client declarations
+
+- **Found in source review:** `InstaAPI.getThreadIdMap()` returns a defensive `Map` copy of the internal-thread-ID to inbox-thread-ID mapping; `InstaClient` binds the native method onto its instance.
+- **Defect:** neither public client declaration exposed this supported mapping method.
+- **Fix:** declared `getThreadIdMap(): Map<string, string>` on both `InstaAPI` and `InstaClient`.
+- **Regression:** `test/types.test.ts` checks both native and wrapped return types.
+- **Validation status:** declaration and type regression changes are committed on the audit branch; not yet locally validated. No runtime behavior changed.
