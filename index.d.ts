@@ -573,6 +573,7 @@ export declare const utilities: {
 };
 
 declare const login: LoginExport;
+export { login };
 export default login;
 export const createClient: LoginExport["createClient"];
 export const CookieUtils: CookieUtils;
