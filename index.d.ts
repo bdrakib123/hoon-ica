@@ -472,7 +472,7 @@ export declare class InstaAPI {
 }
 
 export declare class AdaptiveRateLimiter {
-  constructor(options?: { globalMinDelayMs?: number; perUrlBaseDelayMs?: number; maxDelayMs?: number; relaxAfterSuccesses?: number; relaxFactor?: number; bumpFactor?: number });
+  constructor(options?: { globalMinDelayMs?: number; perUrlBaseDelayMs?: number; maxDelayMs?: number; relaxAfterSuccesses?: number; relaxFactor?: number; bumpFactor?: number; maxEndpoints?: number });
   recommendDelay(url: string, now?: number): number;
   markRequest(url: string, now?: number): void;
   recordResponse(url: string, responseOrError: any): number;
@@ -481,7 +481,7 @@ export declare class AdaptiveRateLimiter {
 }
 
 export declare class CircuitBreaker {
-  constructor(options?: { failureThreshold?: number; cooldownMs?: number; isFailure?: (error: any) => boolean });
+  constructor(options?: { failureThreshold?: number; cooldownMs?: number; isFailure?: (error: any) => boolean; maxCircuits?: number });
   canRequest(key: string): boolean;
   run<T>(key: string, operation: () => Promise<T> | T): Promise<T>;
   state(key: string): "closed" | "open" | "half_open";
@@ -490,7 +490,7 @@ export declare class CircuitBreaker {
 }
 
 export declare class IdempotencyCache {
-  constructor(options?: { ttlMs?: number; maxSize?: number });
+  constructor(options?: { ttlMs?: number; maxSize?: number; maxInflight?: number });
   get<T = any>(key: string): T | undefined;
   set<T = any>(key: string, value: T): void;
   run<T>(key: string | null | undefined, operation: () => Promise<T> | T): Promise<T>;
