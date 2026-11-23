@@ -10,6 +10,7 @@ import login, {
   SendOptions,
   RealtimeOptions,
   SendPacingOptions,
+  ProfileInfo,
   PartialSendError,
   utilities
 } from "../index";
@@ -86,6 +87,17 @@ if (incomingEvent.type === "event") {
 
 void fcaClient.lastShareContactError;
 void fcaClient.lastEditError;
+
+const nullableProfileFlags: Pick<ProfileInfo,
+  "isVerified" | "isPrivate" | "isBusinessAccount" | "isProfessionalAccount" | "hasProfilePic"
+> = {
+  isVerified: null,
+  isPrivate: null,
+  isBusinessAccount: null,
+  isProfessionalAccount: null,
+  hasProfilePic: null
+};
+void nullableProfileFlags;
 
 const completeSendPacing: SendPacingOptions = {
   cooldownMs: 60 * 60 * 1000,
