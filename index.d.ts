@@ -231,11 +231,11 @@ export interface ProfileInfo {
   biography: string;
   externalUrl: string | null;
   category: string | null;
-  isVerified: boolean;
-  isPrivate: boolean;
-  isBusinessAccount: boolean;
-  isProfessionalAccount: boolean;
-  hasProfilePic: boolean;
+  isVerified: boolean | null;
+  isPrivate: boolean | null;
+  isBusinessAccount: boolean | null;
+  isProfessionalAccount: boolean | null;
+  hasProfilePic: boolean | null;
   profilePicUrl: string | null;
   profilePicUrlHd: string | null;
   fbid: string | null;
