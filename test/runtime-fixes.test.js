@@ -1992,6 +1992,7 @@ async function testInboxCursorPagination() {
 async function testInboxCursorRejectsMissingMailboxAfterBootstrap() {
   let calls = 0;
   const inbox = new InboxMethods({
+    uuid: () => "device-1",
     postGraphQL: async () => {
       calls += 1;
       return { data: { get_slide_mailbox_for_iris_subscription: {
