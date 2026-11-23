@@ -316,7 +316,8 @@ export declare class InstaClient {
 
   // users (V2 profile surface — see ProfileInfo)
   getUserInfoV2(ids: string | string[], callback?: (err: any, info: any) => void): Promise<Record<string, any>>;
-  getProfilePictureV2(idOrUsername: string, options?: ProfilePictureOptions, callback?: (err: any, info: any) => void): Promise<ProfilePicture | null>;
+  getProfilePictureV2(idOrUsername: string, callback: (err: any, info: ProfilePicture | null) => void): Promise<ProfilePicture | null>;
+  getProfilePictureV2(idOrUsername: string, options?: ProfilePictureOptions, callback?: (err: any, info: ProfilePicture | null) => void): Promise<ProfilePicture | null>;
   getUserProfile(idOrUsername: string, callback?: (err: any, info: ProfileInfo | null) => void): Promise<ProfileInfo | null>;
   getUserID(idOrUsername: string, callback?: (err: any, id: string | null) => void): Promise<string | null>;
   getProfileBio(idOrUsername: string, callback?: (err: any, info: any) => void): Promise<{ id: string | null; userID: string | null; username: string | null; name: string | null; biography: string }>;
