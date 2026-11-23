@@ -292,7 +292,7 @@ export declare class InstaClient {
 
   // messaging
   sendMessage(
-    form: string | { body?: string; attachment?: any; attachments?: any[]; maxDownloadBytes?: number; downloadTimeoutMs?: number },
+    form: string | { body?: string; message?: string; attachment?: any; attachments?: any[]; maxDownloadBytes?: number; downloadTimeoutMs?: number },
     threadID: string,
     callback?: ((err: any, info: any) => void) | string,
     replyToMessage?: string | number | { messageID?: string; id?: string }
