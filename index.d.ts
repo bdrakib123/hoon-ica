@@ -331,10 +331,14 @@ export declare class InstaClient {
   setOptions(...args: any[]): boolean;
 
   // media
+  sendPhoto(threadID: string, src: any, callback: (err: any, info: any) => void): Promise<any>;
   sendPhoto(threadID: string, src: any, opts?: SendOptions, callback?: Function): Promise<any>;
   sendPhotoBuffer(threadID: string, buffer: Buffer, opts?: SendOptions): Promise<any>;
+  sendPhotoFromUrl(threadID: string, url: string, callback: (err: any, info: any) => void): Promise<any>;
   sendPhotoFromUrl(threadID: string, url: string, opts?: SendOptions, callback?: Function): Promise<any>;
+  sendVideoFromUrl(threadID: string, url: string, callback: (err: any, info: any) => void): Promise<any>;
   sendVideoFromUrl(threadID: string, url: string, opts?: SendOptions, callback?: Function): Promise<any>;
+  sendVoiceFromUrl(threadID: string, url: string, callback: (err: any, info: any) => void): Promise<any>;
   sendVoiceFromUrl(threadID: string, url: string, opts?: SendOptions, callback?: Function): Promise<any>;
   sendVoiceBuffer(threadID: string, buffer: Buffer, opts?: SendOptions): Promise<any>;
   sendVideoBuffer(threadID: string, buffer: Buffer, opts?: SendOptions): Promise<any>;
